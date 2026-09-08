@@ -1,0 +1,59 @@
+{
+  "$comment": [
+    "Command registry — the single place an agent looks up how to run things.",
+    "Point AGENTS.md at this file with: 'Read agent-compass.commands.json before",
+    "choosing commands. Do not invent commands.'",
+    "",
+    "Why it exists: agents guess commands from package.json scripts and get them",
+    "subtly wrong (whole-repo test instead of scoped, wrong package manager, a",
+    "script that was renamed). One registry with the real invocations kills that",
+    "whole class of wasted turns.",
+    "",
+    "Rules: every value must be a command that actually runs today. Use null for",
+    "capabilities this repo does not have — an absent key reads as an oversight,",
+    "an explicit null reads as a decision. Use <angle-brackets> for the argument",
+    "the agent must substitute."
+  ],
+  "schema": 1,
+  "packageManager": "<npm|pnpm|yarn|bun>",
+  "install": "<pnpm install>",
+  "check": "<pnpm check>",
+  "lint": {
+    "all": "<pnpm lint>",
+    "<app>": "<pnpm --filter @scope/app lint>",
+    "markdown": null
+  },
+  "typecheck": {
+    "all": "<pnpm typecheck>",
+    "<app>": "<pnpm --filter @scope/app typecheck>"
+  },
+  "test": {
+    "all": "<pnpm test>",
+    "<app>": "<pnpm --filter @scope/app test -- <spec>>",
+    "e2e": null,
+    "coverage": null
+  },
+  "build": {
+    "all": "<pnpm build>",
+    "packages": "<pnpm build:packages>"
+  },
+  "dev": {
+    "<app>": "<pnpm dev:app>",
+    "infra": "<docker compose up -d>"
+  },
+  "db": {
+    "migrate": null,
+    "generate": null,
+    "seed": null
+  },
+  "pr": {
+    "status": "gh pr status",
+    "labels": "gh label list",
+    "create": "gh pr create --base <default-branch> --assignee @me --reviewer <login> --label <existing-label>"
+  },
+  "notes": [
+    "Use this file before choosing validation commands.",
+    "Do not invent scripts; use package.json or this registry.",
+    "Prefer scoped commands over whole-repo ones."
+  ]
+}

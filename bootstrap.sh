@@ -12,10 +12,14 @@
 #   - idempotent; re-run it any time
 #
 # Usage:
-#   ./bootstrap.sh              install
-#   ./bootstrap.sh --dry-run    show what would happen, change nothing
-#   ./bootstrap.sh --force      back up conflicting files, then link
-#   ./bootstrap.sh --unlink     remove links this script created
+#   ./bootstrap.sh                    install into ~/.claude
+#   ./bootstrap.sh --dry-run          show what would happen, change nothing
+#   ./bootstrap.sh --force            back up conflicting files, then link
+#   ./bootstrap.sh --unlink           remove links this script created
+#   ./bootstrap.sh --project [DIR]    copy the agent drop-in into a repo
+#
+# --project copies rather than links: AGENTS.md, .claudeignore and friends
+# belong to that repo's history, and each one needs local edits anyway.
 #
 set -euo pipefail
 
@@ -26,6 +30,7 @@ BACKUP_DIR="$CLAUDE_HOME/backups/ai-dev-kit-$(date +%Y%m%d-%H%M%S)"
 DRY_RUN=0
 FORCE=0
 UNLINK=0
+PROJECT=""
 
 linked=0
 skipped=0
@@ -41,17 +46,22 @@ fi
 
 ok()   { printf '  %slink%s  %s\n' "$C_OK" "$C_OFF" "$1"; }
 gone() { printf '  %sunlink%s  %s\n' "$C_OK" "$C_OFF" "$1"; }
+cpd()  { printf '  %scopy%s  %s\n' "$C_OK" "$C_OFF" "$1"; }
 skip() { printf '  %sskip%s  %s %s(%s)%s\n' "$C_DIM" "$C_OFF" "$1" "$C_DIM" "$2" "$C_OFF"; }
 warn() { printf '  %sWARN%s  %s %s(%s)%s\n' "$C_WARN" "$C_OFF" "$1" "$C_WARN" "$2" "$C_OFF"; }
 head_() { printf '\n%s\n' "$1"; }
 
-usage() { sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY_RUN=1 ;;
     --force|-f)   FORCE=1 ;;
     --unlink)     UNLINK=1 ;;
+    --project)
+      PROJECT="${2:-$PWD}"
+      [ $# -gt 1 ] && shift
+      ;;
     --help|-h)    usage ;;
     *) printf 'unknown option: %s (try --help)\n' "$1" >&2; exit 2 ;;
   esac
@@ -192,7 +202,65 @@ check_json_config() {
   done
 }
 
+# --- project drop-in --------------------------------------------------------
+
+# copy SRC DEST label — copies only into a free slot; an existing file in the
+# target repo is always the more current one (it has local edits).
+copy_item() {
+  src="$1"; dest="$2"; label="$3"
+  if [ ! -e "$src" ]; then
+    skip "$label" "not in kit"; skipped=$((skipped + 1)); return 0
+  fi
+  if [ -e "$dest" ]; then
+    skip "$label" "already present — left as is"; skipped=$((skipped + 1)); return 0
+  fi
+  run mkdir -p "$(dirname "$dest")"
+  run cp "$src" "$dest"
+  cpd "$label"
+  linked=$((linked + 1))
+}
+
+install_project() {
+  agent_dir="$KIT_ROOT/templates/shared/agent"
+
+  if [ ! -d "$agent_dir" ]; then
+    printf 'no agent drop-in at %s\n' "$agent_dir" >&2; exit 1
+  fi
+  if [ ! -d "$PROJECT" ]; then
+    printf 'not a directory: %s\n' "$PROJECT" >&2; exit 1
+  fi
+  PROJECT="$(cd "$PROJECT" && pwd)"
+
+  printf 'ai-dev-kit  %s%s%s\n' "$C_DIM" "$KIT_ROOT" "$C_OFF"
+  printf 'project     %s%s%s\n' "$C_DIM" "$PROJECT" "$C_OFF"
+  [ "$DRY_RUN" -eq 1 ] && printf '%sdry run — nothing will be written%s\n' "$C_WARN" "$C_OFF"
+
+  head_ "root files"
+  copy_item "$agent_dir/AGENTS.md"                   "$PROJECT/AGENTS.md"                   "AGENTS.md"
+  copy_item "$agent_dir/CLAUDE.md"                   "$PROJECT/CLAUDE.md"                   "CLAUDE.md"
+  copy_item "$agent_dir/CODEX.md"                    "$PROJECT/CODEX.md"                    "CODEX.md"
+  copy_item "$agent_dir/agent-compass.commands.json" "$PROJECT/agent-compass.commands.json" "agent-compass.commands.json"
+  copy_item "$agent_dir/.claudeignore"               "$PROJECT/.claudeignore"               ".claudeignore"
+  copy_item "$agent_dir/copilot-instructions.md"     "$PROJECT/.github/copilot-instructions.md" ".github/copilot-instructions.md"
+
+  head_ "instincts -> .claude/instincts/"
+  for f in "$agent_dir"/instincts/*.md; do
+    [ -f "$f" ] || continue
+    name="$(basename "$f")"
+    copy_item "$f" "$PROJECT/.claude/instincts/$name" "$name"
+  done
+
+  head_ "done: $linked copied, $skipped skipped"
+  if [ "$DRY_RUN" -eq 0 ] && [ "$linked" -gt 0 ]; then
+    printf '%sNext: fill every <PLACEHOLDER> — these templates are not usable unedited.%s\n' "$C_DIM" "$C_OFF"
+    printf '%sStart with agent-compass.commands.json, then AGENTS.md.%s\n' "$C_DIM" "$C_OFF"
+  fi
+  exit 0
+}
+
 # --- main -------------------------------------------------------------------
+
+[ -n "$PROJECT" ] && install_project
 
 printf 'ai-dev-kit  %s%s%s\n' "$C_DIM" "$KIT_ROOT" "$C_OFF"
 printf 'target      %s%s%s\n' "$C_DIM" "$CLAUDE_HOME" "$C_OFF"

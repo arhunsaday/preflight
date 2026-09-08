@@ -1,0 +1,56 @@
+# Context exclusions — keep the agent's window on source, not on build output.
+# Drop at the repo root as .claudeignore.
+
+# --- Dependencies & build output -------------------------------------------
+**/node_modules/**
+**/dist/**
+**/build/**
+**/.next/**
+**/coverage/**
+**/.nyc_output/**
+*.tsbuildinfo
+
+# --- Lockfiles (huge, zero signal) -----------------------------------------
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+Cargo.lock
+poetry.lock
+
+# --- Agent files shipped by dependencies -----------------------------------
+# Framework packages ship their own AGENTS.md / CLAUDE.md; those flood the
+# context with instructions for someone else's repo.
+# Scoped to node_modules on purpose: a bare **/AGENTS.md would also exclude
+# THIS repo's canonical contract at the root.
+**/node_modules/**/AGENTS.md
+**/node_modules/**/CLAUDE.md
+
+# --- Other tools' config ----------------------------------------------------
+.idea/
+.vscode/settings.json
+.cursor/
+.opencode/
+
+# --- Logs, caches, OS junk --------------------------------------------------
+**/*.log
+.cache/
+.temp/
+.turbo/
+.DS_Store*
+Thumbs.db
+
+# --- Git artifacts ----------------------------------------------------------
+.git/
+COMMIT_EDITMSG
+FETCH_HEAD
+ORIG_HEAD
+
+# --- Secrets ----------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Project-specific: add large or low-signal paths here -------------------
+# Generated clients, vendored themes, load-test suites, plan archives, fixtures.
+# <PATH>
