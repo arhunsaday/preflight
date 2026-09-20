@@ -29,36 +29,129 @@
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm lint:*)",
       "Bash(npm test:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(cut:*)",
+      "Bash(tr:*)",
+      "Bash(diff:*)",
+      "Bash(du:*)",
+      "Bash(df:*)",
+      "Bash(file:*)",
+      "Bash(stat:*)",
+      "Bash(basename:*)",
+      "Bash(dirname:*)",
+      "Bash(readlink:*)",
+      "Bash(realpath:*)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(env)",
+      "Bash(date:*)",
+      "Bash(pwd)",
+      "Bash(tree:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "Bash(ln:*)",
+      "Bash(git add:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(git stash:*)",
+      "Bash(git blame:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git restore:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git remote:*)",
+      "Bash(git config:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(bun:*)",
+      "Bash(deno:*)",
+      "Bash(go:*)",
+      "Bash(cargo:*)",
+      "Bash(uv:*)",
+      "Bash(uvx:*)",
+      "Bash(ruby:*)",
+      "Bash(jq:*)",
+      "Bash(yq:*)",
+      "Bash(pnpm:*)",
+      "Bash(npm:*)",
+      "Bash(yarn:*)",
+      "Bash(pip:*)",
+      "Bash(pip3:*)",
+      "Bash(brew:*)",
+      "Bash(gh:*)",
+      "Bash(glab:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(docker:*)",
+      "Bash(kubectl:*)",
+      "Bash(helm:*)",
+      "Bash(terraform:*)",
+      "Bash(make:*)",
+      "Bash(bash:*)",
+      "Bash(sh:*)",
+      "Bash(zsh:*)",
+      "Bash(pkill:*)",
+      "Bash(kill:*)",
+      "Bash(lsof:*)",
+      "Bash(ps:*)",
+      "Bash(open:*)",
+      "Bash(rm:*)"
     ]
   },
-
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline/statusline-gradient.sh",
     "padding": 0
   },
-
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/block-dangerous.sh" },
-          { "type": "command", "command": "~/.claude/hooks/log-commands.sh" },
-          { "type": "command", "command": "~/.claude/hooks/require-tests-for-pr.sh" }
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/block-dangerous.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/log-commands.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/require-tests-for-pr.sh"
+          }
         ]
       },
       {
         "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/protect-files.sh" }
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/protect-files.sh"
+          }
         ]
       },
       {
-        "matcher": "Read|Grep",
+        "matcher": "Read|Grep|Bash",
         "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/block-secret-reads.sh" }
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/block-secret-reads.sh"
+          }
         ]
       }
     ],
@@ -66,19 +159,16 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/format-after-edit.sh" },
-          { "type": "command", "command": "~/.claude/hooks/lint-after-edit.sh" }
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/format-after-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/lint-after-edit.sh"
+          }
         ]
       }
-    ],
-    "Notification": [
-      { "matcher": "", "hooks": [ { "type": "command", "command": "~/.claude/hooks/notify-sound.sh" } ] }
-    ],
-    "Stop": [
-      { "matcher": "", "hooks": [ { "type": "command", "command": "~/.claude/hooks/notify-sound.sh" } ] }
-    ],
-    "SubagentStop": [
-      { "matcher": "", "hooks": [ { "type": "command", "command": "~/.claude/hooks/notify-sound.sh" } ] }
     ]
   }
 }

@@ -23,13 +23,25 @@ this; where they conflict, the project file wins.
 - **When I correct you, stop and re-read my message.** Quote back what I asked
   for and confirm before proceeding.
 
+## Shell commands
+
+- **One command per call.** Do not chain with `&&` or `;` when two separate
+  calls would do.
+- **Never prefix with `cd`.** The working directory persists between calls; use
+  an absolute path when you need a different one.
+
+Both of these are about permission matching: a rule matches the *whole* command
+string, so `cd /repo && git status` matches nothing that `git status` would.
+In one measured week, 79% of calls were chained and 30% started with `cd` —
+which is why the allow list was almost never consulted.
+
 ## Engineering
 
 - **Do not preserve backward compatibility.** Change the call sites. No
   compatibility shim, deprecated alias, or second code path to spare a caller
   inside this repo.
 - **Choose the simplest implementation that fully meets the current
-  requirements.** *Fully meets* — not the smallest diff that passes the happy
+  requirements.** _Fully meets_ — not the smallest diff that passes the happy
   path. No features beyond what was asked, no abstraction for single-use code,
   no configurability nobody requested, no error handling for impossible states.
   If you wrote 200 lines and 50 would do, rewrite it.
@@ -58,7 +70,7 @@ Every changed line should trace directly to what I asked for.
 - Do not refactor what is not broken.
 - Match the existing style, even where you would do it differently.
 - Notice unrelated dead code? **Mention it, do not delete it.**
-- Clean up only the orphans *your* change created — imports and variables your
+- Clean up only the orphans _your_ change created — imports and variables your
   edit made unused.
 
 ## Verification
@@ -87,7 +99,7 @@ Every changed line should trace directly to what I asked for.
 
 When you hit a small friction — a tool call that missed and needed a retry, a
 confusing or undocumented setup step, a flaky command, a stale cache, a
-misleading error, a non-obvious gotcha — **log it to `PAPERCUTS.md`** in the
+misleading error, a non-obvious gotcha — **log it to `claude/papercuts.md`** in the
 moment, proactively, even though none of it is blocking. One or two sentences:
 what you were doing → what got in the way (a guess at the cause is a bonus).
 

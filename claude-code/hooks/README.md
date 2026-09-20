@@ -34,10 +34,15 @@ and what to do instead, not just "denied".
 | `test-after-edit.sh` | `PostToolUse` | `Write\|Edit` | no | Runs the suite, reports the last 8 lines. **Off by default** |
 | `notify-sound.sh` | `Notification`, `Stop`, `SubagentStop` | — | no | One macOS sound per event so you can look away |
 
-`test-after-edit.sh` is deliberately left out of `settings.json`. On a suite
-slower than about ten seconds it fires on every edit and makes the session
-unusable. Enable it per project, in `.claude/settings.json`, where the suite is
-fast.
+Two hooks are deliberately left out of `settings.json`:
+
+**`test-after-edit.sh`** — on a suite slower than about ten seconds it fires on
+every edit and makes the session unusable. Enable it per project, where the
+suite is fast.
+
+**`notify-sound.sh`** — a sound on every turn end gets old fast. Both scripts
+stay linked and executable; re-enabling either is one block of JSON, documented
+in the file's own header.
 
 ## Sounds
 
