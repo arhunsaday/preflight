@@ -16,7 +16,8 @@ this; where they conflict, the project file wins.
 - **Interview me with the `AskUserQuestion` tool** rather than guessing, when
   the answer would change the work. We write the final plan together, and I hand
   it to another agent to execute — so write it for a stranger with none of our
-  context. (`/plan-challenge` runs this properly.)
+  context. (`skills:grilling` runs the interview; `skills:writing-plans`
+  writes the artifact.)
 - **If something goes sideways, stop and re-plan.** Do not keep pushing. After
   two consecutive tool failures, change approach entirely and say what failed.
 - **When I correct you, stop and re-read my message.** Quote back what I asked

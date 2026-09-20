@@ -55,9 +55,10 @@ If a rule genuinely must hold, it belongs in a hook.
 For anything non-trivial — 3+ steps or an architectural decision — plan before
 building. Ambiguity resolved late costs more than ambiguity resolved early.
 
-`/plan-challenge` in this kit runs a proper version: it interviews you with
-`AskUserQuestion`, challenges the assumptions in your request, names the
-alternative it rejected, and writes a plan a *different* agent can execute.
+`skills:grilling` runs the interview properly — it maps the decision tree and
+asks a whole frontier per round, each question with its recommended answer.
+`skills:writing-plans` then turns the answers into a plan a *different* agent
+can execute.
 
 ## Subagents, for context economy
 

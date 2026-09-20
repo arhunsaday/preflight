@@ -17,6 +17,8 @@
 #   ./bootstrap.sh --force            back up conflicting files, then link
 #   ./bootstrap.sh --unlink           remove links this script created
 #   ./bootstrap.sh --project [DIR]    copy the agent drop-in into a repo
+#   ./bootstrap.sh --project [DIR] --with-stack-skills
+#                                     also copy every project-scoped skill
 #
 # --project copies rather than links: AGENTS.md, .claudeignore and friends
 # belong to that repo's history, and each one needs local edits anyway.
@@ -31,6 +33,7 @@ DRY_RUN=0
 FORCE=0
 UNLINK=0
 PROJECT=""
+SCOPED_ALL=0
 
 linked=0
 skipped=0
@@ -58,6 +61,7 @@ while [ $# -gt 0 ]; do
     --dry-run|-n) DRY_RUN=1 ;;
     --force|-f)   FORCE=1 ;;
     --unlink)     UNLINK=1 ;;
+    --with-stack-skills) SCOPED_ALL=1 ;;
     --project)
       PROJECT="${2:-$PWD}"
       [ $# -gt 1 ] && shift
@@ -141,11 +145,16 @@ install_skills() {
   # skills/registry.json decides which of my own skills are active. Anything
   # absent from it defaults to active, so a new skill works without editing it.
   parked_mine=""
+  scoped_mine=""
   if [ -f "$KIT_ROOT/skills/registry.json" ]; then
     parked_mine=$(python3 -c "
 import json
 d = json.load(open('$KIT_ROOT/skills/registry.json'))
 print('\n'.join(d.get('mine', {}).get('parked', {}).keys()))" 2>/dev/null)
+    scoped_mine=$(python3 -c "
+import json
+d = json.load(open('$KIT_ROOT/skills/registry.json'))
+print('\n'.join(d.get('mine', {}).get('projectScoped', {}).keys()))" 2>/dev/null)
   fi
 
   for f in "$KIT_ROOT"/claude-code/skills/*/*/SKILL.md; do
@@ -157,6 +166,13 @@ print('\n'.join(d.get('mine', {}).get('parked', {}).keys()))" 2>/dev/null)
     if [ "$UNLINK" -eq 0 ] && printf '%s\n' "$parked_mine" | grep -qx "$name"; then
       unlink_item "$CLAUDE_HOME/skills/$name" "$cat_/$name" >/dev/null 2>&1
       skip "$cat_/$name" "parked in registry.json"; skipped=$((skipped + 1)); continue
+    fi
+    # Project-scoped skills are installed by --project into the repo that needs
+    # them, never globally: a NestJS skill competing for attention in a Go
+    # session makes every other skill's match worse.
+    if [ "$UNLINK" -eq 0 ] && printf '%s\n' "$scoped_mine" | grep -qx "$name"; then
+      unlink_item "$CLAUDE_HOME/skills/$name" "$cat_/$name" >/dev/null 2>&1
+      skip "$cat_/$name" "project-scoped — install with --project"; skipped=$((skipped + 1)); continue
     fi
     if [ "$UNLINK" -eq 1 ]; then
       unlink_item "$CLAUDE_HOME/skills/$name" "$name"
@@ -309,6 +325,33 @@ install_project() {
   copy_item "$agent_dir/agent-commands.json" "$PROJECT/agent-commands.json" "agent-commands.json"
   copy_item "$agent_dir/.claudeignore"               "$PROJECT/.claudeignore"               ".claudeignore"
   copy_item "$agent_dir/copilot-instructions.md"     "$PROJECT/.github/copilot-instructions.md" ".github/copilot-instructions.md"
+
+  head_ "project-scoped skills -> .claude/skills/"
+  scoped=$(python3 -c "
+import json
+d = json.load(open('$KIT_ROOT/skills/registry.json'))
+print('\n'.join(d.get('mine', {}).get('projectScoped', {}).keys()))" 2>/dev/null)
+  if [ -z "$scoped" ]; then
+    printf '  %s(none declared)%s\n' "$C_DIM" "$C_OFF"
+  else
+    printf '  %sPick the ones this repo actually uses — each one costs context%s\n' "$C_DIM" "$C_OFF"
+    printf '  %sin every session of this project.%s\n' "$C_DIM" "$C_OFF"
+    for name in $scoped; do
+      src=$(find "$KIT_ROOT/claude-code/skills" -maxdepth 2 -type d -name "$name" | head -1)
+      [ -n "$src" ] || continue
+      if [ -e "$PROJECT/.claude/skills/$name" ]; then
+        skip "$name" "already present"; skipped=$((skipped + 1))
+      elif [ "$SCOPED_ALL" -eq 1 ]; then
+        run mkdir -p "$PROJECT/.claude/skills"
+        run cp -R "$src" "$PROJECT/.claude/skills/$name"
+        cpd "$name"; linked=$((linked + 1))
+      else
+        printf '  %savail%s %s\n' "$C_DIM" "$C_OFF" "$name"
+      fi
+    done
+    [ "$SCOPED_ALL" -eq 1 ] || printf '\n  %sRe-run with --with-stack-skills to copy them all,%s\n  %sor copy the ones you want from claude-code/skills/stack/.%s\n' \
+      "$C_DIM" "$C_OFF" "$C_DIM" "$C_OFF"
+  fi
 
   head_ "instincts -> .claude/instincts/"
   for f in "$agent_dir"/instincts/*.md; do

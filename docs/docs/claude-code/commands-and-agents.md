@@ -23,7 +23,6 @@ Instructions. $ARGUMENTS is substituted.
 
 | Command | Does |
 | --- | --- |
-| `/plan-challenge [topic]` | Interviews you with `AskUserQuestion`, challenges your assumptions, writes a plan another agent can execute |
 | `/papercut [friction]` | Logs small frictions to `PAPERCUTS.md` — the retries, undocumented steps, misleading errors |
 | `/skills-sync` | Updates third-party skills and reports what changed **in the instructions**, not just version numbers |
 
@@ -37,8 +36,12 @@ individually; together they show exactly where a repo needs sanding down.
 | **Skill** | the model decides its description matches | capabilities that should apply automatically |
 | **Command** | you type it | procedures you want to trigger deliberately |
 
-A procedure you want *control* over is a command. `/plan-challenge` is a command
-because planning should never start on its own.
+A procedure you want *control* over is a command. `/papercut` is a command
+because sweeping a session for frictions should never start on its own.
+
+There was a `/plan-challenge` here. It was cut once `grilling` turned up doing
+the same job better — the lesson being to check what is installed before writing
+a fourth version of it.
 
 ## Subagents
 

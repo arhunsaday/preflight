@@ -28,21 +28,24 @@ idea → spec-workflow → implementation-planning → build → progress-audit 
 | Step | Skill | Produces |
 | --- | --- | --- |
 | Clarify | `spec-workflow` | A spec with acceptance criteria |
-| Interrogate | `/plan-challenge` | Assumptions challenged, decisions made with you |
+| Interrogate | `skills:grilling` | Assumptions challenged, decisions made with you |
 | Detail | `implementation-planning` | Files, schema, contracts, tests — build-ready |
 | Estimate | `ai-time-estimates` | Effort in agent-sessions, with a band |
 | Track | `progress-audit` | Verified completion, measured against wired code |
 | Scope the rest | `completion-plan` | Backlog with a plan and a ticket per item |
 
-## `/plan-challenge`
+## The interview
 
-The one to reach for on anything ambiguous. It interviews you with
-`AskUserQuestion` instead of guessing, challenges the assumptions in your
-request, names the alternative it rejected, and writes the plan for a **stranger**
-— because the agent that executes it will not have the conversation.
+`skills:grilling` is the one to reach for on anything ambiguous. It maps the
+work as a **decision tree** and asks a whole frontier per round — every question
+whose prerequisites are settled — each with its recommended answer, then waits.
+
+`grill-with-docs` runs the same interview and leaves ADRs and a glossary behind,
+which is what you want when the decisions need to survive the conversation.
 
 Rule of thumb: if a plan lists no rejected alternative, no alternative was
 considered.
+
 
 ## Estimating
 

@@ -40,7 +40,7 @@ CRUD, tests, renames. They are weakest at the work that is most expensive to fix
 
 So the time you save on volume should go into the decisions, not into producing
 more volume. That is the whole argument for planning before building, and for
-`/plan-challenge` existing at all.
+planning before building at all.
 
 ## Review is the skill
 

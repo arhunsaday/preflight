@@ -32,18 +32,26 @@ cmd=$(printf '%s\n' "$cmd" | awk '
   { print }
 ')
 
-# Deliberately narrow. A pattern that fires on safe commands gets the whole
-# hook disabled within a week, which protects nothing.
+# ONLY what is irreversible AND silent. Everything else is deliberately absent.
+#
+# The list used to be twice this long and it blocked real work three times in one
+# session — writing a file that merely *mentioned* a destructive command. A hook
+# that fires on safe input is a hook you disable, and a disabled hook protects
+# nothing. So the bar for adding a pattern here is: no undo, and no warning.
+#
+# Deliberately NOT blocked, with the reason:
+#   git reset --hard   the reflog gets it back
+#   git clean -f       annoying, but you are in a repo you chose to clean
+#   chmod -R 777       bad practice, not destruction
+#   rm -rf ./relative  scoped to the working directory you are already in
 dangerous=(
-	'rm[[:space:]]+(-[a-zA-Z]*[rf][a-zA-Z]*[[:space:]]+)+/' # rm -rf on an absolute path
-	'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f|rm[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*r'
-	'git[[:space:]]+reset[[:space:]]+--hard'
-	'git[[:space:]]+push[[:space:]].*--force'
-	'git[[:space:]]+clean[[:space:]]+-[a-zA-Z]*f'
-	'DROP[[:space:]]+(TABLE|DATABASE|SCHEMA)'
-	'TRUNCATE[[:space:]]+TABLE'
+	# Catastrophic roots only: / , /* , ~ , ~/ , $HOME. Requires the RECURSIVE
+	# flag and the target being the root itself — `rm -rf ./build` and
+	# `rm -f ~/notes.md` are normal work and must not trip this.
+	'rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*[[:space:]]+)+(/|~/?|\$HOME/?)[[:space:]]*\*?[[:space:]]*$'
+	'git[[:space:]]+push[[:space:]].*--force[^-]' # --force, not --force-with-lease
+	'(DROP|TRUNCATE)[[:space:]]+(TABLE|DATABASE|SCHEMA)'
 	'(curl|wget)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba)?sh' # curl … | sh
-	'chmod[[:space:]]+-R[[:space:]]+777'
 	'mkfs\.|dd[[:space:]]+if=.*of=/dev/'
 	':\(\)\{.*\|.*&.*\};:' # fork bomb
 )

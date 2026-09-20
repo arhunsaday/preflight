@@ -34,7 +34,7 @@ ai-dev-kit/
 │   ├── settings.json            hooks + statusline + permissions (merge by hand)
 │   ├── skills/                  51 skills in 9 categories
 │   ├── hooks/                   9 hooks — see hooks/README.md
-│   ├── commands/                /plan-challenge  /papercut  /skills-sync
+│   ├── commands/                /papercut  /skills-sync  /session-audit
 │   ├── agents/                  explorer · reviewer · security
 │   └── statusline/              repo · branch · model · diff · context gauge
 ├── skills/                      THIRD-PARTY.md + install-third-party.sh (reproducibility)
@@ -50,7 +50,7 @@ ai-dev-kit/
 | Skills (mine)      | **51**  | communication · delivery · quality · architecture · design · stack · ai · ops · tools |
 | Skills (installed) | **103** | in the shared `~/.agents/skills/` store — read by ~50 agents                          |
 | Hooks              | 9       | 4 blocking (secret reads, dangerous commands, protected files, red-tests-no-PR)       |
-| Slash commands     | 3       | plan-challenge · papercut · skills-sync                                               |
+| Slash commands     | 3       | papercut · skills-sync · session-audit |
 | Subagents          | 3       | explorer (sonnet) · reviewer (opus) · security (opus)                                 |
 | Doc pages          | **34**  | setup · Claude Code · MCP · workflows · stack · tools · ecosystem                     |
 | Instincts          | 6       | context-triggered rules for the project template                                      |
