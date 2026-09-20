@@ -18,6 +18,11 @@ jobs:
           done
           exit $fail
 
+      - name: Repository contracts and installer tests
+        run: |
+          python3 scripts/kit.py check
+          python3 -m unittest discover -s tests
+
       - name: JSON is valid
         run: |
           for f in $(git ls-files '*.json'); do

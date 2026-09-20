@@ -1,5 +1,10 @@
 ---
 id: plan-before-operational-change
+status: accepted
+scope: universal
+last_reviewed: 2026-09-20
+reviewed_by: ai-dev-kit-maintainer-agent
+evidence: Existing operational rule with upstream provenance below; retained during lifecycle migration.
 trigger: 'before changing infrastructure, CI/CD, containers, cloud, Kubernetes, security controls, incident state, or compliance evidence'
 confidence: 0.9
 domain: operations

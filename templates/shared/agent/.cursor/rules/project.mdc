@@ -1,0 +1,6 @@
+---
+description: Project conventions
+alwaysApply: true
+---
+
+Read `AGENTS.md` for project instructions and `agent-commands.json` for available commands.

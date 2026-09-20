@@ -39,3 +39,7 @@ theme — the value is in the raw list being cheap to append to.
 
 If nothing tripped you up this session, say so and write nothing. An empty
 papercut log is a real result.
+
+Keep observations distinct from policy. When a recurring papercut deserves a
+lesson, mention that it can be proposed with `scripts/instincts.py` if installed;
+do not create or accept an instinct as part of logging this papercut.

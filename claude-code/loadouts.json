@@ -1,0 +1,153 @@
+{
+  "$comment": [
+    "Role x stack -> what to install, with a reason per item.",
+    "",
+    "Distinct from profiles.json, which decides how much the agent is ALLOWED to",
+    "do. A loadout decides what it CAN do. A junior on the 'safe' permission",
+    "profile still needs React skills; the two axes are orthogonal.",
+    "",
+    "Every item carries `why`. That is the whole point: a junior handed a list of",
+    "40 skills learns nothing, and inherits someone else's 3% utilisation rate.",
+    "A junior handed 12 skills each with a reason can argue with it.",
+    "",
+    "`extends` composes: base -> role -> stack. Later layers add; an item repeated",
+    "in a later layer overrides the earlier `why`, which is how a role sharpens a",
+    "generic reason.",
+    "",
+    "`scope` is global or project. `needs` lists prerequisites the resolver checks",
+    "but never installs — an env var, a binary, an account."
+  ],
+  "schema": 1,
+
+  "loadouts": {
+    "base": {
+      "description": "Everyone, whatever the role or stack",
+      "provides": {
+        "hooks": [
+          { "id": "block-secret-reads", "why": "A key read once is in the transcript forever", "blocking": true },
+          { "id": "protect-files", "why": "Lockfiles and .env are not agent-editable", "blocking": true },
+          { "id": "block-dangerous", "why": "Catches the catastrophic typo, not ordinary work", "blocking": true },
+          { "id": "format-after-edit", "why": "Formatting is not worth a conversation" }
+        ],
+        "skills": [
+          { "id": "ponytail", "scope": "global", "why": "Agents over-build by default; this is the counterweight" },
+          { "id": "caveman", "scope": "global", "why": "Cuts output tokens ~75% once you stop needing the prose" }
+        ],
+        "instincts": [
+          { "id": "commit-convention", "why": "Release tooling parses the prefix" },
+          { "id": "self-review-before-done", "why": "Catches what a green typecheck cannot see" }
+        ]
+      }
+    },
+
+    "junior": {
+      "extends": "base",
+      "description": "Learning the codebase and the craft at the same time",
+      "provides": {
+        "hooks": [
+          { "id": "require-tests-for-pr", "why": "A red PR wastes a reviewer's afternoon. Removable once that is instinct", "blocking": true },
+          { "id": "lint-after-edit", "why": "See the lint error while the code is still in your head" }
+        ],
+        "skills": [
+          { "id": "systematic-debugging", "scope": "global", "why": "Reproduce before diagnosing. The habit that separates 20 minutes from 3 hours" },
+          { "id": "grilling", "scope": "global", "why": "Forces the question you did not know to ask before you start building" },
+          { "id": "eli5-succinct", "scope": "global", "why": "Understanding the code you accepted matters more than shipping it" },
+          { "id": "verify-security", "scope": "global", "why": "The failures you cannot yet see coming" }
+        ],
+        "subagents": [
+          { "id": "reviewer", "why": "A second read before a human spends theirs" },
+          { "id": "explorer", "why": "Answers 'where is X' without forty files in your context" }
+        ],
+        "instincts": [
+          { "id": "verified-progress-signal", "why": "Done means wired and tested, not written" }
+        ]
+      }
+    },
+
+    "senior": {
+      "extends": "base",
+      "description": "Reviewing more than writing; owns the architecture",
+      "provides": {
+        "skills": [
+          { "id": "grilling", "scope": "global", "why": "Stress-test the plan before it becomes someone's sprint" },
+          { "id": "pr-review-governance", "scope": "global", "why": "Code against spec, not just code against taste" },
+          { "id": "progress-audit", "scope": "global", "why": "Measures completion against wired code, not a tracker" }
+        ],
+        "subagents": [
+          { "id": "reviewer", "why": "Its own context window; the main session gets the verdict" },
+          { "id": "security", "why": "Concrete exploitability, not generic advice" },
+          { "id": "spec-writer", "why": "Turns an ambiguous ask into something another agent can execute" },
+          { "id": "refactor", "why": "Refuses to start without tests and a stated reason" }
+        ],
+        "workflows": [
+          { "id": "session-audit", "maturity": "L1", "why": "Tells you whether a change to the setup actually helped" }
+        ],
+        "instincts": [
+          { "id": "verified-progress-signal", "why": "You will be asked for a number; make it one you can defend" }
+        ]
+      }
+    },
+
+    "stack:typescript-react": {
+      "description": "TypeScript, React, Next, Tailwind",
+      "provides": {
+        "skills": [
+          { "id": "interface-cheatsheet", "scope": "global", "why": "~60 rules with numbers in them; checkable in review" },
+          { "id": "react-admin-dashboard-patterns", "scope": "project", "why": "Only in a repo that actually uses TanStack + MUI" },
+          { "id": "browser-testing-with-devtools", "scope": "global", "why": "A UI bug you cannot reproduce from the code needs a real browser" }
+        ],
+        "subagents": [
+          { "id": "frontend", "why": "State, styling, motion and a11y in one isolated context" },
+          { "id": "test-writer", "why": "Coverage is not the bar; would-it-fail is" }
+        ],
+        "mcp": [
+          { "id": "playwright", "why": "The agent runs the test it wrote instead of guessing", "needs": [] }
+        ]
+      }
+    },
+
+    "stack:node-postgres": {
+      "description": "Node, NestJS, Drizzle, Postgres",
+      "provides": {
+        "skills": [
+          { "id": "nestjs-patterns", "scope": "project", "why": "Competing for attention in a Go session makes every other match worse" },
+          { "id": "drizzle-postgres-patterns", "scope": "project", "why": "Same reason" }
+        ],
+        "subagents": [
+          { "id": "data-migration", "why": "The one irreversible thing an agent touches" },
+          { "id": "test-writer", "why": "Mock at the injection boundary, not inside the unit" }
+        ],
+        "instincts": [
+          { "id": "self-review-before-done", "why": "Boot, validation and scope are invisible to a typecheck" }
+        ]
+      }
+    },
+
+    "stack:kubernetes": {
+      "description": "Kubernetes, Helm, Argo CD, Terraform, LGTM",
+      "provides": {
+        "subagents": [
+          { "id": "devops", "why": "Read-only by default: plans and diffs, never applies" },
+          { "id": "observability", "why": "Metrics before logs, and every query bounded" }
+        ],
+        "skills": [
+          { "id": "kubernetes-skill", "scope": "global", "why": "Prevents the plausible-but-wrong manifest" },
+          { "id": "lgtm-observability", "scope": "global", "why": "PromQL and LogQL patterns, plus Alloy config" }
+        ],
+        "mcp": [
+          { "id": "grafana-dev", "why": "Query dev without leaving the session", "needs": ["GRAFANA_DEV_TOKEN"] },
+          { "id": "grafana-production", "why": "Separate server so querying prod is a deliberate act", "needs": ["GRAFANA_PROD_TOKEN"] }
+        ],
+        "instincts": [
+          { "id": "plan-before-operational-change", "why": "A green exit code proves execution, not safety" }
+        ]
+      }
+    }
+  },
+
+  "presets": {
+    "junior-frontend": ["junior", "stack:typescript-react"],
+    "senior-fullstack": ["senior", "stack:typescript-react", "stack:node-postgres"],
+    "senior-platform": ["senior", "stack:kubernetes", "stack:node-postgres"]
+  }
+}

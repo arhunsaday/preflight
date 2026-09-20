@@ -1,0 +1,7 @@
+{
+  "next-shadcn": {"template": "next", "monorepo": false, "source": "https://ui.shadcn.com/docs/installation/next"},
+  "vite-shadcn": {"template": "vite", "monorepo": false, "source": "https://ui.shadcn.com/docs/installation/vite"},
+  "shadcn-monorepo": {"template": "next", "monorepo": true, "source": "https://ui.shadcn.com/docs/monorepo"},
+  "vite-monorepo": {"template": "vite", "monorepo": true, "source": "https://ui.shadcn.com/docs/monorepo"},
+  "tanstack-start": {"template": "start", "monorepo": false, "source": "https://ui.shadcn.com/docs/installation/tanstack-start"}
+}

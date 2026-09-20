@@ -11,6 +11,7 @@ PAPERCUTS.md
 # OS / editor
 .DS_Store
 *.swp
+__pycache__/
 .idea/
 
 # Secrets — belt and braces; the pre-commit hook is the other one

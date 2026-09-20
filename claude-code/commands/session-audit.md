@@ -74,3 +74,8 @@ failed:
   point of running this.
 
 Do not edit anything. This produces a report and proposals; I decide.
+
+When a repeated failure supports an instinct, include its suggested trigger,
+scope, action and sanitized evidence in the report. If the project has
+`scripts/instincts.py`, show a `propose` command the user can run. Keep promotion
+separate: this audit does not accept rules or assign measured confidence scores.

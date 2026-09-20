@@ -4,6 +4,22 @@ sidebar_position: 3
 
 # Setting up a new project
 
+Use the official shadcn starter, then apply the kit's configuration overlay:
+
+```bash
+~/Repos/ai-dev-kit/bootstrap.sh --list-presets
+~/Repos/ai-dev-kit/bootstrap.sh new next-shadcn ../my-app
+~/Repos/ai-dev-kit/bootstrap.sh new vite-shadcn ../my-spa --dry-run
+~/Repos/ai-dev-kit/bootstrap.sh new shadcn-monorepo ../my-workspace
+```
+
+Also available: `vite-monorepo` and `tanstack-start`. These delegate to the
+[official CLI](https://ui.shadcn.com/docs/cli) with Radix + Nova. Python 3, Node,
+and pnpm are required. `--starter-version VERSION` pins the CLI; latest is the
+default. Upstream owns application source and may ask additional questions.
+
+For an existing project:
+
 ```bash
 ~/Repos/ai-dev-kit/bootstrap.sh --project .
 ```
@@ -23,8 +39,45 @@ these files belong to that repo's history and every one needs local edits.
 | `.claudeignore` | root | Context exclusions |
 | `instincts/*.md` | `.claude/instincts/` | Context-triggered rules |
 
-Nothing is overwritten. Re-running it on a repo that already has an `AGENTS.md`
-leaves yours alone.
+Nothing differing is overwritten. A conflict stops the whole overlay before
+writing any configuration. Identical files are skipped on reruns. For existing
+custom agent instructions, omit the agent pack or integrate those files manually.
+
+## Packs and profiles
+
+`--packs agent,quality,permissions` is the default. Choose only the packs needed:
+
+- `agent`: instructions, instincts, context exclusions, all nine tool pointers,
+  a command registry derived from actual package scripts and standalone pointer sync.
+- `quality`: `scripts/verify.sh` and `docs/development.md`. Missing checks are
+  recorded explicitly; if none exist, verification fails instead of passing vacuously.
+- `permissions`: project-local Claude settings and copied hooks (Bash and jq required).
+- `github`: optional npm/pnpm verification workflow; requires `quality`.
+
+`--agents claude,codex,cursor` narrows pointer output. Other supported targets:
+`copilot,gemini,windsurf,zed,cline,aider`. Run
+`python3 scripts/sync-agent-files.py --check` in the generated project to detect
+drift, or without `--check` to regenerate pointers. Re-discover changed package
+commands manually in `agent-commands.json`; configure deliberately won't overwrite it.
+
+`--profile permissive` is the default and preserves the current broad allowlist.
+`safe`, `developer`, and `ops` are opt-in permission presets, not isolation
+boundaries. Existing global permissions may remain effective. All retain the
+kit's deny rules and hooks. Global installation remains unchanged; standalone
+`bootstrap.sh --profile safe` prints settings JSON for manual review/merge only.
+
+Add `.claude/command-log.txt` to your project's gitignore if using the permissions
+pack. The installer does not rewrite an existing gitignore or package manifest.
+If upstream creation fails, inspect the partial destination before retrying;
+the kit never deletes a partially created project.
+
+### Upstream smoke-test note
+
+Tested Vite creation with shadcn 4.21.0: scaffolding, kit installation, typecheck,
+and production build pass. The upstream generated `button.tsx` triggers
+`react-refresh/only-export-components` during lint. The kit keeps that failure
+visible; it does not weaken upstream lint rules. Other recipes share the verified
+CLI interface but have not all been installed end-to-end locally.
 
 ## One canonical file, thin pointers
 

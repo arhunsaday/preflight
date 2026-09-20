@@ -1,8 +1,8 @@
 # Instincts
 
-Short, context-triggered rules. Each file is **one rule**, loaded when its
-`trigger` matches what the agent is about to do — finer-grained than a single
-large `AGENTS.md`, which the agent reads once and then dilutes.
+Short, situational lessons. Each file is **one rule**. Accepted rules can be
+selected by task keywords; proposed and retired rules never enter selection.
+This is a local convention, not model training or a native agent feature.
 
 ## Format
 
@@ -10,9 +10,11 @@ large `AGENTS.md`, which the agent reads once and then dilutes.
 ---
 id: kebab-case-identifier
 trigger: 'when <the concrete situation that should surface this rule>'
-confidence: 0.0-1.0
-domain: git | delivery | operations | testing | architecture | database | observability | security
-source: hand-authored | local-repo-analysis | adapted from <url>@<sha>
+domain: testing
+scope: universal
+status: proposed
+source: local-review
+evidence: "Describe the observed failure or reviewed convention; omit sensitive data."
 ---
 
 # Imperative one-line title — the rule itself, not a topic
@@ -25,7 +27,7 @@ What to do. Concrete and checkable. Code snippets when the rule is about code.
 
 The failure this prevents. Skip only when it is self-evident.
 
-## Evidence            <!-- optional, for source: local-repo-analysis -->
+## Evidence            <!-- optional expansion of the required metadata -->
 
 What in the repo supports this — commit counts, file counts, sampled patterns.
 ```
@@ -35,9 +37,15 @@ What in the repo supports this — commit counts, file counts, sampled patterns.
 - **`trigger`** is the load-bearing field. Write the *situation*, not the topic:
   `'when writing a commit message'`, not `'commits'`. It is what an agent
   pattern-matches against before acting.
-- **`confidence`** — how strictly to apply it. `0.9+` is a hard rule; `0.7-0.85`
-  is a strong default that a good reason can override. Below `0.7`, ask whether
-  the rule is worth having at all.
+- **`confidence`** is optional legacy metadata, not measured reliability or
+  policy priority. It has no effect on selection or enforcement.
+- **`scope`** is `universal` or a stack/project slug (for example `react`).
+  A selector includes universal rules plus the explicitly requested scope.
+- **`status`** is `proposed`, `accepted`, or `retired`. Acceptance/retirement
+  records `last_reviewed` (ISO date) and `reviewed_by`. Reviewer identity is
+  self-declared provenance, not authentication; agents must identify themselves.
+- **`evidence`** names the observation or convention backing the rule. Existing
+  seed rules are marked as a migration review, not a measured success rate.
 - **`domain`** groups rules so a task can pull "all `database` instincts" without
   reading the rest.
 - **`source`** keeps provenance honest. `local-repo-analysis` rules were derived
@@ -55,11 +63,50 @@ fine — it marks a gap worth filling rather than an error.
 
 ## Wiring it up
 
-Instincts are a convention, not a built-in feature: nothing loads them
-automatically. Point at them from the project's `AGENTS.md` so agents know they
-exist — the template in this directory already does:
+Generated projects receive a standalone Python 3 CLI. From the project root:
 
-> Read matching `.claude/instincts/*.md` before non-trivial work.
+```bash
+python3 scripts/instincts.py list
+python3 scripts/instincts.py select --task "writing unit tests" --limit 3
+python3 scripts/instincts.py select --task "review UI keyboard behavior" --scope react
+python3 scripts/instincts.py check
+```
+
+Selection returns paths and metadata, not full rule bodies. Read the selected
+files. It is deterministic keyword overlap, not semantic retrieval; it can miss
+synonyms. If a task matters and selection is empty, inspect `list` and choose
+manually. It returns at most five rules by default (maximum twenty). No hooks
+inject context automatically. Explicit user instructions and project policy win
+over conflicting lessons. Stale reviews warn after 180 days but remain active
+until reviewed or retired.
+
+## Capture → review → accept → retire
+
+```bash
+python3 scripts/instincts.py propose keyboard-path \
+  --trigger "when reviewing UI keyboard behavior" --domain frontend --scope react \
+  --action "Verify focus order and Escape behavior before reporting completion." \
+  --source local-review --evidence "Two dialog reviews missed keyboard dismissal."
+# Read and edit .claude/instincts/keyboard-path.md; test its advice before accepting.
+python3 scripts/instincts.py accept keyboard-path --reviewed-by maintainer
+python3 scripts/instincts.py retire keyboard-path --reviewed-by maintainer
+```
+
+Capture only a sanitized lesson and evidence summary, not raw transcripts, secrets,
+or customer data. This CLI is not a secret scanner. Proposals are local files;
+inspect them before committing. Existing IDs are never overwritten by `propose`.
+`accept` is the explicit promotion step, not an automatic follow-up to capture.
+Retirement preserves the file; a revised retired lesson needs a new ID.
+
+For shared kit rules, use `./bootstrap.sh instincts COMMAND --directory
+templates/shared/agent/instincts` from the kit root. For project rules, use the
+copied script above. Promoting a project lesson to the kit is a separate manual
+review: remove project-specific assumptions and preserve attribution first.
+
+Frontmatter is deliberately limited to one scalar per line. The CLI writes JSON
+quoted strings (valid YAML); plain and single-quoted scalars remain supported.
+Nested YAML, lists, and multiline scalars are not supported. Existing custom
+rules need the new required fields before using the selector/checker.
 
 ## Writing new ones
 

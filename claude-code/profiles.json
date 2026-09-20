@@ -1,0 +1,9 @@
+{
+  "default": "permissive",
+  "profiles": {
+    "permissive": {"description": "Current kit allowlist, with existing deny rules and hooks", "inheritAllow": true},
+    "safe": {"description": "Inspection commands are preapproved; other actions use normal approval", "allow": ["Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Read", "Grep", "Glob"]},
+    "developer": {"description": "Inspection, workspace edits and common checks", "allow": ["Read", "Grep", "Glob", "Edit", "Write", "Bash(git status:*)", "Bash(git diff:*)", "Bash(pnpm test:*)", "Bash(pnpm lint:*)", "Bash(pnpm typecheck:*)", "Bash(pnpm build:*)"]},
+    "ops": {"description": "Inspection first; infrastructure commands require approval", "allow": ["Read", "Grep", "Glob", "Bash(git status:*)", "Bash(git diff:*)"], "ask": ["Bash(kubectl:*)", "Bash(helm:*)", "Bash(terraform:*)"]}
+  }
+}

@@ -48,12 +48,12 @@ ai-dev-kit/
 |                    | Count   |                                                                                       |
 | ------------------ | ------- | ------------------------------------------------------------------------------------- |
 | Skills (mine)      | **51**  | communication · delivery · quality · architecture · design · stack · ai · ops · tools |
-| Skills (installed) | **103** | in the shared `~/.agents/skills/` store — read by ~50 agents                          |
+| Skills (installed) | varies | local inventory: run `./doctor.sh` |
 | Hooks              | 9       | 4 blocking (secret reads, dangerous commands, protected files, red-tests-no-PR)       |
 | Slash commands     | 3       | papercut · skills-sync · session-audit |
-| Subagents          | 3       | explorer (sonnet) · reviewer (opus) · security (opus)                                 |
-| Doc pages          | **34**  | setup · Claude Code · MCP · workflows · stack · tools · ecosystem                     |
-| Instincts          | 6       | context-triggered rules for the project template                                      |
+| Subagents          | 11      | specialized roles in `claude-code/agents/` |
+| Doc pages          | varies  | setup · Claude Code · MCP · workflows · stack · tools · ecosystem |
+| Instincts          | 5       | reviewed, situational lessons for the project template |
 | Tool pointers      | 9       | Claude · Codex · Cursor · Copilot · Gemini · Windsurf · Zed · Cline · Aider           |
 
 Every skill records where it came from:
@@ -65,7 +65,63 @@ source:
   imported: 2026-08-02
 ```
 
-## Safety
+## Official starters and configuration packs
+
+Requires Python 3; creating apps also requires Node and pnpm. App source comes
+from the official [shadcn CLI](https://ui.shadcn.com/docs/cli), not a frozen fork.
+
+```bash
+./bootstrap.sh --list-presets
+./bootstrap.sh new next-shadcn ../my-app
+./bootstrap.sh new vite-shadcn ../my-spa --dry-run
+./bootstrap.sh new shadcn-monorepo ../my-workspace
+./bootstrap.sh configure ../existing-app --packs agent,quality,permissions,github
+./bootstrap.sh --project ../existing-app --agents claude,codex,cursor --packs agent
+./doctor.sh --repo
+```
+
+Recipes: `next-shadcn`, `vite-shadcn`, `shadcn-monorepo`, `vite-monorepo`,
+`tanstack-start`. UI defaults: Radix + Nova, with upstream Tailwind configuration.
+Use `--starter-version VERSION` to select a particular CLI release; otherwise latest.
+
+Packs: `agent` (instructions, nine tool pointers, instincts, actual package commands),
+`quality` (verification script and checklist), `permissions` (Claude settings and
+self-contained hooks), `github` (optional npm/pnpm verification workflow).
+Default packs are `agent,quality,permissions`. Existing differing files cause an
+error before configuration writes; identical files make reruns idempotent.
+
+Profiles: **permissive** (default, current allowlist unchanged), `safe`,
+`developer`, `ops`. Select with `--profile NAME` on `new` or `configure`.
+These are Claude permission presets, not sandbox boundaries; existing global
+permissions can also apply. All profiles retain existing deny rules and hooks.
+Standalone `./bootstrap.sh --profile NAME` prints global settings JSON for review;
+it never changes your live configuration. Global hooks require normal bootstrap.
+
+Generated projects use `python3 scripts/sync-agent-files.py --check` to detect
+pointer drift. Edit `AGENTS.md` for conventions; pointers only reference it.
+Generated verification fails explicitly when no package checks exist.
+
+## Reviewed lessons and behavior checks
+
+The `agent` pack now includes a portable lesson CLI:
+
+```bash
+# In a generated project:
+python3 scripts/instincts.py select --task "writing unit tests"
+python3 scripts/instincts.py check
+# In this kit:
+./bootstrap.sh evals list
+./bootstrap.sh evals prepare diagnosis-only /tmp/kit-diagnosis-trial
+```
+
+Lessons move from proposed to accepted to retired through explicit review.
+Task selection returns a small keyword-matched list; it does not automatically
+learn or load context. `doctor --repo` validates seed metadata and review ages.
+Behavioral trials combine file checks with evidence-backed **human review**, not
+a pretend automated model score. No API calls or global permission changes.
+See [the workflow](docs/docs/workflows/agent-learning.md).
+
+## Existing installation safety
 
 `bootstrap.sh` never destroys anything: it links into free slots, warns and
 stops on conflicts, backs up with `--force`, and **refuses to overwrite an

@@ -5,12 +5,16 @@
 #   ./doctor.sh              full report
 #   ./doctor.sh --quiet      only problems (exit 1 if any)
 #   ./doctor.sh --skills     skill inventory only
+#   ./doctor.sh --repo       repository drift checks (also used in CI)
 #
 # It reports; it never changes anything.
 #
 set -uo pipefail
 
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${1:-}" = "--repo" ]; then
+  exec python3 "$KIT_ROOT/scripts/kit.py" check
+fi
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
 STORE="$HOME/.agents/skills"
 
@@ -42,6 +46,14 @@ else
 fi
 
 problems=0
+if [ "$QUIET" -eq 1 ]; then
+  repo_report=$(python3 "$KIT_ROOT/scripts/kit.py" check 2>&1) || {
+    printf '%s\n' "$repo_report"
+    problems=$((problems + 1))
+  }
+else
+  python3 "$KIT_ROOT/scripts/kit.py" check || problems=$((problems + 1))
+fi
 sec() { [ "$QUIET" -eq 1 ] || printf '\n%s%s%s\n' "$B" "$1" "$O"; }
 ok() { [ "$QUIET" -eq 1 ] || printf '  %s✓%s %s\n' "$G" "$O" "$1"; }
 info() { [ "$QUIET" -eq 1 ] || printf '  %s·%s %s\n' "$D" "$O" "$1"; }
@@ -273,8 +285,7 @@ check_gaps() {
 	[ "$n" -lt 3 ] && info "ops/: only $n skill(s) — see BagelHole/DevOps-Security-Agent-Skills"
 	n=$(ls "$KIT_ROOT"/claude-code/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
 	[ "$n" -lt 6 ] && info "subagents: only $n — see wshobson/agents"
-	n=$(ls "$KIT_ROOT"/templates/shared/agent/instincts/*.md 2>/dev/null | wc -l | tr -d ' ')
-	[ "$n" -lt 10 ] && info "instincts: only $n"
+	info "instincts: metadata validated by repository checks; no minimum rule count"
 	find "$KIT_ROOT" -type d -empty -not -path '*/.git/*' -not -path '*/node_modules/*' 2>/dev/null |
 		sed "s|$KIT_ROOT/||" | while read -r d; do info "empty directory: $d"; done
 }

@@ -1,9 +1,1 @@
-Read AGENTS.md at the repo root first — it is the canonical contract and wins
-over this file.
-
-- Read agent-commands.json before choosing any command. Invent none.
-- Read matching .claude/instincts/*.md for the area being touched.
-- Smallest safe change; update tests alongside.
-- Run scoped lint, typecheck and relevant tests before claiming completion.
-- Do not commit, push, deploy or open PRs unless explicitly asked.
-- Never add AI attribution to commits or PR bodies.
+Read `AGENTS.md` for project instructions and `agent-commands.json` for available commands.

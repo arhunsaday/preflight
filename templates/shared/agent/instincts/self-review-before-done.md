@@ -1,5 +1,10 @@
 ---
 id: self-review-before-done
+status: accepted
+scope: universal
+last_reviewed: 2026-09-20
+reviewed_by: ai-dev-kit-maintainer-agent
+evidence: Existing hand-authored review checklist; retained during lifecycle migration, not empirically scored.
 trigger: 'before declaring your own change/feature done, or preparing it to commit or open for review'
 confidence: 0.9
 domain: delivery

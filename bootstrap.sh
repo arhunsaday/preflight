@@ -17,6 +17,9 @@
 #   ./bootstrap.sh --force            back up conflicting files, then link
 #   ./bootstrap.sh --unlink           remove links this script created
 #   ./bootstrap.sh --project [DIR]    copy the agent drop-in into a repo
+#   ./bootstrap.sh new PRESET DIR    official starter + configuration packs
+#   ./bootstrap.sh --list-presets    list official starter recipes
+#   ./bootstrap.sh --profile NAME    print global profile JSON (no writes)
 #   ./bootstrap.sh --project [DIR] --with-stack-skills
 #                                     also copy every project-scoped skill
 #
@@ -26,6 +29,12 @@
 set -euo pipefail
 
 KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for arg in "$@"; do
+  case "$arg" in
+    new|configure|instincts|evals|--project|--list-presets|--profile)
+      exec python3 "$KIT_ROOT/scripts/kit.py" "$@" ;;
+  esac
+done
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
 BACKUP_DIR="$CLAUDE_HOME/backups/ai-dev-kit-$(date +%Y%m%d-%H%M%S)"
 

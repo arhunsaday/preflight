@@ -1,5 +1,10 @@
 ---
 id: verified-progress-signal
+status: accepted
+scope: universal
+last_reviewed: 2026-09-20
+reviewed_by: ai-dev-kit-maintainer-agent
+evidence: Existing hand-authored evidence rule; retained during lifecycle migration, not empirically scored.
 trigger: 'when reporting how complete a project/feature is, or auditing progress'
 confidence: 0.9
 domain: delivery

@@ -1,14 +1,21 @@
 # Agent drop-in
 
-Files that make a repository legible to coding agents. Copy them into a project
-and fill the `<PLACEHOLDER>` markers — nothing here works unedited, by design:
-a contract full of generic advice trains agents to skim it.
+Reference contracts and inputs for the project configurator. The rich
+`AGENTS.md` and `agent-commands.json` here are manual-edit examples; the installer
+generates a concise contract and discovers actual package scripts instead of
+deploying their placeholders.
 
 ```bash
 ./bootstrap.sh --project ~/path/to/repo
 ```
 
-Copies (never overwrites) into the target repo.
+Generates configuration, never overwrites differing files. Select tools with
+`--agents claude,codex,cursor`; select packs with `--packs agent,quality,permissions`.
+Generated projects receive `scripts/sync-agent-files.py`; run with `--check` for
+drift detection or without it to regenerate pointers. Canonical pointers in this
+directory are maintained by `python3 scripts/kit.py sync templates/shared/agent`
+from the kit root. Legacy `copilot-instructions.md` and `cursor-rules/` examples
+are not installer inputs; canonical paths are `.github/` and `.cursor/rules/`.
 
 ## What lands where
 
