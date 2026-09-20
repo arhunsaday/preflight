@@ -138,12 +138,26 @@ install_skills() {
   # Skills live in the kit under <category>/<skill>/SKILL.md for browsing, but
   # Claude Code discovers them one level deep. Install flattens the category
   # away: ~/.claude/skills/<skill> regardless of which folder it sits in here.
+  # skills/registry.json decides which of my own skills are active. Anything
+  # absent from it defaults to active, so a new skill works without editing it.
+  parked_mine=""
+  if [ -f "$KIT_ROOT/skills/registry.json" ]; then
+    parked_mine=$(python3 -c "
+import json
+d = json.load(open('$KIT_ROOT/skills/registry.json'))
+print('\n'.join(d.get('mine', {}).get('parked', {}).keys()))" 2>/dev/null)
+  fi
+
   for f in "$KIT_ROOT"/claude-code/skills/*/*/SKILL.md; do
     [ -f "$f" ] || continue
     dir="$(dirname "$f")"
     name="$(basename "$dir")"
     cat_="$(basename "$(dirname "$dir")")"
     found=1
+    if [ "$UNLINK" -eq 0 ] && printf '%s\n' "$parked_mine" | grep -qx "$name"; then
+      unlink_item "$CLAUDE_HOME/skills/$name" "$cat_/$name" >/dev/null 2>&1
+      skip "$cat_/$name" "parked in registry.json"; skipped=$((skipped + 1)); continue
+    fi
     if [ "$UNLINK" -eq 1 ]; then
       unlink_item "$CLAUDE_HOME/skills/$name" "$name"
     else
