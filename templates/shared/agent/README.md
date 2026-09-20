@@ -8,20 +8,19 @@ a contract full of generic advice trains agents to skim it.
 ./bootstrap.sh --project ~/path/to/repo
 ```
 
-Copies (never overwrites) into the target repo. Adapted from
-`+Work/parcus-plus`, genericized.
+Copies (never overwrites) into the target repo.
 
 ## What lands where
 
-| File | Destination | Role |
-| --- | --- | --- |
-| `AGENTS.md` | repo root | **Canonical contract.** Conventions, validation matrix, completion gate, handoff format |
-| `CLAUDE.md` | repo root | Thin pointer to `AGENTS.md` + Claude-specific bits |
-| `CODEX.md` | repo root | Thin pointer |
-| `copilot-instructions.md` | `.github/` | Thin pointer |
-| `agent-compass.commands.json` | repo root | Command registry — the real invocations, so agents stop guessing |
-| `.claudeignore` | repo root | Context exclusions |
-| `instincts/*.md` | `.claude/instincts/` | Context-triggered rules — see `instincts/README.md` |
+| File                          | Destination          | Role                                                                                    |
+| ----------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
+| `AGENTS.md`                   | repo root            | **Canonical contract.** Conventions, validation matrix, completion gate, handoff format |
+| `CLAUDE.md`                   | repo root            | Thin pointer to `AGENTS.md` + Claude-specific bits                                      |
+| `CODEX.md`                    | repo root            | Thin pointer                                                                            |
+| `copilot-instructions.md`     | `.github/`           | Thin pointer                                                                            |
+| `agent-compass.commands.json` | repo root            | Command registry — the real invocations, so agents stop guessing                        |
+| `.claudeignore`               | repo root            | Context exclusions                                                                      |
+| `instincts/*.md`              | `.claude/instincts/` | Context-triggered rules — see `instincts/README.md`                                     |
 
 ## The layering rule
 

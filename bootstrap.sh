@@ -135,16 +135,64 @@ unlink_item() {
 install_skills() {
   head_ "skills -> $CLAUDE_HOME/skills/"
   found=0
-  for dir in "$KIT_ROOT"/claude-code/skills/*/; do
-    [ -d "$dir" ] || continue
+  # Skills live in the kit under <category>/<skill>/SKILL.md for browsing, but
+  # Claude Code discovers them one level deep. Install flattens the category
+  # away: ~/.claude/skills/<skill> regardless of which folder it sits in here.
+  for f in "$KIT_ROOT"/claude-code/skills/*/*/SKILL.md; do
+    [ -f "$f" ] || continue
+    dir="$(dirname "$f")"
     name="$(basename "$dir")"
-    # A skill without SKILL.md is not a skill.
-    [ -f "$dir/SKILL.md" ] || { skip "$name" "no SKILL.md"; skipped=$((skipped + 1)); continue; }
+    cat_="$(basename "$(dirname "$dir")")"
     found=1
     if [ "$UNLINK" -eq 1 ]; then
       unlink_item "$CLAUDE_HOME/skills/$name" "$name"
     else
-      link_item "${dir%/}" "$CLAUDE_HOME/skills/$name" "$name"
+      link_item "$dir" "$CLAUDE_HOME/skills/$name" "$cat_/$name"
+    fi
+  done
+  [ "$found" -eq 1 ] || printf '  %s(none yet)%s\n' "$C_DIM" "$C_OFF"
+}
+
+install_commands() {
+  head_ "slash commands -> $CLAUDE_HOME/commands/"
+  found=0
+  for f in "$KIT_ROOT"/claude-code/commands/*.md; do
+    [ -f "$f" ] || continue
+    name="$(basename "$f")"; found=1
+    if [ "$UNLINK" -eq 1 ]; then
+      unlink_item "$CLAUDE_HOME/commands/$name" "$name"
+    else
+      link_item "$f" "$CLAUDE_HOME/commands/$name" "$name"
+    fi
+  done
+  [ "$found" -eq 1 ] || printf '  %s(none yet)%s\n' "$C_DIM" "$C_OFF"
+}
+
+install_agents() {
+  head_ "subagents -> $CLAUDE_HOME/agents/"
+  found=0
+  for f in "$KIT_ROOT"/claude-code/agents/*.md; do
+    [ -f "$f" ] || continue
+    name="$(basename "$f")"; found=1
+    if [ "$UNLINK" -eq 1 ]; then
+      unlink_item "$CLAUDE_HOME/agents/$name" "$name"
+    else
+      link_item "$f" "$CLAUDE_HOME/agents/$name" "$name"
+    fi
+  done
+  [ "$found" -eq 1 ] || printf '  %s(none yet)%s\n' "$C_DIM" "$C_OFF"
+}
+
+install_statusline() {
+  head_ "statusline -> $CLAUDE_HOME/statusline/"
+  found=0
+  for f in "$KIT_ROOT"/claude-code/statusline/*.sh; do
+    [ -f "$f" ] || continue
+    name="$(basename "$f")"; found=1
+    if [ "$UNLINK" -eq 1 ]; then
+      unlink_item "$CLAUDE_HOME/statusline/$name" "$name"
+    else
+      link_item "$f" "$CLAUDE_HOME/statusline/$name" "$name"
     fi
   done
   [ "$found" -eq 1 ] || printf '  %s(none yet)%s\n' "$C_DIM" "$C_OFF"
@@ -156,7 +204,8 @@ install_hooks() {
   for f in "$KIT_ROOT"/claude-code/hooks/*; do
     [ -f "$f" ] || continue
     name="$(basename "$f")"
-    case "$name" in .gitkeep) continue ;; esac
+    case "$name" in .gitkeep|README.md) continue ;; esac
+    [ "$UNLINK" -eq 1 ] || run chmod +x "$f"
     found=1
     if [ "$UNLINK" -eq 1 ]; then
       unlink_item "$CLAUDE_HOME/hooks/$name" "$name"
@@ -270,7 +319,10 @@ printf 'target      %s%s%s\n' "$C_DIM" "$CLAUDE_HOME" "$C_OFF"
 run mkdir -p "$CLAUDE_HOME"
 
 install_skills
+install_commands
+install_agents
 install_hooks
+install_statusline
 install_memory
 check_json_config
 

@@ -1,0 +1,21 @@
+# Docusaurus
+docs/node_modules/
+docs/build/
+docs/.docusaurus/
+docs/.cache-loader/
+
+# Agent artifacts
+.claude/command-log.txt
+PAPERCUTS.md
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+
+# Secrets — belt and braces; the pre-commit hook is the other one
+.env
+.env.*
+!.env.example
+*.pem
+*.key

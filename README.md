@@ -1,84 +1,83 @@
-# AI Dev Kit
+# ai-dev-kit
 
-My AI coding setup, versioned in one place: global instructions and skills that
-follow me across every project, plus the agent files I drop into a new repo.
-
-Two audiences, two install paths.
-
-## Install — machine
-
-Links this kit's assets into `~/.claude`, so they apply to every project.
+My AI development setup, versioned: skills, hooks, slash commands, subagents,
+MCP configuration, project templates, and the documentation around them.
 
 ```bash
-./bootstrap.sh
+git clone https://github.com/arhunsaday/ai-dev-kit ~/Repos/ai-dev-kit
+cd ~/Repos/ai-dev-kit && ./bootstrap.sh
 ```
 
-Symlinks, not copies: edit a file here and it is live immediately; `git pull`
-updates every machine that ran it. Idempotent — re-run any time.
+Full documentation: **`cd docs && npm start`** (Docusaurus).
 
-It never overwrites an existing real file (`--force` backs it up to
-`~/.claude/backups/` first) and never touches `settings.json` or `mcp.json` if
-you already have one — those are merge-not-replace, so it prints a `diff`
-command instead. `--dry-run` shows the plan, `--unlink` reverses it.
+## The three lifecycles
 
-## Install — a project
+Mixing these is what makes a setup rot, so the kit keeps them apart:
 
-Copies the agent drop-in into a repo, skipping anything already there.
+| | Lives in | Updated by |
+| --- | --- | --- |
+| **What I own** | `claude-code/` here | me, in git |
+| **What others own** | `~/.claude/` via the `skills` CLI | `npx skills update` |
+| **What a project owns** | the project's repo | `bootstrap.sh --project`, then edited there |
 
-```bash
-./bootstrap.sh --project <some-repo>
-```
-
-Copies rather than links: those files belong to that repo's history and each
-one needs local edits. Then fill the `<PLACEHOLDER>` markers — start with
-`agent-compass.commands.json`, then `AGENTS.md`.
+The first fifteen skills in this repo arrived by copy-paste and froze two
+versions behind upstream with nothing recording that a newer one existed. That
+is the mistake the split prevents.
 
 ## Layout
 
 ```
-claude-code/         → ~/.claude       (global, all projects)
-  CLAUDE.md            global instructions
-  skills/              16 skills, linked into ~/.claude/skills/
-  hooks/               hook scripts (referenced from settings.json)
-  settings.json        only linked if you don't already have one
-templates/
-  shared/agent/        the project drop-in — AGENTS.md, instincts, .claudeignore
-  shared/              CI, pre-commit, .env.example
-  node-cli/            per-stack project scaffolds
-  react-spa/
-agent-instructions/  AGENTS.md for agents working on *this* repo
-standards/           coding standards
-prompts/             reusable prompts
+ai-dev-kit/
+├── bootstrap.sh                 install / --project / --unlink / --dry-run
+├── claude-code/                 → symlinked into ~/.claude/
+│   ├── CLAUDE.md                global instructions (every session, every project)
+│   ├── settings.json            hooks + statusline + permissions (merge by hand)
+│   ├── skills/                  24 skills in 6 categories
+│   ├── hooks/                   9 hooks — see hooks/README.md
+│   ├── commands/                /plan-challenge  /papercut  /skills-sync
+│   ├── agents/                  explorer · reviewer · security
+│   └── statusline/              repo · branch · model · diff · context gauge
+├── skills/THIRD-PARTY.md        what the CLI manages, and what to add
+├── templates/shared/agent/      project drop-in (AGENTS.md, instincts, git hooks)
+└── docs/                        the documentation site
 ```
 
-Empty files and `.gitkeep` are scaffolding — `bootstrap.sh` skips them, so
-unfinished sections never shadow real config. They start being installed the
-moment they have content.
+## What is in it
 
-## Skills
+| | Count | |
+| --- | --- | --- |
+| Skills | 24 | communication · delivery · quality · architecture · design · tools |
+| Hooks | 9 | 4 blocking (secrets, dangerous commands, protected files, red-tests-no-PR) |
+| Slash commands | 3 | plan-challenge · papercut · skills-sync |
+| Subagents | 3 | explorer (sonnet) · reviewer (opus) · security (opus) |
+| Doc pages | 30 | setup · Claude Code · MCP · workflows · stack · tools |
+| Instincts | 5 | context-triggered rules for the project template |
 
-Installed globally, so they trigger by description in any project — or by
-`/name`.
+Every skill records where it came from:
 
-|                   |                                                                                   |
-| ----------------- | --------------------------------------------------------------------------------- |
-| **Communication** | `caveman` · `caveman-commit` · `caveman-review` — compressed output, ~-75% tokens |
-| **Approach**      | `ponytail` — forces the laziest solution that works (YAGNI)                       |
-| **Gates**         | `verify-change` · `verify-module` · `verify-quality` · `verify-security`          |
-| **Planning**      | `spec-workflow` · `implementation-planning` · `completion-plan`                   |
-| **Audit**         | `progress-audit` — diffs specs against real code, not against status docs         |
-| **Debug**         | `debug-loop` — build a failing repro before diagnosing                            |
-| **PR**            | `pr-workflow` · `pr-review-governance`                                            |
-| **PDF**           | `pdf-inspector` — PDF → Markdown, scanned-vs-text detection                       |
-
-Most are adapted from `+Work/parcus-plus`, genericized.
-
-## Adding a skill
-
-```
-claude-code/skills/<name>/SKILL.md
+```yaml
+source:
+  upstream: JuliusBrussee/caveman@7bb7130
+  via: me-cedric/agent-compass@0.7.0 -> +Work/parcus-plus@391e7f7
+  license: MIT (JuliusBrussee)
+  imported: 2026-08-02
 ```
 
-Frontmatter needs `name` (matching the directory) and a `description` that says
-**when** to use it — that sentence is the only thing deciding whether the skill
-ever fires. Run `./bootstrap.sh` to link it, then restart the session.
+## Safety
+
+`bootstrap.sh` never destroys anything: it links into free slots, warns and
+stops on conflicts, backs up with `--force`, and **refuses to overwrite an
+existing `settings.json` even with `--force`** — that file holds config the kit
+knows nothing about.
+
+Four hooks block rather than warn: secret reads, dangerous shell commands,
+writes to protected files, and opening a PR on a red suite.
+
+## Credits
+
+Much of the delivery and quality tooling originates in
+[me-cedric/agent-compass](https://github.com/me-cedric/agent-compass), reaching
+here via `parcus-plus` and `konvoy-paag`. `caveman` is
+[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) (MIT),
+`ponytail` is [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+(MIT). Per-file provenance is in each `SKILL.md`.
