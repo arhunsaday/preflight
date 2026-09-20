@@ -93,7 +93,7 @@ def read_excalidraw(path: str):
 def inflate_drawio(text: str) -> str:
     """Expand a deflated <diagram> body.
 
-    draw.io writes the model as raw-deflate, base64, then percent-encoded. Konvoy
+    draw.io writes the model as raw-deflate, base64, then percent-encoded. the host project
     writes it as plain XML, but a file that went through the draw.io desktop
     application or the hosted editor arrives compressed, and a converter that only
     reads the plain form would report every one of those as an empty diagram.

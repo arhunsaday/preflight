@@ -1,8 +1,8 @@
 # stack/
 
 Framework-specific patterns, fetched from
-[me-cedric/agent-compass](https://github.com/me-cedric/agent-compass) **0.9.3**
-— not the 0.7.0 copy that reached this kit through `parcus-plus`.
+a vendored third-party toolkit **0.9.3**
+— not the 0.7.0 copy that reached this kit through `an internal repository`.
 
 | Skill | Covers |
 | --- | --- |
@@ -25,7 +25,7 @@ These are the ones most likely to go stale, because upstream maintains them and
 this is a copy. Check before assuming:
 
 ```bash
-curl -s https://raw.githubusercontent.com/me-cedric/agent-compass/main/CHANGELOG.md | head -40
+curl -s https://raw.githubusercontent.com/a vendored third-party toolkit/main/CHANGELOG.md | head -40
 ```
 
 The upstream has around 67 skills; these nine are the ones matching this stack.

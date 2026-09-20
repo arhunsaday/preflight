@@ -32,7 +32,6 @@ Every `SKILL.md` here carries provenance in its frontmatter:
 ```yaml
 source:
   upstream: JuliusBrussee/caveman@7bb7130        # where it was originally written
-  via: me-cedric/agent-compass@0.7.0 -> parcus   # how it got here
   license: MIT (JuliusBrussee)
   imported: 2026-08-02
 ```

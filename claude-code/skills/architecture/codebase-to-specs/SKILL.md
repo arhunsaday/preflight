@@ -6,8 +6,7 @@ allowed-tools: Read Write Edit Glob Grep Bash(git:*) Bash(ls:*) Bash(cat:*)
 metadata:
   version: "1"
 source:
-  upstream: me-cedric/agent-compass (skills/)
-  via: +Work/the host project-paag (src-tauri/, vendored)
+  upstream: vendored, third-party
   imported: 2026-09-20
 ---
 

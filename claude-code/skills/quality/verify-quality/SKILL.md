@@ -11,7 +11,7 @@ risk_level: medium
 writes_files: false
 requires_tools: []
 source:
-  upstream: me-cedric/agent-compass@0.7.0
+  upstream: vendored, third-party
   license: MIT
   imported: 2026-08-02
 ---

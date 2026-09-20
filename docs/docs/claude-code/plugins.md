@@ -30,7 +30,7 @@ my-plugin/
 └── .mcp.json
 ```
 
-A good reference skeleton lives in `konvoy-paag` at
+A good reference skeleton lives in an internal repository at
 `src-tauri/src/infrastructure/plugin-sample/` — manifest, JSON schema, and a
 `files/` tree with `AGENTS.md`, instincts, skills and a devcontainer.
 

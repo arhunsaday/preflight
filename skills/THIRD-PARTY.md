@@ -7,7 +7,7 @@ CLI, and the resulting `skills-lock.json` is what gets committed.
 ## Why not vendor them
 
 Vendoring is how the first fifteen skills in this kit ended up frozen at
-`agent-compass@0.7.0` from 30 July while upstream moved to `0.9.3` — two minor
+the upstream toolkit@0.7.0` from 30 July while upstream moved to `0.9.3` — two minor
 versions and thirty-odd new skills away — with nothing in the repo recording
 that a newer version existed. A copied file has no upstream. A lockfile entry
 does.

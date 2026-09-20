@@ -6,7 +6,7 @@ Read `AGENTS.md` first. It is the canonical project contract.
 
 Use this order for non-trivial work:
 
-1. Read `agent-compass.commands.json` and `<ARCHITECTURE_MAP>`.
+1. Read `agent-commands.json` and `<ARCHITECTURE_MAP>`.
 2. Read matching `.github/instructions/*.md` and `.claude/instincts/*.md`.
 3. Make the smallest safe change and update tests.
 4. Keep specs, docs, and API contract layers in sync.

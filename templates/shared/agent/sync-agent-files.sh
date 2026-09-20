@@ -22,7 +22,7 @@ wherever this file disagrees.
 
 Order of work for anything non-trivial:
 
-1. Read \`agent-compass.commands.json\` for the real commands — invent none.
+1. Read \`agent-commands.json\` for the real commands — invent none.
 2. Read the matching \`.claude/instincts/*.md\` for the area being touched.
 3. Make the smallest safe change and update the tests alongside it.
 4. Run scoped lint, typecheck and the relevant tests.

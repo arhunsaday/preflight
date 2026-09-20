@@ -3,7 +3,6 @@ name: design-taste-frontend
 description: Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design direction, and ships interfaces that do not look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check.
 source:
   upstream: Leonxlnx/taste-skill@72e2995
-  via: me-cedric/agent-compass -> +Work/the host project-paag
   license: MIT (Leonxlnx)
   imported: 2026-09-20
 ---

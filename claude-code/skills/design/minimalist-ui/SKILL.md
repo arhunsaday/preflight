@@ -3,7 +3,6 @@ name: minimalist-ui
 description: Clean editorial-style interfaces. Warm monochrome palette, typographic contrast, flat bento grids, muted pastels. No gradients, no heavy shadows.
 source:
   upstream: Leonxlnx/taste-skill@72e2995
-  via: me-cedric/agent-compass -> +Work/the host project-paag
   license: MIT (Leonxlnx)
   imported: 2026-09-20
 ---

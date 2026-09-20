@@ -6,8 +6,7 @@ allowed-tools: Read Write Bash(ls:*)
 metadata:
   version: "1"
 source:
-  upstream: me-cedric/agent-compass (skills/)
-  via: +Work/the host project-paag (src-tauri/skills/, vendored)
+  upstream: vendored, third-party
   imported: 2026-09-20
 ---
 

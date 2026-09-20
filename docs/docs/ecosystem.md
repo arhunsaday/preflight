@@ -36,7 +36,7 @@ npx -y skills@latest update -y   # or /skills-sync
 | --- | --- | --- |
 | [wshobson/agents](https://github.com/wshobson/agents) ★40k | Subagent marketplace | The gap in this kit: 3 subagents against dozens there |
 | [BagelHole/DevOps-Security-Agent-Skills](https://github.com/BagelHole/DevOps-Security-Agent-Skills) | 10–15 of 146 | AWS/Azure/GCP, Terraform, Helm, ArgoCD GitOps, CIS benchmarks, incident response, compliance. **Install selectively** — 146 descriptions is a real context tax |
-| [me-cedric/agent-compass](https://github.com/me-cedric/agent-compass) | ~58 not yet taken | `speckit-*` (12 skills), `openspec-lifecycle`, `compass-*` bootstrap tooling, `agent-teacher`, `project-memory`, `long-running-task`, `work-splitting`, `architecture-advisor`, `gen-docs`, `figma-mcp-frontend` |
+| a vendored third-party toolkit | ~58 not yet taken | `speckit-*` (12 skills), `openspec-lifecycle`, `compass-*` bootstrap tooling, `agent-teacher`, `project-memory`, `long-running-task`, `work-splitting`, `architecture-advisor`, `gen-docs`, `figma-mcp-frontend` |
 | [nizos/tdd-guard](https://github.com/nizos/tdd-guard) ★2.3k | Hook-enforced TDD | Blocks implementation until a failing test exists — `tdd` as a *hook*, not a suggestion |
 
 ## MCP servers

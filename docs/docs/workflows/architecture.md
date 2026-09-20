@@ -44,7 +44,7 @@ Two failure modes to watch for in an agent's architecture advice:
 - `progress-audit` — diffs specs against **wired, tested code**, never against
   status docs
 - `verify-change` — did a contract, README or spec go stale with this diff?
-- `spec-drift-triage` *(in konvoy, not yet vendored here)* — a spec changed;
+- `spec-drift-triage` *(in the host project, not yet vendored here)* — a spec changed;
   which already-created tickets are now wrong?
 
 ## Instincts worth having

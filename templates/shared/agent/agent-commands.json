@@ -1,7 +1,7 @@
 {
   "$comment": [
     "Command registry — the single place an agent looks up how to run things.",
-    "Point AGENTS.md at this file with: 'Read agent-compass.commands.json before",
+    "Point AGENTS.md at this file with: 'Read agent-commands.json before",
     "choosing commands. Do not invent commands.'",
     "",
     "Why it exists: agents guess commands from package.json scripts and get them",

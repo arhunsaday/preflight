@@ -1,4 +1,4 @@
-# ai-dev-kit
+# AI Dev Kit
 
 My AI development setup, versioned: skills, hooks, slash commands, subagents,
 MCP configuration, project templates, and the documentation around them.
@@ -8,17 +8,17 @@ git clone https://github.com/arhunsaday/ai-dev-kit ~/Repos/ai-dev-kit
 cd ~/Repos/ai-dev-kit && ./bootstrap.sh
 ```
 
-Full documentation: **`cd docs && npm start`** (Docusaurus).
+Full documentation: at [https://ai.arhun.fr](https://ai.arhun.fr).
 
 ## The three lifecycles
 
 Mixing these is what makes a setup rot, so the kit keeps them apart:
 
-| | Lives in | Updated by |
-| --- | --- | --- |
-| **What I own** | `claude-code/` here | me, in git |
-| **What others own** | `~/.claude/` via the `skills` CLI | `npx skills update` |
-| **What a project owns** | the project's repo | `bootstrap.sh --project`, then edited there |
+|                         | Lives in                          | Updated by                                  |
+| ----------------------- | --------------------------------- | ------------------------------------------- |
+| **What I own**          | `claude-code/` here               | me, in git                                  |
+| **What others own**     | `~/.claude/` via the `skills` CLI | `npx skills update`                         |
+| **What a project owns** | the project's repo                | `bootstrap.sh --project`, then edited there |
 
 The first fifteen skills in this repo arrived by copy-paste and froze two
 versions behind upstream with nothing recording that a newer one existed. That
@@ -45,23 +45,22 @@ ai-dev-kit/
 
 ## What is in it
 
-| | Count | |
-| --- | --- | --- |
-| Skills (mine) | **51** | communication · delivery · quality · architecture · design · stack · ai · ops · tools |
-| Skills (installed) | **103** | in the shared `~/.agents/skills/` store — read by ~50 agents |
-| Hooks | 9 | 4 blocking (secret reads, dangerous commands, protected files, red-tests-no-PR) |
-| Slash commands | 3 | plan-challenge · papercut · skills-sync |
-| Subagents | 3 | explorer (sonnet) · reviewer (opus) · security (opus) |
-| Doc pages | **34** | setup · Claude Code · MCP · workflows · stack · tools · ecosystem |
-| Instincts | 6 | context-triggered rules for the project template |
-| Tool pointers | 9 | Claude · Codex · Cursor · Copilot · Gemini · Windsurf · Zed · Cline · Aider |
+|                    | Count   |                                                                                       |
+| ------------------ | ------- | ------------------------------------------------------------------------------------- |
+| Skills (mine)      | **51**  | communication · delivery · quality · architecture · design · stack · ai · ops · tools |
+| Skills (installed) | **103** | in the shared `~/.agents/skills/` store — read by ~50 agents                          |
+| Hooks              | 9       | 4 blocking (secret reads, dangerous commands, protected files, red-tests-no-PR)       |
+| Slash commands     | 3       | plan-challenge · papercut · skills-sync                                               |
+| Subagents          | 3       | explorer (sonnet) · reviewer (opus) · security (opus)                                 |
+| Doc pages          | **34**  | setup · Claude Code · MCP · workflows · stack · tools · ecosystem                     |
+| Instincts          | 6       | context-triggered rules for the project template                                      |
+| Tool pointers      | 9       | Claude · Codex · Cursor · Copilot · Gemini · Windsurf · Zed · Cline · Aider           |
 
 Every skill records where it came from:
 
 ```yaml
 source:
   upstream: JuliusBrussee/caveman@7bb7130
-  via: me-cedric/agent-compass@0.7.0 -> +Work/parcus-plus@391e7f7
   license: MIT (JuliusBrussee)
   imported: 2026-08-02
 ```
@@ -75,12 +74,3 @@ knows nothing about.
 
 Four hooks block rather than warn: secret reads, dangerous shell commands,
 writes to protected files, and opening a PR on a red suite.
-
-## Credits
-
-Much of the delivery and quality tooling originates in
-[me-cedric/agent-compass](https://github.com/me-cedric/agent-compass), reaching
-here via `parcus-plus` and `konvoy-paag`. `caveman` is
-[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) (MIT),
-`ponytail` is [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
-(MIT). Per-file provenance is in each `SKILL.md`.

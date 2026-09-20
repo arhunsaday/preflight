@@ -24,7 +24,7 @@ npx -y skills@latest add jakubkrehel/skills -s better-ui
 npx -y skills@latest add dmmulroy/anti-slop     # oxlint rules against low-evidence code
 ```
 
-Not yet vendored here but in `agent-compass` upstream:
+Not yet vendored here but in the upstream toolkit upstream:
 `react-admin-dashboard-patterns` (TanStack Router, MUI, RBAC, Keycloak OIDC,
 React Query CRUD — 14 KB) and `expo-react-native-patterns` (Expo Router, MVVM,
 Zustand, React Query — 14 KB). Both are dense enough to be worth pulling.

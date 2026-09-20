@@ -31,7 +31,7 @@
 
 ## Workflow
 
-- Read `agent-compass.commands.json` before choosing install, lint, typecheck,
+- Read `agent-commands.json` before choosing install, lint, typecheck,
   test, build, dev, or PR commands. Do not invent commands.
 - Read `<ARCHITECTURE_MAP>` before broad exploration.
 - Use project-local skills from `.claude/skills/` when relevant:

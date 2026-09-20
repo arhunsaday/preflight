@@ -292,7 +292,7 @@ install_project() {
   copy_item "$agent_dir/AGENTS.md"                   "$PROJECT/AGENTS.md"                   "AGENTS.md"
   copy_item "$agent_dir/CLAUDE.md"                   "$PROJECT/CLAUDE.md"                   "CLAUDE.md"
   copy_item "$agent_dir/CODEX.md"                    "$PROJECT/CODEX.md"                    "CODEX.md"
-  copy_item "$agent_dir/agent-compass.commands.json" "$PROJECT/agent-compass.commands.json" "agent-compass.commands.json"
+  copy_item "$agent_dir/agent-commands.json" "$PROJECT/agent-commands.json" "agent-commands.json"
   copy_item "$agent_dir/.claudeignore"               "$PROJECT/.claudeignore"               ".claudeignore"
   copy_item "$agent_dir/copilot-instructions.md"     "$PROJECT/.github/copilot-instructions.md" ".github/copilot-instructions.md"
 
@@ -306,7 +306,7 @@ install_project() {
   head_ "done: $linked copied, $skipped skipped"
   if [ "$DRY_RUN" -eq 0 ] && [ "$linked" -gt 0 ]; then
     printf '%sNext: fill every <PLACEHOLDER> — these templates are not usable unedited.%s\n' "$C_DIM" "$C_OFF"
-    printf '%sStart with agent-compass.commands.json, then AGENTS.md.%s\n' "$C_DIM" "$C_OFF"
+    printf '%sStart with agent-commands.json, then AGENTS.md.%s\n' "$C_DIM" "$C_OFF"
   fi
   exit 0
 }

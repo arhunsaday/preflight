@@ -15,8 +15,8 @@ diagram → diagram-to-likec4 → .c4 model → likec4-to-openspec → proposal 
         ↘ diagram-to-adr → ADR (the decision and its alternatives)
 ```
 
-All three came from `agent-compass` via the `konvoy-paag` bundle and were
-adapted: references to that application's own UI tabs were replaced with plain
-repo paths, so they work in any project.
+All three were vendored from an upstream toolkit and adapted: references to
+that application's own UI tabs were replaced with plain repo paths, so they
+work in any project.
 
 [LikeC4](https://likec4.dev) is the C4-model-as-code tool these target.

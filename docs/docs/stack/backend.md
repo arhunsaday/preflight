@@ -9,7 +9,7 @@ Node.js, Go · PostgreSQL, SQLite, Redis, Supabase · Drizzle · Nginx.
 ## Skills
 
 In this kit: the `quality/` gates (`verify-security` especially) and
-`delivery/`. Not yet vendored, available upstream in `agent-compass`:
+`delivery/`. Not yet vendored, available upstream in the upstream toolkit:
 
 | Skill | Covers |
 | --- | --- |

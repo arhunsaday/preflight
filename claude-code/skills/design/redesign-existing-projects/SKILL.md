@@ -3,7 +3,6 @@ name: redesign-existing-projects
 description: Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS.
 source:
   upstream: Leonxlnx/taste-skill@72e2995
-  via: me-cedric/agent-compass -> +Work/the host project-paag
   license: MIT (Leonxlnx)
   imported: 2026-09-20
 ---

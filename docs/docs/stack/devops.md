@@ -27,7 +27,7 @@ npx -y skills@latest add addyosmani/agent-skills -s ci-cd-and-automation   # alr
 And the big one — `BagelHole/DevOps-Security-Agent-Skills`, 146 skills covering
 AWS/Azure/GCP, Kubernetes hardening, Helm, ArgoCD GitOps, Terraform,
 CIS benchmarks, incident response, disaster recovery, container scanning,
-compliance (GDPR, HIPAA, ISO27001, FedRAMP). MIT, by Toby Miller. `agent-compass`
+compliance (GDPR, HIPAA, ISO27001, FedRAMP). MIT, by Toby Miller. the upstream toolkit
 references it rather than vendoring it, which is the right call at that size:
 
 ```bash

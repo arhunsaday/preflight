@@ -19,7 +19,7 @@ these files belong to that repo's history and every one needs local edits.
 | `CLAUDE.md` | root | Thin pointer to `AGENTS.md` |
 | `CODEX.md` | root | Thin pointer |
 | `copilot-instructions.md` | `.github/` | Thin pointer |
-| `agent-compass.commands.json` | root | Command registry — the real invocations |
+| `agent-commands.json` | root | Command registry — the real invocations |
 | `.claudeignore` | root | Context exclusions |
 | `instincts/*.md` | `.claude/instincts/` | Context-triggered rules |
 
@@ -37,7 +37,7 @@ within a month, and then nobody can tell which copy is current.
 
 ## Order of adoption
 
-1. **`agent-compass.commands.json` first.** Cheapest to fill, immediate payoff:
+1. **`agent-commands.json` first.** Cheapest to fill, immediate payoff:
    agents stop inventing script names and running whole-repo test suites.
 2. **`.claudeignore`.** Removes lockfiles and build output from the context.
 3. **`AGENTS.md`.** Write the Validation Matrix and Completion Gate first — they

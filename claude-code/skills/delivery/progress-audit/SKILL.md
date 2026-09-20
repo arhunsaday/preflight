@@ -10,8 +10,8 @@ risk_level: low
 writes_files: false
 requires_tools: []
 source:
-  upstream: me-cedric/agent-compass@0.7.0
-  license: unspecified (agent-compass repo declares no license)
+  upstream: vendored, third-party
+  license: unspecified upstream
   imported: 2026-08-02
 ---
 

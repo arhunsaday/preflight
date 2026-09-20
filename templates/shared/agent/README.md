@@ -18,7 +18,7 @@ Copies (never overwrites) into the target repo.
 | `CLAUDE.md`                   | repo root            | Thin pointer to `AGENTS.md` + Claude-specific bits                                      |
 | `CODEX.md`                    | repo root            | Thin pointer                                                                            |
 | `copilot-instructions.md`     | `.github/`           | Thin pointer                                                                            |
-| `agent-compass.commands.json` | repo root            | Command registry — the real invocations, so agents stop guessing                        |
+| `agent-commands.json` | repo root            | Command registry — the real invocations, so agents stop guessing                        |
 | `.claudeignore`               | repo root            | Context exclusions                                                                      |
 | `instincts/*.md`              | `.claude/instincts/` | Context-triggered rules — see `instincts/README.md`                                     |
 
@@ -34,7 +34,7 @@ applies to more than one tool, it belongs in `AGENTS.md`.
 
 ## Order of adoption
 
-1. **`agent-compass.commands.json` first.** Cheapest to fill, immediate payoff:
+1. **`agent-commands.json` first.** Cheapest to fill, immediate payoff:
    agents stop running whole-repo test suites and inventing script names.
 2. **`.claudeignore`.** Also cheap. Removes lockfiles and build output from the
    context window.

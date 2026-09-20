@@ -9,8 +9,7 @@ risk_level: medium
 writes_files: true
 requires_tools: []
 source:
-  upstream: me-cedric/agent-compass@0.9.3 (skills/)
-  via: fetched directly from upstream
+  upstream: vendored, third-party
   imported: 2026-09-20
 ---
 

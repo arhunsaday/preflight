@@ -51,7 +51,7 @@ without looking: **Funk** = Claude needs you, **Glass** = turn finished,
 blocks on a documentation typo is a hook the team disables within a week, and
 then it protects nothing. Block destructive and irreversible things; report
 everything else. (This principle is lifted straight from the hook comments in
-`konvoy-paag`, which says it better than I can.)
+a vendored toolkit whose hook comments say it better than I can.)
 
 **Cap every output.** A `PostToolUse` hook that dumps 200 lines of test output
 evicts the context Claude needs to act on it. `tail -8`, `head -20`. The model

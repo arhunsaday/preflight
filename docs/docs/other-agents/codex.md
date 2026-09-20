@@ -19,7 +19,7 @@ tools, no drift.
 ## Config
 
 Codex uses `~/.codex/config.toml`, and MCP servers are declared there rather
-than in `.mcp.json`. `agent-compass` ships a `.mcp/codex.example.toml` worth
+than in `.mcp.json`. the upstream toolkit ships a `.mcp/codex.example.toml` worth
 copying the shape from.
 
 ## Where it differs

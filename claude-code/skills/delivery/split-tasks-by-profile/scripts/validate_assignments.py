@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a Konvoy assignments document (work split by profile).
+"""Validate a the host project assignments document (work split by profile).
 
 Usage: validate_assignments.py <assignments.json> [personas.json]
 
