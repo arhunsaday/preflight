@@ -7,7 +7,7 @@ metadata:
   version: "2"
 source:
   upstream: me-cedric/agent-compass (skills/)
-  via: +Work/konvoy-paag (src-tauri/skills/, vendored)
+  via: +Work/the host project-paag (src-tauri/skills/, vendored)
   imported: 2026-09-20
 ---
 

@@ -14,10 +14,10 @@ does.
 
 The split:
 
-| | Where | Updated by |
-| --- | --- | --- |
-| **Skills I own** | [`claude-code/skills/`](../claude-code/skills/) | me, in git |
-| **Skills others own** | `~/.claude/skills/` via the CLI | `npx skills update` |
+|                       | Where                                           | Updated by          |
+| --------------------- | ----------------------------------------------- | ------------------- |
+| **Skills I own**      | [`claude-code/skills/`](../claude-code/skills/) | me, in git          |
+| **Skills others own** | `~/.claude/skills/` via the CLI                 | `npx skills update` |
 
 Never edit an installed third-party skill in place — the next update silently
 reverts it. Fork it into `claude-code/skills/` instead and set `source: upstream:`
@@ -44,23 +44,67 @@ Browse at **[skills.sh](https://www.skills.sh/)**. `/skills-sync` runs the
 update and reports what actually changed in the instructions, which matters —
 a skill is a prompt, so a changed prompt is changed behaviour.
 
-## Currently installed
+## Currently installed — 115 skills
 
-Tracked in `~/Dotfiles/skills-lock.json`.
+They live in the **shared store** `~/.agents/skills/`, which every agent on this
+machine reads: Claude Code, Cursor, Codex, Copilot, Gemini, Windsurf and ~50
+others each hold a symlink farm pointing at it. Installing once covers all of
+them — the single best thing about this CLI.
 
-| Skill | Source |
-| --- | --- |
-| `api-and-interface-design` | `addyosmani/agent-skills` |
-| `browser-testing-with-devtools` | `addyosmani/agent-skills` |
-| `ci-cd-and-automation` | `addyosmani/agent-skills` |
-| `code-review-and-quality` | `addyosmani/agent-skills` |
-| `code-simplification` | `addyosmani/agent-skills` |
-| `constraint-driven-development` | `addyosmani/agent-skills` |
+> **Global installs write no lockfile.** Only project-scoped installs produce
+> `skills-lock.json`. The reproducibility mechanism for this machine is
+> [`install-third-party.sh`](install-third-party.sh), not a lock file.
+
+```bash
+./skills/install-third-party.sh          # reinstall everything on a new machine
+./skills/install-third-party.sh --list   # see what each repo holds first
+npx -y skills@latest update -y           # or /skills-sync
+```
+
+<details>
+<summary>The 115 installed skills</summary>
+
+|                                 |                                  |                                  |                                     |
+| ------------------------------- | -------------------------------- | -------------------------------- | ----------------------------------- |
+| `academy-guide`                 | `algorithmic-art`                | `animate`                        | `animate-expo`                      |
+| `animation-vocabulary`          | `api-and-interface-design`       | `apple-design`                   | `ask-matt`                          |
+| `ask-sonner`                    | `brainstorming`                  | `brand-guidelines`               | `browser-testing-with-devtools`     |
+| `canvas-design`                 | `ci-cd-and-automation`           | `claude-api`                     | `claude-handoff`                    |
+| `code-review`                   | `code-review-and-quality`        | `code-simplification`            | `codebase-design`                   |
+| `constraint-driven-development` | `context-engineering`            | `convert-documents-to-markdown`  | `debugging-and-error-recovery`      |
+| `deprecation-and-migration`     | `diagnosing-bugs`                | `diagnosing-superpowers`         | `discernment-nudge`                 |
+| `dispatching-parallel-agents`   | `doc-coauthoring`                | `documentation-and-adrs`         | `docx`                              |
+| `domain-modeling`               | `doubt-driven-development`       | `emil-design-eng`                | `executing-plans`                   |
+| `find-animation-opportunities`  | `find-skills`                    | `finishing-a-development-branch` | `frontend-design`                   |
+| `frontend-ui-engineering`       | `git-guardrails-claude-code`     | `git-workflow-and-versioning`    | `grill-me`                          |
+| `grill-with-docs`               | `grilling`                       | `handoff`                        | `idea-refine`                       |
+| `implement`                     | `implement-spec`                 | `improve-animations`             | `improve-codebase-architecture`     |
+| `incremental-implementation`    | `install-anti-slop`              | `internal-comms`                 | `interview-me`                      |
+| `ip-as-logo`                    | `kubernetes-skill`               | `landing-page-design`            | `loop-me`                           |
+| `mcp-builder`                   | `migrate-to-shoehorn`            | `mobile-native`                  | `observability-and-instrumentation` |
+| `pdf`                           | `performance-optimization`       | `pick-ui-library`                | `planning-and-task-breakdown`       |
+| `pptx`                          | `pr`                             | `prototype`                      | `receiving-code-review`             |
+| `requesting-code-review`        | `research`                       | `resolving-merge-conflicts`      | `retro`                             |
+| `review-animations`             | `scaffold-exercises`             | `security-and-hardening`         | `setup-matt-pocock-skills`          |
+| `setup-pre-commit`              | `setup-ts-deep-modules`          | `shipping-and-launch`            | `skill-creator`                     |
+| `slack-gif-creator`             | `source-driven-development`      | `spec-driven-development`        | `subagent-driven-development`       |
+| `systematic-debugging`          | `tdd`                            | `teach`                          | `template-skill`                    |
+| `test-driven-development`       | `theme-factory`                  | `to-questionnaire`               | `to-spec`                           |
+| `to-tickets`                    | `triage`                         | `using-agent-skills`             | `using-git-worktrees`               |
+| `using-superpowers`             | `verification-before-completion` | `wait-what`                      | `wayfinder`                         |
+| `web-artifacts-builder`         | `webapp-testing`                 | `wizard`                         | `write-swift`                       |
+| `writing-beats`                 | `writing-for-agents`             | `writing-fragments`              | `writing-plans`                     |
+| `writing-shape`                 | `writing-skills`                 | `xlsx`                           |                                     |
+
+</details>
+
+None are copied into this repo. To change one, fork it into
+`claude-code/skills/` — an edit in place is reverted by the next update.
 
 ## Recommended, not yet installed
 
 Verified 2026-09-20. Star counts in this ecosystem are noisy — these are ordered
-by how useful they are to *this* setup, not by popularity.
+by how useful they are to _this_ setup, not by popularity.
 
 ### Engineering
 
@@ -92,15 +136,15 @@ skill; a tool the skill can call.
 
 ### Catalogs to mine
 
-| List | Contents |
-| --- | --- |
-| [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | Curated skills, resources, tooling |
-| [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) | 1000+ skills from official and community sources |
-| [hesreallyhim/awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code) | 21 categories: hooks, statuslines, orchestration, memory |
-| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | MCP servers |
-| [wshobson/agents](https://github.com/wshobson/agents) | Multi-harness subagent marketplace |
-| [sickn33/agentic-awesome-skills](https://github.com/sickn33/agentic-awesome-skills) | Local agent-first control plane |
-| [github/awesome-copilot](https://github.com/github/awesome-copilot) | Copilot instructions, agents, skills |
+| List                                                                                      | Contents                                                                        |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)   | Curated skills, resources, tooling                                              |
+| [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills)       | 1000+ skills from official and community sources                                |
+| [hesreallyhim/awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code)   | 21 categories: hooks, statuslines, orchestration, memory                        |
+| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)           | MCP servers                                                                     |
+| [wshobson/agents](https://github.com/wshobson/agents)                                     | Multi-harness subagent marketplace                                              |
+| [sickn33/agentic-awesome-skills](https://github.com/sickn33/agentic-awesome-skills)       | Local agent-first control plane                                                 |
+| [github/awesome-copilot](https://github.com/github/awesome-copilot)                       | Copilot instructions, agents, skills                                            |
 | [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) | A single CLAUDE.md, widely copied. Read, don't install — no commits since April |
 
 Finding things across all of them:

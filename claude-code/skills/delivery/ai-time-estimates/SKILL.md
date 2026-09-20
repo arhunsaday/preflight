@@ -2,7 +2,7 @@
 name: ai-time-estimates
 description: Produce realistic effort estimates for work that an AI agent will do, instead of estimating as if a human were typing every line. Use when asked how long something will take, for sprint planning, for a quote, or when a plan needs effort numbers attached.
 source:
-  upstream: hand-authored in ai-dev-kit, informed by ZhangHanDong/agent-estimation
+  upstream: hand-authored in ai-dev-kit
   imported: 2026-09-20
 risk_level: medium
 writes_files: false
@@ -16,7 +16,7 @@ and the errors do not cancel out.
 - **Overestimated**: mechanical volume. Boilerplate, CRUD layers, test scaffolds,
   migrations, renames across 200 files, translating a spec into code. What costs
   a human a day costs an agent minutes.
-- **Underestimated**: everything that is not typing. Deciding *what* to build,
+- **Underestimated**: everything that is not typing. Deciding _what_ to build,
   waiting on credentials and access, review cycles, integration with a system
   nobody has documented, flaky environments, and the loops where the agent is
   confidently wrong and a human has to notice.
@@ -28,14 +28,14 @@ the easy half and far too small on the hard half.
 
 ### 1. Split the work by what actually limits it
 
-| Class | What limits it | Agent effect |
-| --- | --- | --- |
-| **Mechanical** | typing volume | **5–20× faster** |
-| **Comprehension** | reading an unfamiliar codebase | 2–4× faster |
-| **Decision** | humans agreeing | **unchanged** |
-| **Integration** | someone else's system | unchanged, often worse |
-| **Access** | credentials, permissions, environments | unchanged — pure waiting |
-| **Review** | human attention | **often slower** (more diff to read) |
+| Class             | What limits it                         | Agent effect                         |
+| ----------------- | -------------------------------------- | ------------------------------------ |
+| **Mechanical**    | typing volume                          | **5–20× faster**                     |
+| **Comprehension** | reading an unfamiliar codebase         | 2–4× faster                          |
+| **Decision**      | humans agreeing                        | **unchanged**                        |
+| **Integration**   | someone else's system                  | unchanged, often worse               |
+| **Access**        | credentials, permissions, environments | unchanged — pure waiting             |
+| **Review**        | human attention                        | **often slower** (more diff to read) |
 
 Estimate each class separately. A task that is 80% mechanical and 20% decision
 does not get a single multiplier.
@@ -56,7 +56,7 @@ loop.
 - **Unknown codebase**: ×1.5 on comprehension for the first two sessions.
 - **No test suite**: ×2 on everything. Without tests the agent cannot verify,
   so every change needs human verification.
-- **Blocked on access**: add the *calendar* time honestly. "2 sessions, starting
+- **Blocked on access**: add the _calendar_ time honestly. "2 sessions, starting
   whenever the Grafana token arrives" is a real estimate. "3 days" is not.
 
 ### 4. State the confidence band

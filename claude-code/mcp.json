@@ -1,0 +1,55 @@
+{
+  "$comment": [
+    "Template. Copy to ~/.claude.json (user scope) or <repo>/.mcp.json (project),",
+    "and fill the placeholders. NEVER commit a token — every credential below is",
+    "read from the environment via ${VAR}.",
+    "",
+    "Rules that matter:",
+    "  - Pin versions on anything touching production (mcp-grafana@1.2.0). An",
+    "    unpinned uvx server upgrades under you mid-incident.",
+    "  - One server per environment for prod/staging/dev, so querying production",
+    "    is always a deliberate act.",
+    "  - Every server injects its tool definitions into EVERY session's context.",
+    "    Enable what the current work needs; disable the rest.",
+    "",
+    "Full setup notes: docs/docs/mcp/my-servers.md"
+  ],
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
+      "env": {
+        "JIRA_URL": "https://<your-jira-host>/jira",
+        "JIRA_PERSONAL_TOKEN": "${JIRA_PERSONAL_TOKEN}"
+      }
+    },
+    "grafana-dev": {
+      "command": "uvx",
+      "args": ["mcp-grafana@1.2.0"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.dev.<your-domain>",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_DEV_TOKEN}"
+      }
+    },
+    "grafana-production": {
+      "command": "uvx",
+      "args": ["mcp-grafana@1.2.0"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.<your-domain>",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_PROD_TOKEN}"
+      }
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    }
+  }
+}

@@ -32,26 +32,29 @@ ai-dev-kit/
 ├── claude-code/                 → symlinked into ~/.claude/
 │   ├── CLAUDE.md                global instructions (every session, every project)
 │   ├── settings.json            hooks + statusline + permissions (merge by hand)
-│   ├── skills/                  24 skills in 6 categories
+│   ├── skills/                  51 skills in 9 categories
 │   ├── hooks/                   9 hooks — see hooks/README.md
 │   ├── commands/                /plan-challenge  /papercut  /skills-sync
 │   ├── agents/                  explorer · reviewer · security
 │   └── statusline/              repo · branch · model · diff · context gauge
-├── skills/THIRD-PARTY.md        what the CLI manages, and what to add
+├── skills/                      THIRD-PARTY.md + install-third-party.sh (reproducibility)
+├── prompts/  standards/         paste-anywhere prompts · language conventions
 ├── templates/shared/agent/      project drop-in (AGENTS.md, instincts, git hooks)
-└── docs/                        the documentation site
+└── docs/                        Docusaurus site (Vercel)
 ```
 
 ## What is in it
 
 | | Count | |
 | --- | --- | --- |
-| Skills | 24 | communication · delivery · quality · architecture · design · tools |
-| Hooks | 9 | 4 blocking (secrets, dangerous commands, protected files, red-tests-no-PR) |
+| Skills (mine) | **51** | communication · delivery · quality · architecture · design · stack · ai · ops · tools |
+| Skills (installed) | **103** | in the shared `~/.agents/skills/` store — read by ~50 agents |
+| Hooks | 9 | 4 blocking (secret reads, dangerous commands, protected files, red-tests-no-PR) |
 | Slash commands | 3 | plan-challenge · papercut · skills-sync |
 | Subagents | 3 | explorer (sonnet) · reviewer (opus) · security (opus) |
-| Doc pages | 30 | setup · Claude Code · MCP · workflows · stack · tools |
-| Instincts | 5 | context-triggered rules for the project template |
+| Doc pages | **34** | setup · Claude Code · MCP · workflows · stack · tools · ecosystem |
+| Instincts | 6 | context-triggered rules for the project template |
+| Tool pointers | 9 | Claude · Codex · Cursor · Copilot · Gemini · Windsurf · Zed · Cline · Aider |
 
 Every skill records where it came from:
 

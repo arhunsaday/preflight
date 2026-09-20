@@ -232,7 +232,11 @@ install_memory() {
 # Link only into a vacant slot; otherwise report and let a human merge.
 check_json_config() {
   head_ "json config"
-  for pair in "settings.json:$CLAUDE_HOME/settings.json" "mcp.json:$CLAUDE_HOME/.mcp.json"; do
+  printf '  %snote%s  mcp.json is a template — copy it, do not link it (see docs/mcp)\n' "$C_DIM" "$C_OFF"
+  # mcp.json is deliberately NOT linked: it is a template with placeholder hosts
+  # and ${VAR} credentials. Linking it into a config path would activate servers
+  # that cannot work. Copy it by hand to ~/.claude.json or a repo's .mcp.json.
+  for pair in "settings.json:$CLAUDE_HOME/settings.json"; do
     name="${pair%%:*}"; dest="${pair#*:}"
     src="$KIT_ROOT/claude-code/$name"
 

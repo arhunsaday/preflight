@@ -21,6 +21,9 @@ Two skills may therefore never share a name, whatever folder they sit in.
 | [`architecture/`](architecture/) | Diagrams, ADRs, C4 models |
 | [`design/`](design/) | Interface and visual rules |
 | [`tools/`](tools/) | Wrappers around a specific external tool |
+| [`stack/`](stack/) | Framework patterns — NestJS, Drizzle, BullMQ, React admin, Expo |
+| [`ai/`](ai/) | Building LLM features — RAG on pgvector, Langfuse observability |
+| [`ops/`](ops/) | Observability and operations — LGTM stack, Alloy |
 
 ## The `source:` field
 

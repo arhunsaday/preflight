@@ -35,7 +35,7 @@ const sidebars = {
     },
     {
       type: 'category', label: 'My stack',
-      items: ['stack/frontend', 'stack/backend', 'stack/devops', 'stack/ai'],
+      items: ['stack/frontend', 'stack/backend', 'stack/devops', 'stack/ai', 'ai/jev'],
     },
     {
       type: 'category', label: 'Tools',
@@ -43,8 +43,9 @@ const sidebars = {
     },
     {
       type: 'category', label: 'Other agents',
-      items: ['other-agents/codex', 'other-agents/copilot'],
+      items: ['other-agents/compatibility', 'other-agents/codex', 'other-agents/copilot'],
     },
+    'ecosystem',
     'beyond-vibecoding',
   ],
 };

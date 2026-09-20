@@ -1,0 +1,18 @@
+---
+description: Project conventions — the canonical contract lives in AGENTS.md
+alwaysApply: true
+---
+
+Read `AGENTS.md` at the repo root first. It is the canonical contract and it
+wins over this file wherever they disagree.
+
+Order of work for anything non-trivial:
+
+1. Read `agent-compass.commands.json` for the real commands — invent none.
+2. Read the matching `.claude/instincts/*.md` for the area being touched.
+3. Smallest safe change; update the tests alongside it.
+4. Run scoped lint, typecheck, and the relevant tests.
+5. Report with the Completion Gate from `AGENTS.md`.
+
+Do not commit, push, deploy, publish, or open PRs unless explicitly asked.
+Never add AI attribution to a commit or PR body.

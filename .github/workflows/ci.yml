@@ -1,0 +1,64 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          fail=0
+          for f in bootstrap.sh claude-code/hooks/*.sh claude-code/statusline/*.sh \
+                   templates/shared/agent/git-hooks/*.sh templates/shared/agent/*.sh; do
+            [ -f "$f" ] || continue
+            bash -n "$f" || { echo "::error file=$f::syntax error"; fail=1; }
+          done
+          exit $fail
+
+      - name: JSON is valid
+        run: |
+          for f in $(git ls-files '*.json'); do
+            python3 -c "import json,sys;json.load(open('$f'))" \
+              || { echo "::error file=$f::invalid JSON"; exit 1; }
+          done
+
+      - name: Every skill has name, description and source
+        run: |
+          fail=0
+          for f in claude-code/skills/*/*/SKILL.md; do
+            head -40 "$f" | grep -q '^name:'        || { echo "::error file=$f::missing name"; fail=1; }
+            head -40 "$f" | grep -q '^description:' || { echo "::error file=$f::missing description"; fail=1; }
+            head -40 "$f" | grep -q '^source:'      || { echo "::error file=$f::missing source"; fail=1; }
+          done
+          exit $fail
+
+      - name: No duplicate skill names
+        run: |
+          dupes=$(basename -a $(dirname claude-code/skills/*/*/SKILL.md) | sort | uniq -d)
+          [ -z "$dupes" ] || { echo "::error::install flattens categories — duplicate names: $dupes"; exit 1; }
+
+      - name: Hooks behave
+        run: |
+          set -e
+          chmod +x claude-code/hooks/*.sh
+          echo '{"tool_input":{"command":"rm -rf /"}}'        | claude-code/hooks/block-dangerous.sh  && exit 1 || [ $? -eq 2 ]
+          echo '{"tool_input":{"command":"ls -la"}}'          | claude-code/hooks/block-dangerous.sh
+          echo '{"tool_input":{"file_path":".env"}}'          | claude-code/hooks/protect-files.sh     && exit 1 || [ $? -eq 2 ]
+          echo '{"tool_input":{"file_path":".env.example"}}'  | claude-code/hooks/protect-files.sh
+          echo "hooks OK"
+
+      - name: bootstrap --dry-run is clean
+        run: CLAUDE_HOME=$(mktemp -d) ./bootstrap.sh --dry-run
+
+  docs:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: docs}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm, cache-dependency-path: docs/package-lock.json}
+      - run: npm ci
+      - run: npm run build
