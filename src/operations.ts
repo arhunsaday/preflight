@@ -1,0 +1,134 @@
+import { spawn } from "node:child_process";
+import type { Resource } from "./schema.js";
+export interface Command {
+  command: string;
+  args: string[];
+}
+export function installationPlan(resource: Resource): Command {
+  if (resource.type === "skill") {
+    const source =
+      typeof resource.config.repository === "string"
+        ? resource.config.repository
+        : resource.source;
+    if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/.test(source))
+      throw new Error(
+        "Skill delegation requires an HTTPS GitHub repository source",
+      );
+    return {
+      command: "npx",
+      args: [
+        "--yes",
+        "skills",
+        "add",
+        source,
+        "--skill",
+        resource.name,
+        "--agent",
+        ...resource.harnesses,
+        ...(resource.scope === "global" ? ["--global"] : []),
+        "--yes",
+      ],
+    };
+  }
+  if (resource.type === "mcp")
+    return { command: "mcpm", args: ["add", resource.name] };
+  if (resource.type === "tool") {
+    const manager = resource.config.manager;
+    const pkg = resource.config.package;
+    if (
+      !["brew", "npm"].includes(String(manager)) ||
+      typeof pkg !== "string" ||
+      !/^[@a-z0-9][a-z0-9@/._-]*$/i.test(pkg)
+    )
+      throw new Error(
+        "Tool requires manager brew/npm and a package identifier",
+      );
+    if (manager === "brew") return { command: "brew", args: ["install", pkg] };
+    return {
+      command: "npm",
+      args: [
+        "install",
+        ...(resource.scope === "global" ? ["--global"] : []),
+        "--",
+        pkg,
+      ],
+    };
+  }
+  throw new Error(`No delegated installer for ${resource.type}`);
+}
+export function runCommand(
+  command: Command,
+  cwd: string,
+  timeoutMs = 120000,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<{
+  code: number;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+}> {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const child = spawn(command.command, command.args, {
+      cwd,
+      env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+    });
+    let stdout = "",
+      stderr = "",
+      timedOut = false;
+    const stop = () => {
+      timedOut = true;
+      try {
+        if (process.platform !== "win32" && child.pid)
+          process.kill(-child.pid, "SIGKILL");
+        else child.kill("SIGKILL");
+      } catch {
+        /* Process already exited. */
+      }
+    };
+    const timer = setTimeout(stop, timeoutMs);
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+      if (stdout.length > 2_000_000) stop();
+    });
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+      if (stderr.length > 2_000_000) stop();
+    });
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({
+        code: timedOut ? 124 : (code ?? 1),
+        stdout,
+        stderr,
+        durationMs: Date.now() - start,
+      });
+    });
+  });
+}
+export async function gitSync(
+  root: string,
+  operation: "status" | "pull" | "push",
+  dryRun = false,
+) {
+  const command = {
+    command: "git",
+    args:
+      operation === "status"
+        ? ["status", "--short"]
+        : operation === "pull"
+          ? ["pull", "--ff-only"]
+          : ["push"],
+  };
+  if (dryRun) return command;
+  const result = await runCommand(command, root);
+  if (result.code) throw new Error(result.stderr);
+  return result;
+}

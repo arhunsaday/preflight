@@ -11,7 +11,14 @@
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "skipLibCheck": true
   },
-  "include": ["src", "tests", "eslint.config.js", "vitest.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "eslint.config.js",
+    "vitest.config.ts",
+    "scripts/seed-catalog.ts"
+  ]
 }
