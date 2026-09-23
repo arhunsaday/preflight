@@ -14,6 +14,13 @@ PAPERCUTS.md
 __pycache__/
 .idea/
 
+# ADK TypeScript package
+node_modules/
+dist/
+coverage/
+.superpowers/
+*.log
+
 # Secrets — belt and braces; the pre-commit hook is the other one
 .env
 .env.*
