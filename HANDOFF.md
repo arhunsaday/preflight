@@ -33,16 +33,17 @@ Le socle local est implémenté en TypeScript / Node 22+, avec CLI Commander et 
 ## Commits récents
 
 - `490caa4` : implémentation initiale CLI/TUI (commit utilisateur à conserver).
-- `66eaf22` : résolution des packages MCP en configurations de lancement épinglées.
-- `906a22a` : tolérance des métadonnées MCP incomplètes et synchronisation du test d’entrée TUI.
 - `272c0b7` : reconstruction du TUI autour des vues, actions et aperçus.
 - `43c887a` : usage mesuré par ressource et préchargement du catalogue.
 - `b9f9005` : guidage d'un projet vide, identité de ressource figée à l'édition.
 - `d06e17b` : provenance explicite des loadouts ; le contrôle de dépôt passe hors machine d'origine.
 - `0aa935e` : indicateur « appliqué » comparé au lockfile.
-- `0a323ce` : lignes de panneau clippées à une ligne, findings identifiés par ressource.
+- `0a323ce` : lignes de panneau clippées, findings identifiés par ressource.
 - `5ee358c` : test d'échelle 500 ressources et bornage du rendu de contenu.
 - `dbb5d36` : ouverture du panneau de résultat et coloration JSON.
+- `3bbbbc2` : sources de catalogue tolérantes, version courante du registre MCP, script de status line.
+- `eecef3c` : `ACCEPTANCE.md`, audit du plan critère par critère.
+- `a3f4d6a` : `unmanaged` et `adopt`, vue **Detected** du TUI.
 
 ## Dernier travail et résultats exacts
 
@@ -62,9 +63,15 @@ La CI de la branche échouait **avant cette session** (`3977b3e` comprise), sur 
 
 Runs 17, 18 et 19 verts sur Node 22 et 24 plus `verify`. C'est la première CI verte de la branche.
 
+### Adoption de l'existant
+
+`unmanaged` liste ce qu'un harnais contient et que le profil actif ne gère pas ; `adopt` l'amène sous gestion **là où il est**. La ressource enregistre `adoptedBy` et `adoptedPath` (relatif à la base du harnais), l'adaptateur vise ce chemin, et un fichier dont le contenu correspond déjà n'est pas réécrit : la transaction n'ajoute que l'entrée de configuration et l'empreinte du lockfile, donc la dérive est détectée ensuite. `delete` retire le fichier, `rollback` le remet. Un chemin adopté qui tente de sortir du répertoire du harnais est ignoré au profit du chemin géré par ADK. Les types portés par un fichier de réglages s'adoptent en reconnaissant l'entrée déjà présente ; l'écriture des hooks est devenue idempotente pour ne pas dupliquer celle qu'on adopte.
+
+Limite : seules les ressources situées dans les répertoires des harnais sont détectées. Le magasin partagé `~/.agents/skills` n'est pas lu.
+
 ### Mesures
 
-`npm run check` : **78 tests dans 16 fichiers**, lint, types et build réussis. Suite Python : **33 tests** (26 auparavant, plus `tests/test_loadouts.py`). `python3 scripts/kit.py check` : 0 problème.
+`npm run check` : **85 tests dans 16 fichiers**, lint, types et build réussis. Suite Python : **33 tests** (26 auparavant, plus `tests/test_loadouts.py`). `python3 scripts/kit.py check` : 0 problème.
 
 Rendu vérifié dans un vrai PTY (tmux) à 60, 80, 110 et 120 colonnes : première ouverture d'un projet vide, `init`, browse, catalogue avec recherche, doctor, profils, palette, formulaire, aperçu, référence clavier, panneau de résultat. Trois défauts trouvés ainsi et corrigés : dépassement de largeur du panneau de détail, lignes de panneau qui passaient à deux lignes et rognaient un caractère, marqueur de portée rendu `…` en colonne étroite.
 
