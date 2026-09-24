@@ -27,3 +27,10 @@ coverage/
 !.env.example
 *.pem
 *.key
+
+# Local ADK state and Worker secrets
+.adk/
+adk.lock.json
+.dev.vars
+.wrangler/
+*.tgz

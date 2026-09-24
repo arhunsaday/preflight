@@ -1,5 +1,7 @@
 # AI Dev Kit
 
+
+**ADK CLI + TUI:** the TypeScript implementation is now available. See [ADK.md](ADK.md) for setup, commands, adapter support, sharing, benchmarks and current limitations.
 My AI development setup, versioned: skills, hooks, slash commands, subagents,
 MCP configuration, project templates, and the documentation around them.
 

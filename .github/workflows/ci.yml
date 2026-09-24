@@ -3,6 +3,25 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  adk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Worker bundle is browser compatible
+        run: npx esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=/tmp/adk-worker.js
+      - name: CLI starts from the built package
+        run: node dist/cli.js --help
+      - run: npm pack --dry-run
+
   verify:
     runs-on: ubuntu-latest
     steps:

@@ -50,6 +50,18 @@ export function frontmatter(content: string) {
   const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
   return match ? object(yaml(match[1]!)) : {};
 }
+async function emptyDirectoryTree(path: string): Promise<boolean> {
+  const stat = await lstat(path);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
+  for (const entry of await readdir(path, { withFileTypes: true })) {
+    if (
+      !entry.isDirectory() ||
+      !(await emptyDirectoryTree(join(path, entry.name)))
+    )
+      return false;
+  }
+  return true;
+}
 class FileAdapter implements HarnessAdapter {
   capabilities: ResourceType[];
   constructor(
@@ -256,6 +268,8 @@ class FileAdapter implements HarnessAdapter {
           try {
             const content = await readText(path);
             if (content === null) {
+              if (type === "skill" && (await emptyDirectoryTree(dirname(path))))
+                continue;
               issues.push(`Broken or missing resource: ${path}`);
               continue;
             }

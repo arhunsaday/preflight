@@ -142,3 +142,19 @@ it("adds and removes a hook while preserving unmanaged hooks in the same event",
     human,
   ]);
 });
+it("does not report a moved skill as broken because of empty leftover directories", async () => {
+  const s = await service();
+  await s.init();
+  const skill = ResourceSchema.parse({
+    ...resource(),
+    id: "skill:move",
+    type: "skill",
+    content: "---\nname: moved\ndescription: Move me\n---\nBody",
+    config: { files: [{ path: "scripts/check.sh", contents: "echo check" }] },
+  });
+  await s.create(skill);
+  await s.update(skill.id, { scope: "global" });
+  expect(
+    (await s.doctor()).filter((f) => f.code === "broken-resource"),
+  ).toEqual([]);
+});

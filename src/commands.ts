@@ -31,6 +31,7 @@ import {
 import { measureUsage } from "./analysis.js";
 import { resolveLoadout, materializeLoadout } from "./loadouts.js";
 import { installationPlan, runCommand, gitSync } from "./operations.js";
+import { fixedTaskSet } from "./bench-tasks.js";
 import { runBench, compareRuns, BenchRun } from "./bench.js";
 import { retrofit } from "./retrofit.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
@@ -383,6 +384,25 @@ export async function execute(
       ),
   );
   const bench = program.command("bench");
+  bench
+    .command("scaffold")
+    .requiredOption("--repo <path>")
+    .requiredOption("--revision <sha>")
+    .option("--agent <binary>", "Claude-compatible agent binary", "claude")
+    .option("--out <path>", "task manifest", "bench/tasks.json")
+    .action(async (options) => {
+      const tasks = fixedTaskSet(
+        resolve(ctx().root, options.repo),
+        options.revision,
+        options.agent,
+      );
+      const path = resolve(ctx().root, options.out);
+      result = await applyFiles(
+        ctx().root,
+        [{ path, before: await readText(path), after: jsonText(tasks) }],
+        { actor: process.env.USER ?? "local", dryRun: dry() },
+      );
+    });
   bench
     .command("run")
     .requiredOption("--config <path-or-current>")
