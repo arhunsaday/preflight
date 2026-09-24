@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,12 +41,9 @@ def resolve(data, names):
     return plan
 
 
-def known(kind):
+def vendored(kind):
     if kind == 'skills':
-        mine = {p.parent.name for p in (ROOT / 'claude-code/skills').glob('*/*/SKILL.md')}
-        store = Path.home() / '.agents/skills'
-        # A parked skill is still installed, so it counts as known.
-        return mine | ({p.name for p in store.iterdir()} if store.exists() else set())
+        return {p.parent.name for p in (ROOT / 'claude-code/skills').glob('*/*/SKILL.md')}
     if kind == 'subagents':
         return {p.stem for p in (ROOT / 'claude-code/agents').glob('*.md')}
     if kind == 'hooks':
@@ -53,6 +51,29 @@ def known(kind):
     if kind == 'instincts':
         return {p.stem for p in (ROOT / 'templates/shared/agent/instincts').glob('*.md')} - {'README'}
     return None  # mcp and workflows are not files in this repo
+
+
+def known(kind):
+    files = vendored(kind)
+    if kind != 'skills' or files is None:
+        return files
+    store = Path.home() / '.agents/skills'
+    # A parked skill is still installed, so it counts as known.
+    return files | ({p.name for p in store.iterdir()} if store.exists() else set())
+
+
+def installer_repos(source=None):
+    """Repositories install-third-party.sh installs skills from."""
+    text = (source or ROOT / 'skills/install-third-party.sh').read_text()
+    block = text.partition('REPOS=(')[2].partition(')')[0]
+    repos = set()
+    for line in block.splitlines():
+        name = line.split('#')[0].strip()
+        if name:
+            repos.add(name)
+    for match in re.finditer(r'skills@latest add ([\w.-]+/[\w.-]+)', text):
+        repos.add(match[1])
+    return repos
 
 
 def expand(data, target):
@@ -89,16 +110,25 @@ def missing_env(plan):
 def check():
     data = read()
     problems = []
+    repos = installer_repos()
     for name, entry in data['loadouts'].items():
         for kind, items in entry.get('provides', {}).items():
             if kind not in KINDS:
                 problems.append(f'{name}: unknown kind {kind}')
                 continue
             catalog = known(kind)
+            files = vendored(kind)
             for item in items:
                 if not item.get('why'):
                     problems.append(f'{name}: {kind}/{item["id"]} has no `why`')
-                if catalog is not None and item['id'] not in catalog:
+                upstream = item.get('external')
+                if upstream and kind != 'skills':
+                    problems.append(f'{name}: {kind}/{item["id"]} cannot be external; only skills come from the store')
+                elif upstream and item['id'] in (files or ()):
+                    problems.append(f'{name}: {kind}/{item["id"]} is vendored in this repo; drop `external`')
+                elif upstream and upstream not in repos:
+                    problems.append(f'{name}: {kind}/{item["id"]} names {upstream}, which install-third-party.sh does not install')
+                elif not upstream and catalog is not None and item['id'] not in catalog:
                     problems.append(f'{name}: {kind}/{item["id"]} does not exist in this repo')
                 if kind == 'skills' and item.get('scope') not in ('global', 'project'):
                     problems.append(f'{name}: skills/{item["id"]} needs scope global or project')

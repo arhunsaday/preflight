@@ -931,7 +931,7 @@ export function App({ context }: { context: Context }) {
     } else if (view === "catalogue") {
       parts.push(
         catalogue === null
-          ? "press / to search"
+          ? "loading the bundled catalogue…"
           : `${listLength ? index + 1 : 0} of ${catalogueVisible.length}`,
       );
       if (search) parts.push(`query "${search}"`);

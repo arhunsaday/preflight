@@ -177,7 +177,7 @@ adk git status
 adk git pull --dry-run
 ```
 
-Loadouts compose the existing `claude-code/loadouts.json`, with later layers overriding reasons and prerequisite checks before installation. Some existing loadouts name third-party skills absent from the bundled catalogue. Missing resources and prerequisites are reported together, and installation does not partially apply them. Use `--catalog /path/to/a/complete/local/kit` when supplying additional resources. Retrofit reads manifests and script names without executing repository code, and generates `AGENTS.md` plus `.adk/commands.json`. It refuses to replace an existing contract.
+Loadouts compose the existing `claude-code/loadouts.json`, with later layers overriding reasons and prerequisite checks before installation. A loadout item that is not vendored in this repository declares the repository it comes from with `"external": "owner/repo"`, which `scripts/loadouts.py check` validates against `skills/install-third-party.sh`; those skills are absent from the bundled catalogue and are reported with the command that installs them. Missing resources and prerequisites are reported together, and installation does not partially apply them. Use `--catalog /path/to/a/complete/local/kit` when supplying additional resources. Retrofit reads manifests and script names without executing repository code, and generates `AGENTS.md` plus `.adk/commands.json`. It refuses to replace an existing contract.
 
 ## Local configuration benchmarks
 

@@ -49,9 +49,8 @@
           { "id": "lint-after-edit", "why": "See the lint error while the code is still in your head" }
         ],
         "skills": [
-          { "id": "systematic-debugging", "scope": "global", "why": "Reproduce before diagnosing. The habit that separates 20 minutes from 3 hours" },
-          { "id": "grilling", "scope": "global", "why": "Forces the question you did not know to ask before you start building" },
-          { "id": "eli5-succinct", "scope": "global", "why": "Understanding the code you accepted matters more than shipping it" },
+          { "id": "systematic-debugging", "scope": "global", "external": "obra/superpowers", "why": "Reproduce before diagnosing. The habit that separates 20 minutes from 3 hours" },
+          { "id": "grilling", "scope": "global", "external": "RobMitt/grill-me-skill", "why": "Forces the question you did not know to ask before you start building" },
           { "id": "verify-security", "scope": "global", "why": "The failures you cannot yet see coming" }
         ],
         "subagents": [
@@ -69,7 +68,7 @@
       "description": "Reviewing more than writing; owns the architecture",
       "provides": {
         "skills": [
-          { "id": "grilling", "scope": "global", "why": "Stress-test the plan before it becomes someone's sprint" },
+          { "id": "grilling", "scope": "global", "external": "RobMitt/grill-me-skill", "why": "Stress-test the plan before it becomes someone's sprint" },
           { "id": "pr-review-governance", "scope": "global", "why": "Code against spec, not just code against taste" },
           { "id": "progress-audit", "scope": "global", "why": "Measures completion against wired code, not a tracker" }
         ],
@@ -94,7 +93,7 @@
         "skills": [
           { "id": "interface-cheatsheet", "scope": "global", "why": "~60 rules with numbers in them; checkable in review" },
           { "id": "react-admin-dashboard-patterns", "scope": "project", "why": "Only in a repo that actually uses TanStack + MUI" },
-          { "id": "browser-testing-with-devtools", "scope": "global", "why": "A UI bug you cannot reproduce from the code needs a real browser" }
+          { "id": "browser-testing-with-devtools", "scope": "global", "external": "addyosmani/agent-skills", "why": "A UI bug you cannot reproduce from the code needs a real browser" }
         ],
         "subagents": [
           { "id": "frontend", "why": "State, styling, motion and a11y in one isolated context" },
@@ -131,7 +130,7 @@
           { "id": "observability", "why": "Metrics before logs, and every query bounded" }
         ],
         "skills": [
-          { "id": "kubernetes-skill", "scope": "global", "why": "Prevents the plausible-but-wrong manifest" },
+          { "id": "kubernetes-skill", "scope": "global", "external": "LukasNiessen/kubernetes-skill", "why": "Prevents the plausible-but-wrong manifest" },
           { "id": "lgtm-observability", "scope": "global", "why": "PromQL and LogQL patterns, plus Alloy config" }
         ],
         "mcp": [

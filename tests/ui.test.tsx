@@ -27,6 +27,8 @@ function driver(view: ReturnType<typeof render>) {
     frame,
     until: (text: string) =>
       vi.waitFor(() => expect(frame()).toContain(text), { timeout: 8000 }),
+    untilGone: (text: string) =>
+      vi.waitFor(() => expect(frame()).not.toContain(text), { timeout: 8000 }),
     press: async (keys: string) => {
       await vi.waitFor(() => expect(frame()).not.toMatch(spinning), {
         timeout: 8000,
@@ -140,7 +142,7 @@ it("searches the catalogue and adds the selected result only after preview confi
   try {
     await ui.until("Browse");
     await ui.press("2");
-    await ui.until("press / to search");
+    await ui.untilGone("loading the bundled catalogue");
     await ui.press("/");
     await ui.until("search ▸");
     await ui.press("ponytail");

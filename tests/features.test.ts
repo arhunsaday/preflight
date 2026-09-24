@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { ResourceSchema } from "../src/schema.js";
 import { searchSources } from "../src/catalog.js";
-import { resolveLoadout } from "../src/loadouts.js";
+import { materializeLoadout, resolveLoadout } from "../src/loadouts.js";
 import { makeShare, shareCode, previewShare } from "../src/sharing.js";
 import { analyze, measureUsage } from "../src/analysis.js";
 import { mkdtemp, writeFile, realpath } from "node:fs/promises";
@@ -44,6 +44,30 @@ it("resolves layered loadouts and rejects cycles", () => {
   expect(() =>
     resolveLoadout({ loadouts: { a: { extends: "a" } } }, "a"),
   ).toThrow(/cycle/i);
+});
+it("names the upstream installer for a loadout skill the catalogue lacks", () => {
+  const data = {
+    loadouts: {
+      base: {
+        provides: {
+          skills: [
+            { id: "tests", scope: "project", why: "vendored" },
+            {
+              id: "elsewhere",
+              scope: "global",
+              why: "third party",
+              external: "owner/repo",
+            },
+          ],
+        },
+      },
+    },
+  };
+  const plan = materializeLoadout(data, "base", [resource]);
+  expect(plan.resources.map((r) => r.id)).toEqual(["skill:tests"]);
+  expect(plan.missing).toEqual([
+    "skills/elsewhere (npx skills add owner/repo)",
+  ]);
 });
 it("shares only validated resources and previews changes", () => {
   const payload = makeShare([resource], { ownerId: "test" });

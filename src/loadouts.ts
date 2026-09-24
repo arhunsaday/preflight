@@ -7,6 +7,7 @@ const Item = z
     scope: z.enum(["global", "project"]).optional(),
     needs: z.array(z.string()).optional(),
     blocking: z.boolean().optional(),
+    external: z.string().optional(),
   })
   .passthrough();
 const Data = z.object({
@@ -64,7 +65,11 @@ export function materializeLoadout(
         (r.name === item.id || r.id === `${types[item.kind]}:${item.id}`),
     );
     if (!resource) {
-      missing.push(`${item.kind}/${item.id}`);
+      missing.push(
+        item.external
+          ? `${item.kind}/${item.id} (npx skills add ${item.external})`
+          : `${item.kind}/${item.id}`,
+      );
       continue;
     }
     for (const need of item.needs ?? [])
