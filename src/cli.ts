@@ -20,7 +20,7 @@ async function main() {
       rootIndex < 0 ? context.root : resolve(args[rootIndex + 1]!),
       homeIndex < 0 ? context.home : resolve(args[homeIndex + 1]!),
     );
-    const { startUI } = await import("./ui.js");
+    const { startUI } = await import("./ui/index.js");
     await startUI(selected);
     return;
   }

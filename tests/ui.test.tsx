@@ -1,8 +1,43 @@
 import React from "react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { render } from "ink-testing-library";
-import { ResourceList } from "../src/ui.js";
+import { mkdir, mkdtemp, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { App, ResourceList } from "../src/ui/index.js";
+import { AdkService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
+
+async function workspace() {
+  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-ui-"));
+  const context = { root, home: join(root, "home") };
+  await mkdir(context.home);
+  return context;
+}
+
+const spinning = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
+
+// Ink subscribes input handlers in a React passive effect, scheduled on a
+// macrotask, and the interface ignores keys while a command is running, so
+// wait for both before sending a keystroke.
+function driver(view: ReturnType<typeof render>) {
+  const frame = () => view.lastFrame() ?? "";
+  const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
+  return {
+    frame,
+    until: (text: string) =>
+      vi.waitFor(() => expect(frame()).toContain(text), { timeout: 8000 }),
+    press: async (keys: string) => {
+      await vi.waitFor(() => expect(frame()).not.toMatch(spinning), {
+        timeout: 8000,
+      });
+      await tick();
+      view.stdin.write(keys);
+      await tick();
+    },
+  };
+}
+
 it("renders a bounded viewport for 500 resources", () => {
   const resources = Array.from({ length: 500 }, (_, i) =>
     ResourceSchema.parse({
@@ -23,58 +58,159 @@ it("renders a bounded viewport for 500 resources", () => {
   expect(frame.split("\n").length).toBeLessThanOrEqual(12);
   view.unmount();
 });
-it("wraps long inspection text into scrollable terminal lines", async () => {
-  const { outputLines } = await import("../src/ui.js");
-  const lines = outputLines("x".repeat(500), 40);
-  expect(lines).toHaveLength(13);
-  expect(lines.every((line) => line.length <= 40)).toBe(true);
-  expect(lines.join("")).toBe("x".repeat(500));
-});
+
+it("shows views, the selected resource detail and its harness support", async () => {
+  const context = await workspace();
+  const service = new AdkService(context);
+  await service.init();
+  await service.create({
+    id: "mcp:example",
+    type: "mcp",
+    name: "example",
+    description: "Example server",
+    source: "https://example.com/mcp",
+    scope: "project",
+    harnesses: ["claude-code", "cursor"],
+    config: { url: "https://example.com/mcp" },
+    tags: [],
+    enabled: true,
+  });
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("Browse");
+    await ui.until("example");
+    expect(ui.frame()).toContain("Catalogue");
+    expect(ui.frame()).toContain("Doctor");
+    expect(ui.frame()).toContain("Profiles");
+    // The detail pane names the resource and both wired harnesses.
+    await ui.until("mcp:example");
+    await ui.until("claude-code");
+    expect(ui.frame()).toContain("cursor");
+  } finally {
+    view.unmount();
+  }
+}, 20000);
+
+it("moves a resource between scopes only after the preview is confirmed", async () => {
+  const context = await workspace();
+  const service = new AdkService(context);
+  await service.init();
+  await service.create({
+    id: "skill:scoped",
+    type: "skill",
+    name: "scoped",
+    description: "",
+    source: "local:owned",
+    scope: "project",
+    harnesses: ["claude-code"],
+    content: "---\nname: scoped\n---\n",
+    config: {},
+    tags: [],
+    enabled: true,
+  });
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("scoped");
+    await ui.press("m");
+    await ui.until("PREVIEW");
+    expect(ui.frame()).toContain("adk move skill:scoped global");
+    expect((await service.list())[0]!.scope).toBe("project");
+    await ui.press("\u001b");
+    await ui.until("Cancelled");
+    expect((await service.list())[0]!.scope).toBe("project");
+    await ui.press("m");
+    await ui.until("PREVIEW");
+    await ui.press("\r");
+    await vi.waitFor(async () =>
+      expect((await service.list())[0]!.scope).toBe("global"),
+    );
+  } finally {
+    view.unmount();
+  }
+}, 20000);
+
 it("searches the catalogue and adds the selected result only after preview confirmation", async () => {
-  const { vi } = await import("vitest");
-  const { mkdtemp, realpath, mkdir } = await import("node:fs/promises");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
-  const { AdkService } = await import("../src/service.js");
-  const { App } = await import("../src/ui.js");
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-ui-"));
-  const context = { root, home: join(root, "home") };
-  await mkdir(context.home);
+  const context = await workspace();
   const service = new AdkService(context);
   await service.init();
   const view = render(<App context={context} />);
-  // Flush React effects after each keystroke: Ink subscribes input handlers
-  // in useEffect, after the visible frame has already been rendered.
-  const type = async (text: string) => {
-    await vi.waitFor(() => expect(view.lastFrame()).not.toContain("working…"));
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    view.stdin.write(text);
-    await new Promise<void>((resolve) => setImmediate(resolve));
-  };
+  const ui = driver(view);
   try {
-    await vi.waitFor(() =>
-      expect(view.lastFrame()).toContain("Select a resource"),
-    );
-    await type("\t");
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("adk ›"));
-    await type("search ponytail");
-    await vi.waitFor(() =>
-      expect(view.lastFrame()).toContain("adk › search ponytail"),
-    );
-    await type("\r");
-    await vi.waitFor(() =>
-      expect(view.lastFrame()).toContain("catalogue / all / 1 resources"),
-    );
-    await type("add");
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("adk › add"));
-    await type("\r");
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("Preview only"));
+    await ui.until("Browse");
+    await ui.press("2");
+    await ui.until("press / to search");
+    await ui.press("/");
+    await ui.until("search ▸");
+    await ui.press("ponytail");
+    await ui.until("ponytail");
+    await ui.press("\r");
+    await ui.until('1 of 1  ·  query "ponytail"');
+    await ui.press("a");
+    await ui.until("PREVIEW");
     expect(await service.list()).toHaveLength(0);
-    await type("confirm");
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("adk › confirm"));
-    await type("\r");
+    await ui.press("\r");
     await vi.waitFor(async () => expect(await service.list()).toHaveLength(1));
   } finally {
     view.unmount();
   }
-});
+}, 20000);
+
+it("opens the action palette and filters it by typing", async () => {
+  const context = await workspace();
+  await new AdkService(context).init();
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("Browse");
+    await ui.press("\u000b"); // Ctrl+K
+    await ui.until("Run any CLI command");
+    await ui.press("rollback");
+    await ui.until("Reverse the latest transaction");
+    expect(ui.frame()).not.toContain("Run any CLI command");
+    await ui.press("\u001b");
+    await ui.until("Browse");
+  } finally {
+    view.unmount();
+  }
+}, 20000);
+
+it("validates the resource form before previewing a write", async () => {
+  const context = await workspace();
+  const service = new AdkService(context);
+  await service.init();
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("Browse");
+    await ui.press("n");
+    await ui.until("NEW RESOURCE");
+    expect(ui.frame()).toContain("harnesses");
+    // The first field is a choice: Enter submits the still-empty form.
+    await ui.press("\r");
+    await ui.until("not valid yet");
+    expect(await service.list()).toHaveLength(0);
+    await ui.press("\u001b");
+    await ui.until("Browse");
+  } finally {
+    view.unmount();
+  }
+}, 20000);
+
+it("shows the keyboard reference with the command each action runs", async () => {
+  const context = await workspace();
+  await new AdkService(context).init();
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("Browse");
+    await ui.press("?");
+    await ui.until("KEYBOARD REFERENCE");
+    expect(ui.frame()).toContain("adk move <id> global --dry-run");
+    await ui.press("\u001b");
+    await ui.until("Browse");
+  } finally {
+    view.unmount();
+  }
+}, 20000);
