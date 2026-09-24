@@ -106,6 +106,11 @@ export async function execute(
     "Show content, permissions, configuration and provenance",
     async (id) => service().inspect(id),
   );
+  command(
+    "inspect-json <json>",
+    "Inspect and materialize a resource from inline JSON",
+    async (json) => inspectRemote(ResourceSchema.parse(JSON.parse(json))),
+  );
   command("create <file>", "Create a resource from a JSON file", async (file) =>
     service().create(
       await inspectRemote(ResourceSchema.parse(await input(file))),

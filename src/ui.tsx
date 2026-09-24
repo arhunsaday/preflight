@@ -65,6 +65,9 @@ export function App({ context }: { context: Context }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const [usage, setUsage] = useState("Usage: measuring local transcripts…");
+  const [collection, setCollection] = useState<"installed" | "catalogue">(
+    "installed",
+  );
   const [resources, setResources] = useState<Resource[]>([]);
   const [selected, setSelected] = useState(0);
   const [query, setQuery] = useState("");
@@ -81,6 +84,7 @@ export function App({ context }: { context: Context }) {
   async function refresh() {
     try {
       setResources(await new AdkService(context).list());
+      setCollection("installed");
     } catch {
       setResources([]);
     }
@@ -122,7 +126,18 @@ export function App({ context }: { context: Context }) {
     try {
       const result = await execute(args, context);
       setOutput(JSON.stringify(result, null, 2));
-      await refresh();
+      if (args[0] === "search") {
+        const found = result as { resources: Resource[] };
+        setResources(found.resources);
+        setCollection("catalogue");
+        setSelected(0);
+        setQuery("");
+      } else if (args[0] === "inspect-json") {
+        const resource = ResourceSchema.parse(result);
+        setResources((current) =>
+          current.map((r) => (r.id === resource.id ? resource : r)),
+        );
+      } else if (!args.includes("--dry-run")) await refresh();
     } catch (e) {
       setOutput(String(e));
     } finally {
@@ -191,7 +206,25 @@ export function App({ context }: { context: Context }) {
       beginForm();
       return;
     }
-    if (value === "edit" && r) {
+    if (value === "add" && r && collection === "catalogue") {
+      setBusy(true);
+      try {
+        const resource = await execute(
+          ["inspect-json", JSON.stringify(r)],
+          context,
+        );
+        const args = ["create-json", JSON.stringify(resource)];
+        setPending(args);
+        setCommand("");
+        await run([...args, "--dry-run"]);
+      } catch (error) {
+        setOutput(String(error));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    if (value === "edit" && r && collection === "installed") {
       beginForm(r);
       return;
     }
@@ -266,7 +299,11 @@ export function App({ context }: { context: Context }) {
       if (key.upArrow) setSelected(Math.max(0, index - 1));
       if (key.downArrow) setSelected(Math.min(filtered.length - 1, index + 1));
       if (key.return && filtered[index])
-        void run(["inspect", filtered[index]!.id]);
+        void run(
+          collection === "catalogue"
+            ? ["inspect-json", JSON.stringify(filtered[index])]
+            : ["inspect", filtered[index]!.id],
+        );
       if (key.ctrl && input === "s")
         setScope(
           scope === "all" ? "global" : scope === "global" ? "project" : "all",
@@ -286,7 +323,8 @@ export function App({ context }: { context: Context }) {
   return (
     <Box flexDirection="column" paddingX={1}>
       <Text bold color="green">
-        ADK / {scope} / {filtered.length} resources {busy ? "· working…" : ""}
+        ADK / {collection} / {scope} / {filtered.length} resources{" "}
+        {busy ? "· working…" : ""}
       </Text>
       <Text dimColor>{usage}</Text>
       <Text dimColor>
