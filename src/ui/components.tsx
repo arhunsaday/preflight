@@ -15,11 +15,11 @@ import {
   typeLabel,
 } from "./theme.js";
 import {
-  clean,
   count,
   fit,
   outputLines,
   truncate,
+  truncateStart,
   wrapWords,
 } from "./text.js";
 import type { PreviewSummary } from "./preview.js";
@@ -88,7 +88,9 @@ export function Viewport({
   return (
     <Box flexDirection="column">
       {visible.map((line, index) => (
-        <Box key={start + index}>{line}</Box>
+        <Box key={start + index} height={1} flexShrink={0} overflow="hidden">
+          {line}
+        </Box>
       ))}
       {!overflow &&
         Array.from({ length: Math.max(0, body - visible.length) }, (_, i) => (
@@ -606,13 +608,18 @@ export function resourceDetail({
 }
 
 export function findingRow(finding: Finding, width: number, active: boolean) {
-  const text =
-    `${severity[finding.severity].glyph} ${fit(finding.code, 22)} ` +
-    `${clean(finding.message)}`;
+  const subject = Math.max(8, width - 23);
+  // The identifier says which resource; the message repeats across findings.
+  const detail = finding.resourceId
+    ? truncateStart(finding.resourceId, subject)
+    : truncate(finding.message, subject);
   if (active)
     return (
       <Text inverse bold wrap="truncate">
-        {fit(text, width)}
+        {fit(
+          `${severity[finding.severity].glyph} ${fit(finding.code, 20)} ${detail}`,
+          width,
+        )}
       </Text>
     );
   return (
@@ -620,8 +627,8 @@ export function findingRow(finding: Finding, width: number, active: boolean) {
       <Text color={severity[finding.severity].color}>
         {severity[finding.severity].glyph}{" "}
       </Text>
-      <Text dimColor>{fit(finding.code, 22)}</Text>
-      <Text> {truncate(finding.message, Math.max(8, width - 25))}</Text>
+      <Text dimColor>{fit(finding.code, 20)}</Text>
+      <Text> {detail}</Text>
     </Text>
   );
 }

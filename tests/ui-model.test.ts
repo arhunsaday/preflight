@@ -19,6 +19,7 @@ import {
   toggle,
   tokenize,
   truncate,
+  truncateStart,
   validate,
   wrapWords,
   writes,
@@ -246,4 +247,11 @@ it("summarizes a dry-run transaction into files, changes and warnings", () => {
   expect(summary.changes.map((change) => change.id)).toEqual(["skill:a"]);
   expect(summary.warnings).toHaveLength(1);
   expect(summarize({ note: "no transaction" })).toBeNull();
+});
+
+it("keeps the tail of a machine-generated identifier", () => {
+  expect(truncateStart("mcp:claude-code:global:grafana-cace491b", 16)).toBe(
+    "…rafana-cace491b",
+  );
+  expect(truncateStart("short", 16)).toBe("short");
 });

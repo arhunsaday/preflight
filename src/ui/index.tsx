@@ -14,6 +14,7 @@ export {
   outputLines,
   tokenize,
   truncate,
+  truncateStart,
   wrapWords,
 } from "./text.js";
 export { lineDelta, summarize, shortPath } from "./preview.js";

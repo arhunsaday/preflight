@@ -12,6 +12,14 @@ export function truncate(text: string, width: number): string {
   return width === 1 ? "…" : value.slice(0, width - 1).join("") + "…";
 }
 
+/** Keeps the tail, which is where machine-generated identifiers differ. */
+export function truncateStart(text: string, width: number): string {
+  if (width <= 0) return "";
+  const value = characters(clean(text));
+  if (value.length <= width) return value.join("");
+  return width === 1 ? "…" : "…" + value.slice(value.length - width + 1).join("");
+}
+
 export function fit(text: string, width: number): string {
   const value = truncate(text, width);
   return value + " ".repeat(Math.max(0, width - characters(value).length));

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp, useInput, type Key } from "ink";
 import TextInput from "ink-text-input";
 import { join } from "node:path";
 import type { ReactNode } from "react";
@@ -232,7 +232,10 @@ export function App({ context }: { context: Context }) {
   useEffect(() => {
     if (view !== "catalogue" || catalogueLoaded.current || busy) return;
     catalogueLoaded.current = true;
-    void runSearch("");
+    void runSearch("").then(() => {
+      // A failed search must not leave the view reading as still loading.
+      if (mounted.current) setCatalogue((current) => current ?? []);
+    });
   }, [view, busy]);
 
   const visible = useMemo(() => {
@@ -562,7 +565,7 @@ export function App({ context }: { context: Context }) {
     [paletteQuery, view, selectedResource?.id, selectedProfile, config],
   );
 
-  useInput((input, key) => {
+  function handleKey(input: string, key: Key) {
     if (key.ctrl && input === "c") {
       exit();
       return;
@@ -613,12 +616,6 @@ export function App({ context }: { context: Context }) {
       }
       if (key.rightArrow && field.kind !== "text") {
         setForm({ ...form, state: cycle(form.state, field, 1) });
-        return;
-      }
-      if (input === " " && field.kind === "multi") {
-        const option = field.options?.[0];
-        if (option)
-          setForm({ ...form, state: toggle(form.state, field, option) });
         return;
       }
       if (input >= "1" && input <= "9" && field.kind === "multi") {
@@ -741,6 +738,15 @@ export function App({ context }: { context: Context }) {
     }
     const action = byKey(input, actionState);
     if (action) void perform(action);
+  }
+
+  // A keystroke must never take the interface down with it.
+  useInput((input, key) => {
+    try {
+      handleKey(input, key);
+    } catch (error) {
+      setToast({ text: errorText(error), tone: "danger" });
+    }
   });
 
   const width = size.columns - 2; // the frame keeps one column of padding
@@ -771,10 +777,14 @@ export function App({ context }: { context: Context }) {
         <Rule width={detailWidth} />,
       ];
       if (profile.description)
-        lines.push(<Text>{truncate(profile.description, detailWidth)}</Text>);
+        lines.push(
+          <Text wrap="truncate">
+            {truncate(profile.description, detailWidth)}
+          </Text>,
+        );
       lines.push(
-        <Text dimColor>
-          {profile.resources.length} resources
+        <Text dimColor wrap="truncate">
+          {count(profile.resources.length, "resource")}
           {name === config.activeProfile ? "  (active)" : ""}
         </Text>,
       );
@@ -849,11 +859,15 @@ export function App({ context }: { context: Context }) {
         );
       } else if (finding.resourceId) {
         lines.push(<Text> </Text>);
-        lines.push(
-          <Text dimColor>
-            {finding.resourceId} is not in the active profile
-          </Text>,
-        );
+        for (const line of wrapWords(
+          `${finding.resourceId} is not in the active profile`,
+          detailWidth,
+        ))
+          lines.push(
+            <Text dimColor wrap="truncate">
+              {line}
+            </Text>,
+          );
       }
       return lines;
     }
@@ -873,7 +887,7 @@ export function App({ context }: { context: Context }) {
         <Text dimColor>{next}</Text>,
       ];
     }
-    return resourceDetail({
+    const lines = resourceDetail({
       resource: selectedResource,
       findings: findings ?? [],
       capabilities,
@@ -881,6 +895,19 @@ export function App({ context }: { context: Context }) {
       applied: applied.get(selectedResource.id),
       width: detailWidth,
     });
+    if (
+      view === "catalogue" &&
+      resources.some((resource) => resource.id === selectedResource.id)
+    )
+      lines.splice(
+        2,
+        0,
+        <Text>
+          <Text dimColor>{fit("profile", 10)}</Text>
+          <Text color={color.success}>already added</Text>
+        </Text>,
+      );
+    return lines;
   }
 
   function listPane() {
