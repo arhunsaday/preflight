@@ -202,7 +202,7 @@ export function TabBar({
   counts: Partial<Record<ViewId, number | null>>;
   width: number;
 }) {
-  const compact = width < 68;
+  const compact = width < 84;
   return (
     <Box width={width}>
       <Text wrap="truncate">
