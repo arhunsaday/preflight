@@ -71,6 +71,7 @@ interface Pending {
   argv: string[];
   title: string;
   result: unknown;
+  show?: boolean;
 }
 
 export type AppliedState = "applied" | "pending";
@@ -334,7 +335,7 @@ export function App({ context }: { context: Context }) {
 
   async function run(
     argv: string[],
-    options: { title: string; confirm?: boolean },
+    options: { title: string; confirm?: boolean; show?: boolean },
   ) {
     setBusy(options.title);
     setToast(null);
@@ -344,11 +345,20 @@ export function App({ context }: { context: Context }) {
       if (!mounted.current) return;
       setResult({ title: options.title, value });
       if (options.confirm) {
-        setPending({ argv, title: options.title, result: value });
+        setPending({
+          argv,
+          title: options.title,
+          result: value,
+          ...(options.show ? { show: true } : {}),
+        });
         setOverlay("preview");
         setOverlayOffset(0);
       } else {
         absorb(argv, value);
+        if (options.show) {
+          setOverlay("output");
+          setOverlayOffset(0);
+        }
         setToast({
           text: options.title,
           tone: "success",
@@ -521,6 +531,7 @@ export function App({ context }: { context: Context }) {
     await run(action.build(actionState), {
       title: action.label,
       ...(action.confirm ? { confirm: true } : {}),
+      ...(action.show ? { show: true } : {}),
     });
   }
 
@@ -642,7 +653,10 @@ export function App({ context }: { context: Context }) {
         const apply = pending;
         setPending(null);
         setOverlay("none");
-        void run(apply.argv, { title: apply.title });
+        void run(apply.argv, {
+          title: apply.title,
+          ...(apply.show ? { show: true } : {}),
+        });
       }
       return;
     }

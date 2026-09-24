@@ -12,6 +12,7 @@ import {
   formFields,
   fromResource,
   fuzzyScore,
+  jsonSegments,
   lineDelta,
   observed,
   outputLines,
@@ -254,4 +255,19 @@ it("keeps the tail of a machine-generated identifier", () => {
     "…rafana-cace491b",
   );
   expect(truncateStart("short", 16)).toBe("short");
+});
+
+it("colours a pretty-printed JSON line by token", () => {
+  const cells = jsonSegments('  "count": 12,');
+  expect(cells.map((cell) => cell.text)).toEqual([
+    "  ",
+    '"count":',
+    " ",
+    "12",
+    ",",
+  ]);
+  expect(cells[1]!.color).not.toBe(cells[3]!.color);
+  expect(jsonSegments("plain text").map((cell) => cell.text)).toEqual([
+    "plain text",
+  ]);
 });

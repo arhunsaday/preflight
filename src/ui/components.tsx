@@ -752,11 +752,7 @@ export function PreviewPane({
       );
   } else {
     for (const line of outputLines(raw, width))
-      lines.push(
-        <Text dimColor wrap="truncate">
-          {line}
-        </Text>,
-      );
+      lines.push(<JsonLine line={line} />);
   }
   return <Viewport lines={lines} height={height} offset={offset} />;
 }
@@ -985,6 +981,47 @@ export function HelpPane({
   return <Viewport lines={lines} height={height} offset={offset} />;
 }
 
+const jsonToken =
+  /("(?:[^"\\]|\\.)*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g;
+
+/** Colours a pretty-printed JSON line; unmatched text renders plainly. */
+export function jsonSegments(line: string): Cell[] {
+  const cells: Cell[] = [];
+  let last = 0;
+  for (const match of line.matchAll(jsonToken)) {
+    const at = match.index;
+    if (at > last) cells.push({ text: line.slice(last, at), dim: true });
+    const [whole, text, colon, numeric, literal] = match;
+    if (text !== undefined)
+      cells.push(
+        colon
+          ? { text: text + colon, color: color.accent }
+          : { text, color: color.success },
+      );
+    else if (numeric !== undefined) cells.push({ text: numeric, color: color.warning });
+    else if (literal !== undefined) cells.push({ text: literal, color: "magenta" });
+    last = at + whole.length;
+  }
+  if (last < line.length) cells.push({ text: line.slice(last), dim: true });
+  return cells;
+}
+
+function JsonLine({ line }: { line: string }) {
+  return (
+    <Text wrap="truncate">
+      {jsonSegments(line).map((cell, position) => (
+        <Text
+          key={position}
+          {...(cell.color ? { color: cell.color } : {})}
+          {...(cell.dim ? { dimColor: true } : {})}
+        >
+          {cell.text}
+        </Text>
+      ))}
+    </Text>
+  );
+}
+
 export function OutputPane({
   text,
   width,
@@ -1003,9 +1040,7 @@ export function OutputPane({
       {truncate(title, width)}
     </Text>,
     <Rule width={width} />,
-    ...outputLines(text, width).map((line) => (
-      <Text wrap="truncate">{line}</Text>
-    )),
+    ...outputLines(text, width).map((line) => <JsonLine line={line} />),
   ];
   return <Viewport lines={lines} height={height} offset={offset} />;
 }

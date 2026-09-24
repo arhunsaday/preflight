@@ -4,7 +4,12 @@ import type { Context } from "../adapters.js";
 import { App } from "./app.js";
 
 export { App, writes } from "./app.js";
-export { ResourceList, configLines, observed } from "./components.js";
+export {
+  ResourceList,
+  configLines,
+  jsonSegments,
+  observed,
+} from "./components.js";
 export {
   clean,
   count,

@@ -54,6 +54,8 @@ export interface Action {
   confirm?: boolean;
   /** Warn that the effect is outside ADK's local rollback. */
   external?: boolean;
+  /** Open the result pane: the output is the point of running it. */
+  show?: boolean;
   intent?: Intent;
   build?: (state: ActionState) => string[];
   enabled?: (state: ActionState) => boolean;
@@ -72,6 +74,7 @@ export const actions: Action[] = [
     id: "inspect",
     label: "Inspect resource",
     group: "Resource",
+    show: true,
     cli: "inspect",
     build: (s) => ["inspect", s.resource!.id],
     enabled: onBrowse,
@@ -124,6 +127,7 @@ export const actions: Action[] = [
     group: "Resource",
     key: "v",
     short: "verify",
+    show: true,
     cli: "verify",
     build: (s) => ["verify", s.resource!.id],
     enabled: onBrowse,
@@ -132,6 +136,7 @@ export const actions: Action[] = [
     id: "verify-connect",
     label: "Verify by connecting to the MCP server",
     group: "Resource",
+    show: true,
     cli: "verify",
     external: true,
     build: (s) => ["verify", s.resource!.id, "--connect"],
@@ -143,6 +148,7 @@ export const actions: Action[] = [
     group: "Resource",
     key: "i",
     short: "install",
+    show: true,
     cli: "install",
     build: (s) => ["install", s.resource!.id],
     enabled: onBrowse,
@@ -151,6 +157,7 @@ export const actions: Action[] = [
     id: "install-execute",
     label: "Run the delegated installer",
     group: "Resource",
+    show: true,
     cli: "install",
     confirm: true,
     external: true,
@@ -161,6 +168,7 @@ export const actions: Action[] = [
     id: "share-resource",
     label: "Build a share payload for this resource",
     group: "Resource",
+    show: true,
     cli: "share",
     build: (s) => ["share", "--id", s.resource!.id],
     enabled: onBrowse,
@@ -251,6 +259,7 @@ export const actions: Action[] = [
     id: "share-config",
     label: "Build a share payload for this profile",
     group: "Configuration",
+    show: true,
     cli: "share",
     build: () => ["share"],
   },
@@ -258,6 +267,7 @@ export const actions: Action[] = [
     id: "git-status",
     label: "Git status",
     group: "Configuration",
+    show: true,
     cli: "git",
     build: () => ["git", "status"],
   },
@@ -265,6 +275,7 @@ export const actions: Action[] = [
     id: "audit",
     label: "Show the local change history",
     group: "Configuration",
+    show: true,
     cli: "audit",
     build: () => ["audit"],
   },
@@ -279,6 +290,7 @@ export const actions: Action[] = [
     id: "usage",
     label: "Measured skill and tool invocations",
     group: "Analysis",
+    show: true,
     cli: "usage",
     build: () => ["usage"],
   },
@@ -286,6 +298,7 @@ export const actions: Action[] = [
     id: "prune",
     label: "Propose unused skills",
     group: "Analysis",
+    show: true,
     cli: "prune",
     build: () => ["prune"],
   },
@@ -293,6 +306,7 @@ export const actions: Action[] = [
     id: "loadouts",
     label: "List loadouts",
     group: "Analysis",
+    show: true,
     cli: "loadouts",
     build: () => ["loadouts", "list"],
   },
@@ -321,6 +335,7 @@ export const actions: Action[] = [
     group: "Profiles",
     key: "d",
     short: "diff",
+    show: true,
     cli: "profiles diff",
     build: (s) => ["profiles", "diff", s.activeProfile ?? "default", s.profile!],
     enabled: (s) => onProfiles(s) && s.profile !== s.activeProfile,
