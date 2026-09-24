@@ -70,7 +70,15 @@ class FileAdapter implements HarnessAdapter {
   ) {
     this.capabilities =
       id === "claude-code"
-        ? ["skill", "mcp", "subagent", "hook", "command", "statusline"]
+        ? [
+            "skill",
+            "mcp",
+            "subagent",
+            "hook",
+            "command",
+            "statusline",
+            "plugin",
+          ]
         : ["skill", "mcp", "command"];
   }
   paths() {
@@ -129,6 +137,16 @@ class FileAdapter implements HarnessAdapter {
           section: "hooks",
           key: String(resource.config.event ?? "PreToolUse"),
         };
+      case "plugin":
+        if (!/^[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*$/i.test(resource.name))
+          throw new Error(
+            "Invalid resource: plugin name must be name@marketplace",
+          );
+        return {
+          path: join(base, "settings.json"),
+          section: "enabledPlugins",
+          key: resource.name,
+        };
       case "statusline":
         return { path: join(base, "settings.json"), key: "statusLine" };
       default:
@@ -139,7 +157,7 @@ class FileAdapter implements HarnessAdapter {
     const files = new Map<string, FileChange>();
     const relevant = (r: Resource) =>
       r.harnesses.includes(this.id) &&
-      r.enabled &&
+      (r.enabled || r.type === "plugin") &&
       this.capabilities.includes(r.type);
     const wanted = desired.filter(relevant),
       old = previous.filter(relevant);
@@ -228,7 +246,8 @@ class FileAdapter implements HarnessAdapter {
       else {
         if (Object.hasOwn(block, target.key))
           throw new Error(`Refusing unmanaged entry: ${target.key}`);
-        block[target.key] = resource.config;
+        block[target.key] =
+          resource.type === "plugin" ? resource.enabled : resource.config;
       }
       if (target.section) doc[target.section] = block;
       file.after = jsonText(doc);
@@ -343,6 +362,23 @@ class FileAdapter implements HarnessAdapter {
                   config: { event, entry },
                 }),
               ),
+            );
+          }
+          for (const [name, enabled] of Object.entries(
+            object(doc.enabledPlugins ?? {}),
+          )) {
+            if (typeof enabled !== "boolean")
+              throw new Error("Malformed enabledPlugins");
+            resources.push(
+              ResourceSchema.parse({
+                id: `plugin:${this.id}:${scope}:${slug(name)}`,
+                type: "plugin",
+                name,
+                enabled,
+                scope,
+                source: `file://${path}`,
+                harnesses: [this.id],
+              }),
             );
           }
           if (doc.statusLine)

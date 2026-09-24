@@ -30,6 +30,27 @@ export function installationPlan(resource: Resource): Command {
       ],
     };
   }
+  if (resource.type === "plugin") {
+    if (
+      resource.harnesses.length !== 1 ||
+      resource.harnesses[0] !== "claude-code"
+    )
+      throw new Error(
+        "Plugin installation currently supports Claude Code only",
+      );
+    if (!/^[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*$/i.test(resource.name))
+      throw new Error("Plugin name must be name@marketplace");
+    return {
+      command: "claude",
+      args: [
+        "plugin",
+        "install",
+        resource.name,
+        "--scope",
+        resource.scope === "global" ? "user" : "project",
+      ],
+    };
+  }
   if (resource.type === "mcp")
     return { command: "mcpm", args: ["add", resource.name] };
   if (resource.type === "tool") {

@@ -16,7 +16,7 @@ import {
   rollback,
   type FileChange,
 } from "./transaction.js";
-import { analyze, type Finding } from "./analysis.js";
+import { analyze, analyzeSettings, type Finding } from "./analysis.js";
 const Lock = AdkLockSchema;
 export type Policy = (
   desired: Resource[],
@@ -68,6 +68,21 @@ export class AdkService {
           })),
     );
     findings.push(...analyze(states.flatMap((s) => s.resources)));
+    for (const base of [this.context.home, this.context.root])
+      for (const name of ["settings.json", "settings.local.json"]) {
+        const path = join(base, ".claude", name);
+        try {
+          const text = await readText(path);
+          if (text !== null)
+            findings.push(...analyzeSettings(JSON.parse(text), path));
+        } catch (error) {
+          findings.push({
+            code: "settings-invalid",
+            severity: "error",
+            message: `${path}: ${String(error)}`,
+          });
+        }
+      }
     const raw = await readText(this.store.lockPath);
     if (raw) {
       const lock = Lock.parse(JSON.parse(raw));

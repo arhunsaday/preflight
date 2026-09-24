@@ -50,6 +50,12 @@ export function analyze(resources: Resource[]): Finding[] {
         `Approximately ${Math.ceil((r.content ?? r.description).length / 4)} tokens if loaded (character estimate, not tokenizer output).`,
       );
     }
+    if (r.type === "plugin" && r.enabled)
+      add(
+        "plugin-unverified",
+        "info",
+        "Plugin is enabled in settings; use the native plugin installer to install its package.",
+      );
     if (r.type === "mcp") {
       if (!r.config.command && !r.config.url)
         add("mcp-unwired", "error", "MCP server has neither command nor URL.");
@@ -149,4 +155,47 @@ export async function measureUsage(
       : 0,
     prune: sessions ? unused.map((r) => r.id) : [],
   };
+}
+
+export function analyzeSettings(input: unknown, path: string): Finding[] {
+  const findings: Finding[] = [];
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw new Error("Expected settings object");
+  const settings = input as Record<string, unknown>;
+  const permissions = (settings.permissions ?? {}) as Record<string, unknown>;
+  const allow = Array.isArray(permissions.allow)
+    ? permissions.allow.filter(
+        (rule): rule is string => typeof rule === "string",
+      )
+    : [];
+  const deny = Array.isArray(permissions.deny)
+    ? permissions.deny.filter(
+        (rule): rule is string => typeof rule === "string",
+      )
+    : [];
+  if (
+    deny.some((rule) => /^Read(?:\(|$)/.test(rule)) &&
+    allow.some((rule) => /^Bash(?:\(|$)/.test(rule))
+  )
+    findings.push({
+      code: "shell-read-bypass",
+      severity: "warning",
+      message: `${path}: Read denials do not necessarily prevent permitted shell commands from reading the same files.`,
+    });
+  if (
+    allow.some((rule) => ["*", "Bash", "Bash(*)"].includes(rule)) ||
+    permissions.defaultMode === "bypassPermissions"
+  )
+    findings.push({
+      code: "settings-broad-permissions",
+      severity: "warning",
+      message: `${path}: broad execution permissions are configured.`,
+    });
+  for (const location of secretPaths(settings))
+    findings.push({
+      code: "settings-secret",
+      severity: "error",
+      message: `${path}: possible credential at ${location}; use an environment reference.`,
+    });
+  return findings;
 }

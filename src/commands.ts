@@ -248,7 +248,13 @@ export async function execute(
           plan,
           note: "Use --execute to run this external package manager. Package-manager side effects are outside ADK rollback.",
         };
-      const output = await runCommand(plan, ctx().root);
+      const output = await runCommand(plan, ctx().root, 120000, {
+        ...process.env,
+        HOME: ctx().home,
+        ...(resource.type === "plugin"
+          ? { CLAUDE_CONFIG_DIR: join(ctx().home, ".claude") }
+          : {}),
+      });
       if (output.code)
         throw new Error(`Installer exited ${output.code}: ${output.stderr}`);
       return { plan, output, detected: await service().detect() };

@@ -64,7 +64,8 @@ CRUD applies to all nine resource types. Native adapter wiring is intentionally 
 | Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only |
 | Commands | `.claude/commands` | `.cursor/commands` |
 | Statusline | `.claude/settings.json` | catalogued only |
-| Prompts, plugins, plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers |
+| Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only |
+| Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers |
 
 Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; ADK does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue. Existing unmanaged resources are detected but not silently adopted; the first release manages its own created paths.
 
@@ -99,11 +100,11 @@ adk profiles switch minimal
 adk sync --dry-run
 ```
 
-For tools, use `config: {"manager":"brew","package":"trivy"}` or an npm package. Skills with a repository source can delegate to `npx skills`; MCP entries can delegate to `mcpm`. These external installers must be available or obtainable on the user's machine. ADK's direct MCP configuration writes preserve neighboring entries and do not install the server binary.
+For tools, use `config: {"manager":"brew","package":"trivy"}` or an npm package. Skills with a repository source can delegate to `npx skills`; MCP entries can delegate to `mcpm`. Claude plugins use a qualified `name@marketplace` resource name and delegate package installation to `claude plugin install` with user/project scope. Their enable/disable settings and scope moves are reversible ADK transactions; package downloads remain delegated. These external installers must be available or obtainable on the user's machine. ADK's direct MCP configuration writes preserve neighboring entries and do not install the server binary.
 
 ## Doctor and observed usage
 
-`doctor` reports broken/missing skill files, parse failures, managed-file drift, approximate context cost, identical trigger descriptions, broad permissions, possible credentials and missing wiring. Context cost is a character-based estimate, not a tokenizer measurement. Trigger conflicts are exact-description matches, not semantic analysis. These checks are useful evidence, not a comprehensive security audit.
+`doctor` reports broken/missing skill files, parse failures, managed-file drift, approximate context cost, identical trigger descriptions, broad permissions, possible credentials and missing wiring. It also reads Claude user/project `settings.json` and `settings.local.json`, reporting credential locations and possible shell access around Read denials without printing credential values. Context cost is a character-based estimate, not a tokenizer measurement. Trigger conflicts are exact-description matches, not semantic analysis. These checks are useful evidence, not a comprehensive security audit.
 
 ```sh
 adk usage --transcripts /path/to/claude/jsonl/transcripts
@@ -177,6 +178,6 @@ The separate checkout/home prevents changes leaking between tasks but is **not a
 
 `npm run check` runs ESLint, strict application type checking, Vitest integration/unit/TUI tests, and the packaged build. The SDK has an upstream optional-property declaration mismatch; vendor declarations are skipped, with a narrow documented transport cast at the integration boundary. Application code remains strict. Existing Python and shell checks continue in CI.
 
-The delivered local product includes the CLI/TUI, two adapters, transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Native plugin management, direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
+The delivered local product includes the CLI/TUI, two adapters, transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
 
 Adapter/source references: [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
