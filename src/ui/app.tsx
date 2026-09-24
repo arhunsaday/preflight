@@ -50,7 +50,7 @@ import {
   truncate,
   wrapWords,
 } from "./text.js";
-import { summarize } from "./preview.js";
+import { shortPath, summarize } from "./preview.js";
 import {
   emptyForm,
   formFields,
@@ -76,6 +76,8 @@ interface Pending {
 
 export type AppliedState = "applied" | "pending";
 
+type Unmanaged = Awaited<ReturnType<AdkService["unmanaged"]>>[number];
+
 interface Toast {
   text: string;
   tone: "success" | "danger" | "muted";
@@ -83,19 +85,21 @@ interface Toast {
 }
 
 const writeCommands = new Set([
-  "init",
+  "adopt",
+  "apply",
+  "catalog-add",
   "create",
   "create-json",
-  "update",
-  "update-json",
   "delete",
   "fork",
+  "init",
   "move",
-  "sync",
-  "apply",
-  "rollback",
   "recover",
   "retrofit",
+  "rollback",
+  "sync",
+  "update",
+  "update-json",
 ]);
 
 /** update-json keeps the resource id, so editing cannot change it. */
@@ -109,6 +113,7 @@ export function writes(argv: string[]): boolean {
   if (head === "profiles") return second === "create" || second === "switch";
   if (head === "loadouts") return second === "install";
   if (head === "bench") return second === "run" || second === "scaffold";
+  if (head === "git") return second === "pull" || second === "push";
   if (head === "install") return argv.includes("--execute");
   if (head === "share") return argv.includes("--out");
   return writeCommands.has(head);
@@ -151,9 +156,11 @@ export function App({ context }: { context: Context }) {
   const [cursor, setCursor] = useState<Record<ViewId, number>>({
     browse: 0,
     catalogue: 0,
+    detected: 0,
     doctor: 0,
     profiles: 0,
   });
+  const [detected, setDetected] = useState<Unmanaged[] | null>(null);
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
   const [typing, setTyping] = useState(false);
@@ -213,7 +220,9 @@ export function App({ context }: { context: Context }) {
         join(context.home, ".claude", "projects"),
         states.flatMap((state) => state.resources),
       );
-      if (mounted.current) setUsage(measured);
+      if (!mounted.current) return;
+      setUsage(measured);
+      setDetected(await service.unmanaged());
     } catch (error) {
       if (mounted.current)
         setToast({ text: errorText(error), tone: "danger" });
@@ -259,6 +268,18 @@ export function App({ context }: { context: Context }) {
     [catalogue, typeFilter],
   );
 
+  const detectedVisible = useMemo(
+    () =>
+      (detected ?? []).filter(
+        (entry) =>
+          (typeFilter === "all" || entry.resource.type === typeFilter) &&
+          `${entry.resource.name} ${entry.resource.id} ${entry.harness}`
+            .toLowerCase()
+            .includes(filter.toLowerCase()),
+      ),
+    [detected, typeFilter, filter],
+  );
+
   const sortedFindings = useMemo(
     () =>
       [...(findings ?? [])]
@@ -276,18 +297,22 @@ export function App({ context }: { context: Context }) {
       ? visible.length
       : view === "catalogue"
         ? catalogueVisible.length
-        : view === "doctor"
-          ? sortedFindings.length
-          : profiles.length;
+        : view === "detected"
+          ? detectedVisible.length
+          : view === "doctor"
+            ? sortedFindings.length
+            : profiles.length;
   const index = Math.min(cursor[view], Math.max(0, listLength - 1));
   const selectedResource =
     view === "browse"
       ? visible[index]
       : view === "catalogue"
         ? catalogueVisible[index]
-        : view === "doctor"
-          ? resources.find((r) => r.id === sortedFindings[index]?.resourceId)
-          : undefined;
+        : view === "detected"
+          ? detectedVisible[index]?.resource
+          : view === "doctor"
+            ? resources.find((r) => r.id === sortedFindings[index]?.resourceId)
+            : undefined;
   const selectedProfile = view === "profiles" ? profiles[index] : undefined;
 
   const actionState: ActionState = {
@@ -739,6 +764,11 @@ export function App({ context }: { context: Context }) {
         void run(["inspect-json", JSON.stringify(selectedResource)], {
           title: `Inspect ${selectedResource.id}`,
         });
+      else if (view === "detected" && selectedResource)
+        void run(["adopt", selectedResource.id], {
+          title: `Adopt ${selectedResource.id}`,
+          confirm: true,
+        });
       else if (view === "doctor" && selectedResource) {
         const target = visible.findIndex((r) => r.id === selectedResource.id);
         setView("browse");
@@ -891,6 +921,13 @@ export function App({ context }: { context: Context }) {
           ? ["No configuration in this project", "i creates adk.config.json"]
           : view === "catalogue"
             ? ["No catalogue result", "/ searches, O adds remote sources"]
+            : view === "detected"
+              ? detected === null
+                ? ["Reading the harnesses…", ""]
+                : [
+                    "Nothing installed outside this profile",
+                    "every detected resource is managed",
+                  ]
             : filter || scopeFilter !== "all" || typeFilter !== "all"
               ? ["No resource matches the filter", "Esc clears it"]
               : resources.length
@@ -909,6 +946,21 @@ export function App({ context }: { context: Context }) {
       applied: applied.get(selectedResource.id),
       width: detailWidth,
     });
+    if (view === "detected") {
+      const entry = detectedVisible[index];
+      if (entry)
+        lines.splice(
+          2,
+          0,
+          <Text wrap="truncate">
+            <Text dimColor>{fit("found in", 10)}</Text>
+            <Text>
+              {entry.harness} {glyph.dot}{" "}
+              {shortPath(entry.path, context.home, context.root)}
+            </Text>
+          </Text>,
+        );
+    }
     if (
       view === "catalogue" &&
       resources.some((resource) => resource.id === selectedResource.id)
@@ -955,7 +1007,12 @@ export function App({ context }: { context: Context }) {
           {findings === null ? "Running doctor…" : "No findings"}
         </Text>
       );
-    const items = view === "browse" ? visible : catalogueVisible;
+    const items =
+      view === "browse"
+        ? visible
+        : view === "detected"
+          ? detectedVisible.map((entry) => entry.resource)
+          : catalogueVisible;
     return (
       <ResourceList
         resources={items}
@@ -1006,6 +1063,15 @@ export function App({ context }: { context: Context }) {
       if (search) parts.push(`query "${search}"`);
       parts.push(`sources ${online ? "bundled + remote" : "bundled"}`);
       parts.push(`type ${typeFilter}`);
+    } else if (view === "detected") {
+      parts.push(
+        detected === null
+          ? "reading the harnesses…"
+          : `${listLength ? index + 1 : 0} of ${detectedVisible.length}`,
+      );
+      if (detected?.length === 0) parts.push("nothing unmanaged");
+      parts.push(`type ${typeFilter}`);
+      if (filter) parts.push(`filter "${filter}"`);
     } else if (view === "doctor") {
       parts.push(
         findings === null
@@ -1159,7 +1225,12 @@ export function App({ context }: { context: Context }) {
                 { key: "↑↓", label: "move" },
                 {
                   key: "Enter",
-                  label: view === "profiles" ? "switch" : "inspect",
+                  label:
+                    view === "profiles"
+                      ? "switch"
+                      : view === "detected"
+                        ? "adopt"
+                        : "inspect",
                 },
                 { key: "^K", label: "actions" },
                 { key: "?", label: "help" },
@@ -1287,7 +1358,7 @@ export function App({ context }: { context: Context }) {
       ) : (
         <Text dimColor wrap="truncate">
           {selectedResource
-            ? `adk inspect ${selectedResource.id}`
+            ? `adk ${view === "detected" ? "adopt" : "inspect"} ${selectedResource.id}`
             : "Press ? for the keyboard reference"}
         </Text>
       )}

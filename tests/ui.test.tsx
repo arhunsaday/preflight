@@ -1,9 +1,15 @@
 import React from "react";
 import { expect, it, vi } from "vitest";
 import { render } from "ink-testing-library";
-import { mkdir, mkdtemp, realpath } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { App, ResourceList } from "../src/ui/index.js";
 import { AdkService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
@@ -293,6 +299,42 @@ it("marks desired resources as applied once they reach the harness files", async
     await ui.press("\r");
     await ui.until("written to the harness files");
     expect(ui.frame()).not.toContain("not applied");
+  } finally {
+    view.unmount();
+  }
+}, 20000);
+
+it("adopts an installed resource from the detected view", async () => {
+  const context = await workspace();
+  const service = new AdkService(context);
+  await service.init();
+  const skill = join(
+    context.home,
+    ".claude",
+    "skills",
+    "installed-earlier",
+    "SKILL.md",
+  );
+  await mkdir(dirname(skill), { recursive: true });
+  const body = "---\nname: installed-earlier\ndescription: predates ADK\n---\n";
+  await writeFile(skill, body);
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("Browse");
+    await ui.press("3");
+    await ui.until("installed-earlier");
+    await ui.until("found in");
+    await ui.press("a");
+    await ui.until("PREVIEW");
+    expect(await service.list()).toHaveLength(0);
+    await ui.press("\r");
+    await vi.waitFor(async () => expect(await service.list()).toHaveLength(1));
+    // The file it was found in is managed where it lives, not rewritten.
+    expect(await readFile(skill, "utf8")).toBe(body);
+    expect((await service.list())[0]!.config.adoptedPath).toBe(
+      "skills/installed-earlier/SKILL.md",
+    );
   } finally {
     view.unmount();
   }

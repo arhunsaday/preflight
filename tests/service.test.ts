@@ -1,6 +1,13 @@
-import { mkdtemp, realpath, readFile, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  realpath,
+  readFile,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { expect, it } from "vitest";
 import { AdkService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
@@ -157,4 +164,69 @@ it("does not report a moved skill as broken because of empty leftover directorie
   expect(
     (await s.doctor()).filter((f) => f.code === "broken-resource"),
   ).toEqual([]);
+});
+
+it("adopts an installed skill where it lives, without rewriting its file", async () => {
+  const s = await service();
+  await s.init();
+  const skill = join(
+    s.context.home,
+    ".claude",
+    "skills",
+    "already-here",
+    "SKILL.md",
+  );
+  const body = "---\nname: already-here\ndescription: predates ADK\n---\n\nBody.\n";
+  await mkdir(dirname(skill), { recursive: true });
+  await writeFile(skill, body);
+
+  const found = await s.unmanaged();
+  expect(found.map((entry) => entry.resource.name)).toEqual(["already-here"]);
+
+  const preview = await s.adopt(found[0]!.resource.id, true);
+  expect(preview.files.map((f) => f.path)).not.toContain(skill);
+  expect(await s.list()).toHaveLength(0);
+
+  await s.adopt(found[0]!.resource.id);
+  const adopted = (await s.list())[0]!;
+  expect(adopted.id).toBe("skill:already-here");
+  expect(adopted.config.adoptedPath).toBe("skills/already-here/SKILL.md");
+  expect(await readFile(skill, "utf8")).toBe(body);
+  expect(await s.unmanaged()).toHaveLength(0);
+
+  const lock = JSON.parse(await readFile(join(s.context.root, "adk.lock.json"), "utf8"));
+  expect(lock.files.map((f: { path: string }) => f.path)).toContain(skill);
+
+  // Managing it keeps writing to the same file rather than a second copy.
+  await s.update(adopted.id, { content: body.replace("Body.", "Edited.") });
+  expect(await readFile(skill, "utf8")).toContain("Edited.");
+  expect(await readdir(join(s.context.home, ".claude", "skills"))).toEqual([
+    "already-here",
+  ]);
+  await s.remove(adopted.id);
+  await expect(readFile(skill, "utf8")).rejects.toThrow();
+  await s.rollback();
+  expect(await readFile(skill, "utf8")).toContain("Edited.");
+});
+
+it("adopts a harness setting without duplicating the entry it found", async () => {
+  const s = await service();
+  await s.init();
+  const settings = join(s.context.home, ".claude", "settings.json");
+  await mkdir(dirname(settings), { recursive: true });
+  await writeFile(
+    settings,
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: "Bash", hooks: [{ type: "command", command: "true" }] },
+        ],
+      },
+    }),
+  );
+  const hook = (await s.unmanaged()).find((e) => e.resource.type === "hook")!;
+  await s.adopt(hook.resource.id);
+  const written = JSON.parse(await readFile(settings, "utf8"));
+  expect(written.hooks.PreToolUse).toHaveLength(1);
+  expect(await s.unmanaged()).toHaveLength(0);
 });

@@ -1,18 +1,25 @@
 import type { Resource, Scope } from "../schema.js";
 
 
-export type ViewId = "browse" | "catalogue" | "doctor" | "profiles";
+export type ViewId =
+  | "browse"
+  | "catalogue"
+  | "detected"
+  | "doctor"
+  | "profiles";
 
 export const views: { id: ViewId; label: string; key: string }[] = [
   { id: "browse", label: "Browse", key: "1" },
   { id: "catalogue", label: "Catalogue", key: "2" },
-  { id: "doctor", label: "Doctor", key: "3" },
-  { id: "profiles", label: "Profiles", key: "4" },
+  { id: "detected", label: "Detected", key: "3" },
+  { id: "doctor", label: "Doctor", key: "4" },
+  { id: "profiles", label: "Profiles", key: "5" },
 ];
 
 export type Intent =
   | "goto-browse"
   | "goto-catalogue"
+  | "goto-detected"
   | "goto-doctor"
   | "goto-profiles"
   | "form-new"
@@ -172,6 +179,25 @@ export const actions: Action[] = [
     cli: "share",
     build: (s) => ["share", "--id", s.resource!.id],
     enabled: onBrowse,
+  },
+  {
+    id: "adopt",
+    label: "Manage this resource where it already lives",
+    group: "Detected",
+    key: "a",
+    short: "adopt",
+    cli: "adopt",
+    confirm: true,
+    build: (s) => ["adopt", s.resource!.id],
+    enabled: (s) => s.view === "detected" && !!s.resource,
+  },
+  {
+    id: "unmanaged",
+    label: "List detected resources this profile does not manage",
+    group: "Detected",
+    show: true,
+    cli: "unmanaged",
+    build: () => ["unmanaged"],
   },
   {
     id: "catalogue-inspect",
@@ -379,7 +405,8 @@ export const actions: Action[] = [
     key: "t",
     short: "type",
     intent: "cycle-type",
-    enabled: (s) => s.view === "browse" || s.view === "catalogue",
+    enabled: (s) =>
+      s.view === "browse" || s.view === "catalogue" || s.view === "detected",
   },
   {
     id: "raw-output",

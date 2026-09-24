@@ -33,6 +33,8 @@ export interface HarnessAdapter {
   capabilities: ResourceType[];
   detect(): Promise<boolean>;
   paths(): HarnessPaths;
+  /** Where this harness keeps a resource; throws for a type it cannot hold. */
+  target(resource: Resource): { path: string; key?: string; section?: string };
   read(): Promise<HarnessState>;
   plan(desired: Resource[], previous: Resource[]): Promise<FileChange[]>;
   write(plan: { files: FileChange[]; dryRun?: boolean }): Promise<unknown>;
@@ -41,6 +43,28 @@ export const digest = (text: string) =>
   createHash("sha256").update(text).digest("hex");
 const slug = (id: string) =>
   id.replace(/[^a-z0-9_-]/gi, "-") + "-" + digest(id).slice(0, 8);
+/** A path inside a harness directory: relative, no traversal, no drive. */
+export function safeRelative(path: unknown): path is string {
+  return (
+    typeof path === "string" &&
+    !!path &&
+    !path.startsWith("/") &&
+    !path.includes("\\") &&
+    !path.includes(":") &&
+    !path
+      .split("/")
+      .some((part) => part === ".." || part === "." || part === "")
+  );
+}
+
+/** The harness that owns an adopted resource's existing file, if any. */
+function adoptedIn(resource: Resource, id: HarnessId) {
+  return resource.config.adoptedBy === id &&
+    safeRelative(resource.config.adoptedPath)
+    ? resource.config.adoptedPath
+    : undefined;
+}
+
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Expected configuration object");
@@ -113,13 +137,22 @@ class FileAdapter implements HarnessAdapter {
   target(resource: Resource): { path: string; key?: string; section?: string } {
     const base = this.base(resource.scope);
     const name = slug(resource.id);
+    // An adopted resource keeps the file it was found in; ADK manages it where
+    // it already lives rather than moving the user's layout.
+    const adopted = adoptedIn(resource, this.id);
     switch (resource.type) {
       case "skill":
-        return { path: join(base, "skills", name, "SKILL.md") };
+        return {
+          path: adopted ? join(base, adopted) : join(base, "skills", name, "SKILL.md"),
+        };
       case "subagent":
-        return { path: join(base, "agents", `${name}.md`) };
+        return {
+          path: adopted ? join(base, adopted) : join(base, "agents", `${name}.md`),
+        };
       case "command":
-        return { path: join(base, "commands", `${name}.md`) };
+        return {
+          path: adopted ? join(base, adopted) : join(base, "commands", `${name}.md`),
+        };
       case "mcp":
         return {
           path:
@@ -248,9 +281,13 @@ class FileAdapter implements HarnessAdapter {
             ],
           };
         const entries = (current as unknown[] | undefined) ?? [];
+        const same = (e: unknown) =>
+          JSON.stringify(e) === JSON.stringify(entry);
         block[target.key] = removing
-          ? entries.filter((e) => JSON.stringify(e) !== JSON.stringify(entry))
-          : [...entries, entry];
+          ? entries.filter((e) => !same(e))
+          : entries.some(same)
+            ? entries
+            : [...entries, entry];
         if ((block[target.key] as unknown[]).length === 0)
           delete block[target.key];
       } else if (removing) {
@@ -258,7 +295,15 @@ class FileAdapter implements HarnessAdapter {
         if (resource.type === "statusline" && resource.config.script === true)
           await materialize(resource, true);
       } else {
-        if (Object.hasOwn(block, target.key))
+        const value =
+          resource.type === "plugin" ? resource.enabled : resource.config;
+        if (
+          Object.hasOwn(block, target.key) &&
+          !(
+            resource.config.adoptedBy === this.id &&
+            JSON.stringify(block[target.key]) === JSON.stringify(value)
+          )
+        )
           throw new Error(`Refusing unmanaged entry: ${target.key}`);
         if (resource.type === "plugin") block[target.key] = resource.enabled;
         else if (

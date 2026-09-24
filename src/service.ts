@@ -6,9 +6,16 @@ import {
   ResourceSchema,
   defaultConfig,
   type AdkConfig,
+  type HarnessId,
   type Resource,
 } from "./schema.js";
-import { createAdapters, detectAll, digest, type Context } from "./adapters.js";
+import {
+  createAdapters,
+  detectAll,
+  digest,
+  safeRelative,
+  type Context,
+} from "./adapters.js";
 import {
   applyFiles,
   readText,
@@ -137,6 +144,16 @@ export class AdkService {
         await adapter.read();
         const planned = await adapter.plan(desired, previous);
         const owned = new Set(lock?.files.map((f) => f.path) ?? []);
+        // Adoption is the one way a file ADK did not create becomes managed:
+        // the resource names the harness and the path it was found in, and
+        // the change is previewed like any other.
+        for (const resource of desired)
+          if (resource.config.adoptedBy === adapter.id)
+            try {
+              owned.add(adapter.target(resource).path);
+            } catch {
+              // An unsupported type has no target here; apply warns about it.
+            }
         for (const file of planned) {
           if (!owned.has(file.path) && file.before !== null) {
             const shared = new Set([
@@ -226,6 +243,88 @@ export class AdkService {
       warnings,
     };
   }
+  /** Detected resources the active profile does not manage. */
+  async unmanaged() {
+    const desired = await this.list().catch(() => [] as Resource[]);
+    const adapters = createAdapters(this.context);
+    const claimed = new Set<string>();
+    for (const resource of desired)
+      for (const adapter of adapters)
+        if (resource.harnesses.includes(adapter.id))
+          try {
+            const target = adapter.target(resource);
+            claimed.add(`${target.path}#${target.key ?? ""}`);
+          } catch {
+            // The harness cannot hold this type; nothing is claimed.
+          }
+    const found: { harness: HarnessId; resource: Resource; path: string }[] =
+      [];
+    for (const state of await this.detect())
+      for (const resource of state.resources) {
+        const path = resource.source.startsWith("file://")
+          ? resource.source.slice("file://".length)
+          : "";
+        const key =
+          resource.type === "skill" ||
+          resource.type === "subagent" ||
+          resource.type === "command"
+            ? ""
+            : resource.type === "statusline"
+              ? "statusLine"
+              : resource.type === "hook"
+                ? String(
+                    (resource.config as { event?: unknown }).event ??
+                      "PreToolUse",
+                  )
+                : resource.name;
+        if (!claimed.has(`${path}#${key}`))
+          found.push({ harness: state.id, resource, path });
+      }
+    return found;
+  }
+
+  /**
+   * Bring a detected resource under management where it already lives. The
+   * file is not moved and, when its content already matches, not rewritten.
+   */
+  async adopt(detectedId: string, dryRun = false) {
+    const entry = (await this.unmanaged()).find(
+      (found) => found.resource.id === detectedId,
+    );
+    if (!entry) throw new Error(`Unmanaged resource not found: ${detectedId}`);
+    const { harness, resource, path } = entry;
+    const adapter = createAdapters(this.context).find((a) => a.id === harness)!;
+    const identifier = `${resource.type}:${resource.name
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")}`;
+    if (identifier.length < 3)
+      throw new Error(`Cannot derive an identifier from ${detectedId}`);
+    if ((await this.list()).some((r) => r.id === identifier))
+      throw new Error(`Resource already exists: ${identifier}`);
+    const fileBacked = ["skill", "subagent", "command"].includes(resource.type);
+    const relative = fileBacked
+      ? path.startsWith(adapter.paths()[resource.scope] + "/")
+        ? path.slice(adapter.paths()[resource.scope].length + 1)
+        : undefined
+      : undefined;
+    if (fileBacked && !safeRelative(relative))
+      throw new Error(`Cannot adopt a resource outside ${harness}: ${path}`);
+    return this.create(
+      {
+        ...resource,
+        id: identifier,
+        harnesses: [harness],
+        config: {
+          ...resource.config,
+          adoptedBy: harness,
+          ...(relative ? { adoptedPath: relative } : {}),
+        },
+      },
+      dryRun,
+    );
+  }
+
   create(input: unknown, dryRun = false) {
     const resource = ResourceSchema.parse(input);
     return this.change((c) => {

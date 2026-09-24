@@ -20,7 +20,7 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | Installation déléguée aux gestionnaires existants | ✔ | `install` imprime l'argv exact, `--execute` délègue sans shell. Tests *delegates installs as argv without a shell*, *runs a bounded subprocess and reports failure*. |
 | Dry-run, diff et rollback sur chaque écriture | ✔ | Test *dry run writes nothing and rollback refuses to destroy later edits*, *rolls back earlier files if a later write fails*, *recovers a pending transaction without overwriting later human edits*. |
 | Deux adaptateurs derrière l'interface, avec tests de conformité | ◐ | Boucle par adaptateur dans `tests/core.test.ts` (`claude-code`, `cursor`) : écriture, relecture, préservation des entrées MCP voisines, rollback. La conformité ne couvre qu'une forme de ressource par adaptateur ; elle ne balaie pas les neuf types. |
-| Détection en lecture seule d'abord : installé, cassé, non câblé | ✔ | `detect` et `doctor`. Un lien symbolique mort est rapporté comme ressource cassée (vérifié à la main sur un `SKILL.md` pointant dans le vide) ; un lien vivant est refusé à l'écriture, pas rapporté. |
+| Détection en lecture seule d'abord : installé, cassé, non câblé | ✔ | `detect` et `doctor`. Un lien symbolique mort est rapporté comme ressource cassée (vérifié à la main sur un `SKILL.md` pointant dans le vide) ; un lien vivant est refusé à l'écriture, pas rapporté. `unmanaged` et `adopt` amènent l'existant sous gestion sans le déplacer. |
 
 ---
 

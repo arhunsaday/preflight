@@ -20,20 +20,20 @@ Detection and doctor are read-only and do not require `init`.
 
 ## Terminal interface
 
-`adk ui` requires a TTY and opens four views over the same commands: **Browse** for the active profile, **Catalogue** for search results, **Doctor** for findings and **Profiles**. Each pairs a bounded, virtualised list with a detail pane carrying identity, scope, per-harness support, provenance, measured invocations, requested tools, configuration and content — the inspection that belongs before an install, not after it. The layout follows the terminal: two panes side by side, stacked below 74 columns, and it re-renders on resize.
+`adk ui` requires a TTY and opens five views over the same commands: **Browse** for the active profile, **Catalogue** for search results, **Detected** for what the harnesses hold outside the profile, **Doctor** for findings and **Profiles**. Each pairs a bounded, virtualised list with a detail pane carrying identity, scope, per-harness support, provenance, measured invocations, requested tools, configuration and content — the inspection that belongs before an install, not after it. The layout follows the terminal: two panes side by side, stacked below 74 columns, and it re-renders on resize.
 
 Every action names the CLI command it runs, in the action palette, the keyboard reference and the status line, and a test asserts each one resolves to a real command. Writes are previewed first: the dry run produces the resource diff, the files it would touch with their line counts, and any adapter warnings. Enter applies, Escape cancels. Read-only commands run directly.
 
 | Key | Action |
 | --- | --- |
-| `1`–`4`, `Tab` | switch view |
+| `1`–`5`, `Tab` | switch view |
 | `↑` `↓` `j` `k`, `g` `G`, PgUp/PgDn | move, jump, scroll |
-| `Enter` | inspect, or switch profile |
+| `Enter` | inspect; adopt in Detected; switch profile in Profiles |
 | `/` | filter the list; in Catalogue, run a search |
 | `Ctrl+K` | action palette |
 | `:` | run any CLI command |
 | `n` `e` `d` `f` `m` `v` `i` | new, edit, delete, fork, move scope, verify, installation plan |
-| `a` `O` | add a catalogue result, toggle remote sources |
+| `a` `O` | add a catalogue result or adopt a detected one, toggle remote sources |
 | `s` `t` | cycle the scope and type filters |
 | `y` `r` `o` `?` `q` | sync, reload, raw result, keyboard reference, quit |
 
@@ -88,7 +88,15 @@ CRUD applies to all nine resource types. Native adapter wiring is intentionally 
 | Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only |
 | Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers |
 
-Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; ADK does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue. Existing unmanaged resources are detected but not silently adopted; the first release manages its own created paths.
+Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; ADK does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue.
+
+Existing resources are never silently adopted. `unmanaged` lists what a harness holds that the active profile does not, and `adopt <id>` brings one under management **where it already lives**: the resource records the harness and the relative path it was found in, ADK does not move the file, and a file whose content already matches is not rewritten at all — the transaction adds the configuration entry and the lockfile digest, so drift is detected from then on. `delete` afterwards removes the file, and `rollback` puts it back. An adopted path that tries to leave the harness directory is ignored in favour of ADK's own managed path.
+
+```sh
+adk unmanaged
+adk adopt skill:claude-code:global:my-existing-skill --dry-run
+adk adopt skill:claude-code:global:my-existing-skill
+```
 
 A resource file example:
 

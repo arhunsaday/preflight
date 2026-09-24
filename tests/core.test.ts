@@ -211,3 +211,32 @@ it("writes a status line script and takes it back on rollback", async () => {
     ).statusLine,
   ).toBeUndefined();
 });
+
+it("ignores an adopted path that tries to leave the harness directory", async () => {
+  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-adopt-"));
+  const home = join(root, "home");
+  await mkdir(home);
+  const adapter = createAdapters({ root, home }).find(
+    (a) => a.id === "claude-code",
+  )!;
+  const escaping = ResourceSchema.parse({
+    id: "skill:escaping",
+    type: "skill",
+    name: "escaping",
+    source: "local:owned",
+    scope: "global",
+    harnesses: ["claude-code"],
+    content: "---\nname: escaping\n---\nbody\n",
+    config: { adoptedBy: "claude-code", adoptedPath: "../../../etc/passwd" },
+  });
+  expect(adapter.target(escaping).path).toBe(
+    join(home, ".claude", "skills", "skill-escaping-8716add6", "SKILL.md"),
+  );
+  const honest = ResourceSchema.parse({
+    ...escaping,
+    config: { adoptedBy: "claude-code", adoptedPath: "skills/here/SKILL.md" },
+  });
+  expect(adapter.target(honest).path).toBe(
+    join(home, ".claude", "skills", "here", "SKILL.md"),
+  );
+});

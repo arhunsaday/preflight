@@ -181,7 +181,12 @@ it("previews only the commands that change state", () => {
   expect(writes(["install", "tool:trivy", "--execute"])).toBe(true);
   expect(writes(["share"])).toBe(false);
   expect(writes(["share", "--out", "payload.json"])).toBe(true);
+  expect(writes(["adopt", "skill:x"])).toBe(true);
+  expect(writes(["catalog-add", "skill:x"])).toBe(true);
+  expect(writes(["git", "status"])).toBe(false);
+  expect(writes(["git", "push"])).toBe(true);
   expect(writes(["doctor"])).toBe(false);
+  expect(writes(["unmanaged"])).toBe(false);
   expect(writes([])).toBe(false);
 });
 

@@ -102,6 +102,16 @@ export async function execute(
     async () => service().doctor(),
   );
   command(
+    "unmanaged",
+    "List detected resources this profile does not manage",
+    async () => service().unmanaged(),
+  );
+  command(
+    "adopt <id>",
+    "Manage a detected resource where it already lives",
+    async (id) => service().adopt(id, dry()),
+  );
+  command(
     "inspect <id>",
     "Show content, permissions, configuration and provenance",
     async (id) => service().inspect(id),
