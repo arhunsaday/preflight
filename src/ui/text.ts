@@ -120,6 +120,9 @@ export function fuzzyFilter<T>(
     .map((entry) => entry.item);
 }
 
+export const count = (total: number, noun: string) =>
+  `${total} ${noun}${total === 1 ? "" : "s"}`;
+
 export function jsonText(value: unknown): string {
   if (typeof value === "string") return value;
   try {

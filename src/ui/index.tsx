@@ -3,16 +3,18 @@ import { render } from "ink";
 import type { Context } from "../adapters.js";
 import { App } from "./app.js";
 
-export { App } from "./app.js";
-export { ResourceList, configLines } from "./components.js";
+export { App, writes } from "./app.js";
+export { ResourceList, configLines, observed } from "./components.js";
 export {
   clean,
+  count,
   fit,
   fuzzyFilter,
   fuzzyScore,
   outputLines,
   tokenize,
   truncate,
+  wrapWords,
 } from "./text.js";
 export { lineDelta, summarize, shortPath } from "./preview.js";
 export {

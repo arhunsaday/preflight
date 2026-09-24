@@ -13,12 +13,15 @@ import {
   fromResource,
   fuzzyScore,
   lineDelta,
+  observed,
   outputLines,
   summarize,
   toggle,
   tokenize,
   truncate,
   validate,
+  wrapWords,
+  writes,
   type ActionState,
 } from "../src/ui/index.js";
 import { execute } from "../src/commands.js";
@@ -53,6 +56,20 @@ it("truncates with an ellipsis and tokenizes quoted command input", () => {
     '{"a": 1}',
   ]);
   expect(() => tokenize("unterminated '")).toThrow();
+});
+
+it("wraps prose on word boundaries", () => {
+  expect(wrapWords("the quick brown fox jumps", 10)).toEqual([
+    "the quick",
+    "brown fox",
+    "jumps",
+  ]);
+  expect(wrapWords("supercalifragilistic", 8)).toEqual([
+    "supercal",
+    "ifragili",
+    "stic",
+  ]);
+  expect(wrapWords("first\nsecond", 20)).toEqual(["first", "second"]);
 });
 
 it("ranks contiguous and early fuzzy matches first", () => {
@@ -150,6 +167,49 @@ it("round-trips a resource through the form", () => {
   const result = validate(fromResource(resource), resource);
   expect(result.ok).toBe(true);
   if (result.ok) expect(result.resource).toEqual(resource);
+});
+
+it("previews only the commands that change state", () => {
+  expect(writes(["delete", "skill:a"])).toBe(true);
+  expect(writes(["profiles", "switch", "minimal"])).toBe(true);
+  expect(writes(["profiles", "diff", "a", "b"])).toBe(false);
+  expect(writes(["loadouts", "list"])).toBe(false);
+  expect(writes(["loadouts", "install", "junior"])).toBe(true);
+  expect(writes(["install", "tool:trivy"])).toBe(false);
+  expect(writes(["install", "tool:trivy", "--execute"])).toBe(true);
+  expect(writes(["share"])).toBe(false);
+  expect(writes(["share", "--out", "payload.json"])).toBe(true);
+  expect(writes(["doctor"])).toBe(false);
+  expect(writes([])).toBe(false);
+});
+
+it("counts observed invocations per resource without double counting", () => {
+  const usage = {
+    sessions: 3,
+    invocations: {
+      "skill:example": 2,
+      mcp__grafana__search: 4,
+      mcp__grafana__query: 1,
+      grafana: 9,
+    },
+    invalidLines: 0,
+    skillsUsed: 1,
+    skillsInstalled: 1,
+    utilization: 1,
+    prune: [],
+  };
+  const server = ResourceSchema.parse({
+    id: "mcp:grafana",
+    type: "mcp",
+    name: "grafana",
+    source: "https://grafana.example.com/mcp",
+    scope: "global",
+    harnesses: ["claude-code"],
+  });
+  expect(observed(state.resource!, usage)).toBe(2);
+  expect(observed(server, usage)).toBe(5);
+  expect(observed(server, { ...usage, sessions: 0 })).toBeNull();
+  expect(observed(server, null)).toBeNull();
 });
 
 it("counts the lines a transaction adds and removes", () => {

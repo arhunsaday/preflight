@@ -43,6 +43,7 @@ import {
   fit,
   fuzzyFilter,
   jsonText,
+  count,
   tokenize,
   truncate,
   wrapWords,
@@ -70,16 +71,13 @@ interface Pending {
   result: unknown;
 }
 
-const count = (total: number, noun: string) =>
-  `${total} ${noun}${total === 1 ? "" : "s"}`;
-
 interface Toast {
   text: string;
   tone: "success" | "danger" | "muted";
   command?: string;
 }
 
-const mutating = new Set([
+const writeCommands = new Set([
   "init",
   "create",
   "create-json",
@@ -93,16 +91,26 @@ const mutating = new Set([
   "rollback",
   "recover",
   "retrofit",
-  "install",
-  "profiles",
-  "loadouts",
 ]);
+
+/** Whether a command changes state, and so needs a preview before it runs. */
+export function writes(argv: string[]): boolean {
+  const [head, second] = argv;
+  if (!head) return false;
+  if (head === "profiles") return second === "create" || second === "switch";
+  if (head === "loadouts") return second === "install";
+  if (head === "bench") return second === "run" || second === "scaffold";
+  if (head === "install") return argv.includes("--execute");
+  if (head === "share") return argv.includes("--out");
+  return writeCommands.has(head);
+}
 
 export function App({ context }: { context: Context }) {
   const { exit } = useApp();
   const size = useTerminalSize();
   const service = useMemo(() => new AdkService(context), [context]);
   const mounted = useRef(true);
+  const catalogueLoaded = useRef(false);
 
   const [view, setView] = useState<ViewId>("browse");
   const [overlay, setOverlay] = useState<Overlay>("none");
@@ -191,6 +199,13 @@ export function App({ context }: { context: Context }) {
       await loadAnalysis();
     })();
   }, []); // Context is fixed for the lifetime of this interface.
+
+  // The bundled catalogue loads once, the first time the view is opened.
+  useEffect(() => {
+    if (view !== "catalogue" || catalogueLoaded.current || busy) return;
+    catalogueLoaded.current = true;
+    void runSearch("");
+  }, [view, busy]);
 
   const visible = useMemo(() => {
     const needle = filter.toLowerCase();
@@ -308,7 +323,7 @@ export function App({ context }: { context: Context }) {
           tone: "success",
           command: `adk ${full.map((a) => truncate(a, 40)).join(" ")}`,
         });
-        if (mutating.has(argv[0] ?? "")) {
+        if (writes(argv)) {
           await loadConfig();
           void loadAnalysis();
         }
@@ -501,8 +516,7 @@ export function App({ context }: { context: Context }) {
         return;
       }
       if (!argv.length) return;
-      const confirm =
-        mutating.has(argv[0] ?? "") && !argv.includes("--dry-run");
+      const confirm = writes(argv) && !argv.includes("--dry-run");
       await run(argv, {
         title: value.trim(),
         ...(confirm ? { confirm: true } : {}),
@@ -797,6 +811,7 @@ export function App({ context }: { context: Context }) {
             resource: selectedResource,
             findings: findings ?? [],
             capabilities,
+            usage,
             width: detailWidth,
           }),
         );
@@ -824,6 +839,7 @@ export function App({ context }: { context: Context }) {
       resource: selectedResource,
       findings: findings ?? [],
       capabilities,
+      usage,
       width: detailWidth,
     });
   }
@@ -1080,9 +1096,11 @@ export function App({ context }: { context: Context }) {
         findings={findings}
         usage={
           usage
-            ? usage.sessions
-              ? `${usage.skillsUsed}/${usage.skillsInstalled} skills used`
-              : "usage unknown"
+            ? !usage.sessions
+              ? "usage unknown"
+              : usage.skillsInstalled
+                ? `${usage.skillsUsed}/${usage.skillsInstalled} skills used`
+                : `${count(usage.sessions, "transcript")} read`
             : null
         }
         busy={busy}

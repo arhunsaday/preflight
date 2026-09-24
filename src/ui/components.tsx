@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text, useStdout } from "ink";
 import type { ReactNode } from "react";
-import type { Finding } from "../analysis.js";
+import type { Finding, Usage } from "../analysis.js";
 import type { Resource, ResourceType } from "../schema.js";
 import { frontmatter } from "../adapters.js";
 import {
@@ -14,7 +14,14 @@ import {
   typeColor,
   typeLabel,
 } from "./theme.js";
-import { clean, fit, outputLines, truncate, wrapWords } from "./text.js";
+import {
+  clean,
+  count,
+  fit,
+  outputLines,
+  truncate,
+  wrapWords,
+} from "./text.js";
 import type { PreviewSummary } from "./preview.js";
 import { shortPath } from "./preview.js";
 import type { Action, ActionState, ViewId } from "./actions.js";
@@ -341,7 +348,7 @@ export function Field({
   );
 }
 
-const reference = /^\$\{[A-Z][A-Z0-9_]*\}$/;
+const reference = /\$\{[A-Z][A-Z0-9_]*\}/;
 
 export function configLines(
   value: unknown,
@@ -379,15 +386,37 @@ function harnessSupport(
   }));
 }
 
+/**
+ * Observed invocations for a resource, or null when nothing was measured.
+ * Skills are counted the way the usage command counts them; MCP servers are
+ * counted from the `mcp__<server>__<tool>` names harnesses record.
+ */
+export function observed(resource: Resource, usage: Usage | null) {
+  if (!usage?.sessions) return null;
+  const names = new Set([resource.id]);
+  if (resource.type === "skill") names.add(`skill:${resource.name}`);
+  const prefix = `mcp__${resource.name}__`;
+  let total = 0;
+  for (const [name, invocations] of Object.entries(usage.invocations))
+    if (
+      names.has(name) ||
+      (resource.type === "mcp" && name.startsWith(prefix))
+    )
+      total += invocations;
+  return total;
+}
+
 export function resourceDetail({
   resource,
   findings,
   capabilities,
+  usage = null,
   width,
 }: {
   resource: Resource;
   findings: Finding[];
   capabilities: Record<string, ResourceType[]>;
+  usage?: Usage | null;
   width: number;
 }): ReactNode[] {
   const lines: ReactNode[] = [];
@@ -426,6 +455,17 @@ export function resourceDetail({
       </Text>
     </Field>,
   );
+  const invocations = observed(resource, usage);
+  if (invocations !== null)
+    lines.push(
+      <Field label="observed" width={labelWidth}>
+        <Text color={invocations ? color.success : color.warning}>
+          {invocations
+            ? count(invocations, "invocation")
+            : `never, across ${count(usage!.sessions, "transcript")}`}
+        </Text>
+      </Field>,
+    );
   lines.push(
     <Field label="source" width={labelWidth}>
       <Text>{truncate(resource.source, width - labelWidth)}</Text>
@@ -480,14 +520,14 @@ export function resourceDetail({
   if (config.length) {
     lines.push(<Text> </Text>);
     lines.push(<Text dimColor>config</Text>);
-    const valueWidth = Math.max(8, width - 18);
+    const valueWidth = Math.max(8, width - 19);
     for (const entry of config.slice(0, 20))
       wrapWords(entry.value, valueWidth)
         .slice(0, 3)
         .forEach((line, position) =>
           lines.push(
             <Text wrap="truncate">
-              <Text dimColor> {fit(position ? "" : entry.key, 16)}</Text>
+              <Text dimColor> {fit(position ? "" : entry.key, 16)} </Text>
               <Text {...(entry.reference ? { color: color.warning } : {})}>
                 {line}
               </Text>

@@ -16,7 +16,28 @@ node dist/cli.js ui
 
 Use `npm link` to expose the `adk` executable locally. This package has not been published to npm. Commands emit JSON by default; errors go to stderr and exit nonzero. Use `--root /absolute/project` and `--home /absolute/test-home` to target another project or an isolated harness home. Both paths should be real directories, not symlink aliases. `ADK_HOME` changes the CLI's default harness home.
 
-Detection and doctor are read-only and do not require `init`. The TUI requires a TTY. Arrow keys select, Enter inspects, Tab switches between search and commands, Ctrl+S filters scope, Page Up/Page Down scroll output, and Ctrl+C exits. In command mode, `new` and `edit` open a resource form. Enter `\n` for line breaks in content. A `search` command puts its results into the selectable catalogue list. Enter inspects the selected result (including remote content), and the `add` command prepares a preview; only `confirm` applies it. `list` returns to installed desired resources. The form validates with the same resource schema as the CLI and previews writes before `confirm`. All form operations map to `create-json` or `update-json`; the rest of the CLI is available in command mode.
+Detection and doctor are read-only and do not require `init`.
+
+## Terminal interface
+
+`adk ui` requires a TTY and opens four views over the same commands: **Browse** for the active profile, **Catalogue** for search results, **Doctor** for findings and **Profiles**. Each pairs a bounded, virtualised list with a detail pane carrying identity, scope, per-harness support, provenance, measured invocations, requested tools, configuration and content — the inspection that belongs before an install, not after it. The layout follows the terminal: two panes side by side, stacked below 74 columns, and it re-renders on resize.
+
+Every action names the CLI command it runs, in the action palette, the keyboard reference and the status line, and a test asserts each one resolves to a real command. Writes are previewed first: the dry run produces the resource diff, the files it would touch with their line counts, and any adapter warnings. Enter applies, Escape cancels. Read-only commands run directly.
+
+| Key | Action |
+| --- | --- |
+| `1`–`4`, `Tab` | switch view |
+| `↑` `↓` `j` `k`, `g` `G`, PgUp/PgDn | move, jump, scroll |
+| `Enter` | inspect, or switch profile |
+| `/` | filter the list; in Catalogue, run a search |
+| `Ctrl+K` | action palette |
+| `:` | run any CLI command |
+| `n` `e` `d` `f` `m` `v` `i` | new, edit, delete, fork, move scope, verify, installation plan |
+| `a` `O` | add a catalogue result, toggle remote sources |
+| `s` `t` | cycle the scope and type filters |
+| `y` `r` `o` `?` `q` | sync, reload, raw result, keyboard reference, quit |
+
+The resource form validates against the same Zod schema as the CLI: `↑↓` moves between fields, `←→` cycles choices, `1`–`9` toggles harnesses, `\n` inserts a line break in content, and invalid fields are named where they are. Forms map to `create-json` and `update-json`. The status bar carries the active profile, harness detection, measured skill utilisation and the doctor's error and warning counts; the detail pane reports observed invocations per resource, or nothing at all when no transcripts were found.
 
 ## State, ownership, and recovery
 
