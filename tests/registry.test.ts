@@ -131,3 +131,53 @@ it("keeps unversioned package metadata inspectable without producing an unpinned
     }),
   ).toMatchObject({ unsupportedReason: expect.any(String) });
 });
+
+it("keeps the version the registry marks current and drops withdrawn ones", async () => {
+  const { vi } = await import("vitest");
+  const { mcpRegistry, searchSources } = await import("../src/catalog.js");
+  const entry = (version: string, status: string, isLatest: boolean) => ({
+    server: {
+      name: "example/versioned",
+      description: "versioned server",
+      packages: [
+        {
+          registryType: "npm",
+          identifier: "example-mcp",
+          version,
+          transport: { type: "stdio" },
+        },
+      ],
+    },
+    _meta: {
+      "io.modelcontextprotocol.registry/official": { status, isLatest },
+    },
+  });
+  vi.stubGlobal(
+    "fetch",
+    async () =>
+      new Response(
+        JSON.stringify({
+          servers: [
+            entry("9.9.9", "deleted", true),
+            entry("2.0.0", "active", true),
+            entry("1.0.0", "active", false),
+            { server: { shape: "from tomorrow" } },
+          ],
+        }),
+        { status: 200 },
+      ),
+  );
+  try {
+    const found = await searchSources("versioned", [mcpRegistry]);
+    expect(found.resources).toHaveLength(1);
+    expect(found.resources[0]!.config).toMatchObject({
+      command: "npx",
+      args: ["-y", "example-mcp@2.0.0"],
+    });
+    expect(found.errors).toEqual([
+      "mcp-registry: skipped 1 entry this version cannot read",
+    ]);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

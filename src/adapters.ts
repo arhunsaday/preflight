@@ -182,6 +182,22 @@ class FileAdapter implements HarnessAdapter {
       }
       return file;
     };
+    // A hook or status line can carry its own script; ADK writes it next to
+    // the settings that point at it, and removes it again on rollback.
+    const materialize = async (resource: Resource, removing: boolean) => {
+      if (!removing && !resource.content)
+        throw new Error(
+          `Invalid resource: ${resource.type} script has no content`,
+        );
+      const path = join(
+        this.base(resource.scope),
+        resource.type === "hook" ? "hooks" : "statusline",
+        slug(resource.id) + ".sh",
+      );
+      const script = await obtain(path);
+      script.after = removing ? null : resource.content!;
+      return `bash '${path.replaceAll("'", "'\"'\"'")}'`;
+    };
     for (const resource of [...old, ...wanted]) {
       const removing = !wanted.includes(resource);
       const target = this.target(resource);
@@ -224,34 +240,39 @@ class FileAdapter implements HarnessAdapter {
           matcher: String(resource.config.matcher ?? ""),
           hooks: resource.config.hooks ?? [],
         };
-        if (resource.config.script === true) {
-          if (!removing && !resource.content)
-            throw new Error("Invalid resource: hook script has no content");
-          const scriptPath = join(
-            this.base(resource.scope),
-            "hooks",
-            slug(resource.id) + ".sh",
-          );
-          const script = await obtain(scriptPath);
-          script.after = removing ? null : resource.content!;
-          const quoted = "'" + scriptPath.replaceAll("'", "'\"'\"'") + "'";
+        if (resource.config.script === true)
           entry = {
             matcher: String(resource.config.matcher ?? ""),
-            hooks: [{ type: "command", command: `bash ${quoted}` }],
+            hooks: [
+              { type: "command", command: await materialize(resource, removing) },
+            ],
           };
-        }
         const entries = (current as unknown[] | undefined) ?? [];
         block[target.key] = removing
           ? entries.filter((e) => JSON.stringify(e) !== JSON.stringify(entry))
           : [...entries, entry];
         if ((block[target.key] as unknown[]).length === 0)
           delete block[target.key];
-      } else if (removing) delete block[target.key];
-      else {
+      } else if (removing) {
+        delete block[target.key];
+        if (resource.type === "statusline" && resource.config.script === true)
+          await materialize(resource, true);
+      } else {
         if (Object.hasOwn(block, target.key))
           throw new Error(`Refusing unmanaged entry: ${target.key}`);
-        block[target.key] =
-          resource.type === "plugin" ? resource.enabled : resource.config;
+        if (resource.type === "plugin") block[target.key] = resource.enabled;
+        else if (
+          resource.type === "statusline" &&
+          resource.config.script === true
+        ) {
+          const rest = { ...resource.config };
+          delete rest.script;
+          block[target.key] = {
+            ...rest,
+            type: "command",
+            command: await materialize(resource, removing),
+          };
+        } else block[target.key] = resource.config;
       }
       if (target.section) doc[target.section] = block;
       file.after = jsonText(doc);

@@ -71,7 +71,7 @@ adk rollback --dry-run
 
 The bundled catalogue contains this repository's skills and support files, subagents, prompts, instincts, hook scripts, MCP templates and tool references. `npm run catalog:seed` refreshes it. No third-party catalogue content is silently downloaded or executed at startup.
 
-Online search connects to the official MCP registry and the documented skills.sh API. Registry results retain HTTP/SSE transport and required headers; pinned npm and PyPI stdio packages become `npx`/`uvx` launch configurations with required environment references. Unsupported package formats remain inspectable and are rejected during apply rather than wired as broken servers. The latter requires `VERCEL_OIDC_TOKEN`. GitHub discovery uses pinned commit URLs and optionally `GITHUB_TOKEN` to increase rate limits. A source failure is reported alongside successful results. Remote results are bounded to 100 per source; results can be narrowed with another query. GitHub search matches file paths; it is not a full-text code-search engine.
+Online search connects to the official MCP registry and the documented skills.sh API. The registry publishes one record per server version: ADK keeps the record the registry marks current, skips records it marks withdrawn, and an entry whose shape this version cannot read is counted and reported rather than removing the whole source from the results. Registry results retain HTTP/SSE transport and required headers; pinned npm and PyPI stdio packages become `npx`/`uvx` launch configurations with required environment references. Unsupported package formats remain inspectable and are rejected during apply rather than wired as broken servers. The latter requires `VERCEL_OIDC_TOKEN`. GitHub discovery uses pinned commit URLs and optionally `GITHUB_TOKEN` to increase rate limits. A source failure is reported alongside successful results. Remote results are bounded to 100 per source; results can be narrowed with another query. GitHub search matches file paths; it is not a full-text code-search engine.
 
 To install a remote result, save one resource object from search output into a JSON file, then run `inspect-file resource.json` and `create resource.json --dry-run`. `create` materializes remote skill content and bounded text support files before applying. Inspect reports source, pinned commit when available, raw content and configuration, including requested tools. Binary or oversized skill assets require the upstream installer.
 
@@ -84,7 +84,7 @@ CRUD applies to all nine resource types. Native adapter wiring is intentionally 
 | Subagents | `.claude/agents` | catalogued only |
 | Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only |
 | Commands | `.claude/commands` | `.cursor/commands` |
-| Statusline | `.claude/settings.json` | catalogued only |
+| Statusline | `.claude/settings.json`; managed script in `.claude/statusline` | catalogued only |
 | Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only |
 | Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers |
 

@@ -6,7 +6,11 @@ import { RegistryServer, registryMcpConfig } from "./registry.js";
 import { frontmatter } from "./adapters.js";
 export interface CatalogSource {
   id: string;
-  search(query: string): Promise<Resource[]>;
+  /**
+   * Candidate resources. Anything the source cannot read is forwarded as-is;
+   * searchSources rejects and counts it instead of dropping the source.
+   */
+  search(query: string): Promise<unknown[]>;
 }
 export const matches = (r: Resource, q: string) =>
   `${r.id} ${r.name} ${r.description} ${r.tags.join(" ")}`
@@ -22,11 +26,23 @@ export async function searchSources(
   await Promise.all(
     sources.map(async (source) => {
       try {
+        // One unreadable entry must not remove a whole source from the
+        // results, so entries are validated one at a time and counted.
+        let skipped = 0;
         for (const input of await source.search(query)) {
-          const r = ResourceSchema.parse(input);
+          const parsed = ResourceSchema.safeParse(input);
+          if (!parsed.success) {
+            skipped++;
+            continue;
+          }
+          const r = parsed.data;
           if ((!type || r.type === type) && matches(r, query))
             resources.set(r.id, r);
         }
+        if (skipped)
+          errors.push(
+            `${source.id}: skipped ${skipped} entr${skipped === 1 ? "y" : "ies"} this version cannot read`,
+          );
       } catch (e) {
         errors.push(`${source.id}: ${String(e)}`);
       }
@@ -148,15 +164,24 @@ export async function localCatalog(root: string): Promise<Resource[]> {
   await walk(root, 0);
   return resources;
 }
+const RegistryMeta = z
+  .object({
+    "io.modelcontextprotocol.registry/official": z
+      .object({
+        status: z.string().optional(),
+        isLatest: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .optional();
+
 export const mcpRegistry: CatalogSource = {
   id: "mcp-registry",
   async search(query) {
     const data = z
       .object({
         servers: z.array(
-          z.object({
-            server: RegistryServer,
-          }),
+          z.object({ server: z.unknown(), _meta: z.unknown().optional() }),
         ),
       })
       .parse(
@@ -164,20 +189,40 @@ export const mcpRegistry: CatalogSource = {
           `https://registry.modelcontextprotocol.io/v0.1/servers?search=${encodeURIComponent(query)}&limit=100`,
         ),
       );
-    return data.servers.map(({ server }) =>
-      ResourceSchema.parse({
-        id: `mcp:${server.name}`,
+    // The registry lists every published version of a server. Keep the one it
+    // marks current, so a pinned launch configuration is not an old release,
+    // and forward what this version cannot read so the caller counts it.
+    const unreadable: unknown[] = [];
+    const current = new Map<string, z.infer<typeof RegistryServer>>();
+    for (const entry of data.servers) {
+      const parsed = RegistryServer.safeParse(entry.server);
+      if (!parsed.success) {
+        unreadable.push(entry.server);
+        continue;
+      }
+      const meta = RegistryMeta.safeParse(entry._meta);
+      const official = meta.success
+        ? meta.data?.["io.modelcontextprotocol.registry/official"]
+        : undefined;
+      if (official?.status && official.status !== "active") continue;
+      if (!current.has(parsed.data.name) || official?.isLatest)
+        current.set(parsed.data.name, parsed.data);
+    }
+    return [
+      ...[...current.values()].map((entry) => ({
+        id: `mcp:${entry.name}`,
         type: "mcp",
-        name: server.name,
-        description: server.description ?? "",
+        name: entry.name,
+        description: entry.description ?? "",
         source:
-          server.repository?.url ?? "https://registry.modelcontextprotocol.io",
+          entry.repository?.url ?? "https://registry.modelcontextprotocol.io",
         scope: "project",
         harnesses: ["claude-code", "cursor"],
-        config: registryMcpConfig(server),
+        config: registryMcpConfig(entry),
         tags: ["mcp-registry"],
-      }),
-    );
+      })),
+      ...unreadable,
+    ];
   },
 };
 export const skillsSource: CatalogSource = {
@@ -186,35 +231,35 @@ export const skillsSource: CatalogSource = {
     const token = process.env.VERCEL_OIDC_TOKEN;
     if (!token)
       throw new Error("Set VERCEL_OIDC_TOKEN for the documented skills.sh API");
+    const Skill = z.object({
+      id: z.string(),
+      name: z.string(),
+      source: z.string(),
+      installUrl: z.string().optional(),
+    });
     const data = z
-      .object({
-        data: z.array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-            source: z.string(),
-            installUrl: z.string().optional(),
-          }),
-        ),
-      })
+      .object({ data: z.array(z.unknown()) })
       .parse(
         await fetchJson(
           `https://skills.sh/api/v1/skills/search?q=${encodeURIComponent(query)}&limit=100`,
           { Authorization: `Bearer ${token}` },
         ),
       );
-    return data.data.map((s) =>
-      ResourceSchema.parse({
-        id: `skill:${s.id}`,
+    return data.data.map((entry) => {
+      const parsed = Skill.safeParse(entry);
+      if (!parsed.success) return entry;
+      const skill = parsed.data;
+      return {
+        id: `skill:${skill.id}`,
         type: "skill",
-        name: s.name,
-        source: s.installUrl ?? `https://github.com/${s.source}`,
+        name: skill.name,
+        source: skill.installUrl ?? `https://github.com/${skill.source}`,
         scope: "project",
         harnesses: ["claude-code", "cursor"],
         tags: ["skills.sh"],
-        config: { skillsId: s.id },
-      }),
-    );
+        config: { skillsId: skill.id },
+      };
+    });
   },
 };
 export function githubSource(

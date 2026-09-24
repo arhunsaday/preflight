@@ -175,3 +175,39 @@ it("recovers a pending transaction without overwriting later human edits", async
   await recover(root);
   expect(await readFile(path, "utf8")).toBe("original");
 });
+
+it("writes a status line script and takes it back on rollback", async () => {
+  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-status-"));
+  const home = join(root, "home");
+  await mkdir(home);
+  const adapter = createAdapters({ root, home }).find(
+    (a) => a.id === "claude-code",
+  )!;
+  const resource = ResourceSchema.parse({
+    id: "statusline:gradient",
+    type: "statusline",
+    name: "gradient",
+    source: "local:owned",
+    scope: "global",
+    harnesses: ["claude-code"],
+    content: "#!/usr/bin/env bash\necho hello\n",
+    config: { script: true, padding: 0 },
+  });
+  const files = await adapter.plan([resource], []);
+  await applyFiles(root, files, { actor: "test" });
+  const settings = JSON.parse(
+    (await readFile(join(home, ".claude", "settings.json"), "utf8")) as string,
+  );
+  expect(settings.statusLine.type).toBe("command");
+  expect(settings.statusLine.padding).toBe(0);
+  expect(settings.statusLine.script).toBeUndefined();
+  const script = settings.statusLine.command.replace(/^bash '|'$/g, "");
+  expect(await readFile(script, "utf8")).toContain("echo hello");
+  await applyFiles(root, await adapter.plan([], [resource]), { actor: "test" });
+  await expect(readFile(script, "utf8")).rejects.toThrow();
+  expect(
+    JSON.parse(
+      (await readFile(join(home, ".claude", "settings.json"), "utf8")) as string,
+    ).statusLine,
+  ).toBeUndefined();
+});
