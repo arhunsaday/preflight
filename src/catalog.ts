@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative, basename } from "node:path";
 import { z } from "zod";
 import { ResourceSchema, type Resource, type ResourceType } from "./schema.js";
+import { RegistryServer, registryMcpConfig } from "./registry.js";
 import { frontmatter } from "./adapters.js";
 export interface CatalogSource {
   id: string;
@@ -154,18 +155,7 @@ export const mcpRegistry: CatalogSource = {
       .object({
         servers: z.array(
           z.object({
-            server: z
-              .object({
-                name: z.string(),
-                description: z.string().optional(),
-                repository: z.object({ url: z.string() }).optional(),
-                remotes: z
-                  .array(
-                    z.object({ url: z.string(), type: z.string().optional() }),
-                  )
-                  .optional(),
-              })
-              .passthrough(),
+            server: RegistryServer,
           }),
         ),
       })
@@ -184,9 +174,7 @@ export const mcpRegistry: CatalogSource = {
           server.repository?.url ?? "https://registry.modelcontextprotocol.io",
         scope: "project",
         harnesses: ["claude-code", "cursor"],
-        config: server.remotes?.[0]
-          ? { url: server.remotes[0].url }
-          : { registry: server },
+        config: registryMcpConfig(server),
         tags: ["mcp-registry"],
       }),
     );

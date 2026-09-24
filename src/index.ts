@@ -13,3 +13,4 @@ export * from "./retrofit.js";
 export { execute } from "./commands.js";
 export * from "./verify.js";
 export * from "./bench-tasks.js";
+export * from "./registry.js";

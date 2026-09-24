@@ -163,6 +163,10 @@ class FileAdapter implements HarnessAdapter {
       old = previous.filter(relevant);
     const targets = new Set<string>();
     for (const resource of wanted) {
+      if (resource.type === "mcp" && resource.config.unsupportedReason)
+        throw new Error(
+          `Invalid resource: ${String(resource.config.unsupportedReason)}`,
+        );
       const target = this.target(resource);
       const key = target.path + "#" + (target.key ?? "");
       if (resource.type !== "hook" && targets.has(key))
