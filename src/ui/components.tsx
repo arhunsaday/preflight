@@ -570,23 +570,31 @@ export function resourceDetail({
   }
 
   if (resource.content) {
-    const content = outputLines(resource.content, width - 2);
+    // Only the visible head is wrapped: content can be tens of thousands of
+    // characters and this runs on every keystroke.
+    const source = resource.content.split("\n");
+    const preview = outputLines(source.slice(0, 40).join("\n"), width - 2);
     lines.push(<Text> </Text>);
     lines.push(
-      <Text dimColor>
-        content {glyph.dot} {content.length} lines {glyph.dot} ~
+      <Text dimColor wrap="truncate">
+        content {glyph.dot} {count(source.length, "line")} {glyph.dot} ~
         {Math.ceil(resource.content.length / 4)} tokens
       </Text>,
     );
-    for (const line of content.slice(0, 40))
+    for (const line of preview.slice(0, 40))
       lines.push(
         <Text dimColor wrap="truncate">
           {" "}
           {line}
         </Text>,
       );
-    if (content.length > 40)
-      lines.push(<Text dimColor> … {content.length - 40} more lines</Text>);
+    if (source.length > 40)
+      lines.push(
+        <Text dimColor wrap="truncate">
+          {" "}
+          … {count(source.length - 40, "more line")}
+        </Text>,
+      );
   }
 
   const related = findings.filter((f) => f.resourceId === resource.id);
