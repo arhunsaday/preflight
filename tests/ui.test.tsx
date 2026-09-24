@@ -264,3 +264,36 @@ it("keeps the resource id fixed while editing", async () => {
     view.unmount();
   }
 }, 20000);
+
+// A configuration edited outside ADK — pulled from git, or hand-edited — is
+// desired state that has not reached the harness files yet.
+it("marks desired resources as applied once they reach the harness files", async () => {
+  const context = await workspace();
+  const service = new AdkService(context);
+  const config = await service.init();
+  config.profiles.default!.resources.push(
+    ResourceSchema.parse({
+      id: "command:ship",
+      type: "command",
+      name: "ship",
+      source: "local:owned",
+      scope: "project",
+      harnesses: ["claude-code"],
+      content: "Run the checks.\n",
+    }),
+  );
+  await service.store.write(config);
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("not yet written");
+    expect(ui.frame()).toContain("1 not applied");
+    await ui.press("y");
+    await ui.until("PREVIEW");
+    await ui.press("\r");
+    await ui.until("written to the harness files");
+    expect(ui.frame()).not.toContain("not applied");
+  } finally {
+    view.unmount();
+  }
+}, 20000);

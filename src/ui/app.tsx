@@ -7,7 +7,9 @@ import { execute } from "../commands.js";
 import { AdkService } from "../service.js";
 import { measureUsage, type Finding, type Usage } from "../analysis.js";
 import type { Context } from "../adapters.js";
-import type { AdkConfig, Resource, ResourceType } from "../schema.js";
+import type { AdkConfig, AdkLock, Resource, ResourceType } from "../schema.js";
+import { AdkLockSchema } from "../schema.js";
+import { readText } from "../transaction.js";
 import { diffResources } from "../diff.js";
 import {
   actions as allActions,
@@ -71,6 +73,8 @@ interface Pending {
   result: unknown;
 }
 
+export type AppliedState = "applied" | "pending";
+
 interface Toast {
   text: string;
   tone: "success" | "danger" | "muted";
@@ -119,6 +123,7 @@ export function App({ context }: { context: Context }) {
   const [view, setView] = useState<ViewId>("browse");
   const [overlay, setOverlay] = useState<Overlay>("none");
   const [config, setConfig] = useState<AdkConfig | null>(null);
+  const [lock, setLock] = useState<AdkLock | null>(null);
   const [harnesses, setHarnesses] = useState<HarnessSummary[]>([]);
   const [findings, setFindings] = useState<Finding[] | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -169,12 +174,31 @@ export function App({ context }: { context: Context }) {
     () => (config ? Object.keys(config.profiles).sort() : []),
     [config],
   );
+  // Desired state against the last applied lockfile: has this change landed?
+  const applied = useMemo(() => {
+    const states = new Map<string, AppliedState>();
+    for (const entry of diffResources(lock?.resources ?? [], resources))
+      states.set(
+        entry.resource.id,
+        entry.kind === "unchanged" ? "applied" : "pending",
+      );
+    return states;
+  }, [lock, resources]);
+  const notApplied = [...applied.values()].filter(
+    (state) => state === "pending",
+  ).length;
 
   async function loadConfig() {
     try {
       setConfig(await service.store.read());
     } catch {
       setConfig(null);
+    }
+    try {
+      const raw = await readText(service.store.lockPath);
+      setLock(raw ? AdkLockSchema.parse(JSON.parse(raw)) : null);
+    } catch {
+      setLock(null);
     }
   }
 
@@ -819,6 +843,7 @@ export function App({ context }: { context: Context }) {
             findings: findings ?? [],
             capabilities,
             usage,
+            applied: applied.get(selectedResource.id),
             width: detailWidth,
           }),
         );
@@ -853,6 +878,7 @@ export function App({ context }: { context: Context }) {
       findings: findings ?? [],
       capabilities,
       usage,
+      applied: applied.get(selectedResource.id),
       width: detailWidth,
     });
   }
@@ -896,6 +922,7 @@ export function App({ context }: { context: Context }) {
         height={listHeight}
         width={listWidth}
         findings={findings ?? []}
+        {...(view === "browse" ? { applied } : {})}
       />
     );
   }
@@ -925,6 +952,7 @@ export function App({ context }: { context: Context }) {
       parts.push(`${listLength ? index + 1 : 0} of ${visible.length}`);
       if (visible.length !== resources.length)
         parts.push(`${resources.length} total`);
+      if (notApplied) parts.push(`${notApplied} not applied`);
       parts.push(`scope ${scopeFilter}`);
       parts.push(`type ${typeFilter}`);
       if (filter) parts.push(`filter "${filter}"`);

@@ -244,19 +244,21 @@ export function ResourceList({
   height,
   width = 46,
   findings = [],
+  applied,
 }: {
   resources: Resource[];
   selected: number;
   height: number;
   width?: number;
   findings?: Finding[];
+  applied?: Map<string, "applied" | "pending">;
 }) {
   const start = Math.max(
     0,
     Math.min(selected - Math.floor(height / 2), resources.length - height),
   );
   const scopeWidth = width >= 44 ? 7 : 1;
-  const nameWidth = Math.max(6, width - 12 - scopeWidth);
+  const nameWidth = Math.max(6, width - (applied ? 14 : 12) - scopeWidth);
   const flagged = new Set(
     findings
       .filter((f) => f.severity !== "info" && f.resourceId)
@@ -279,6 +281,21 @@ export function ResourceList({
             dim: true,
           },
           { text: " " },
+          ...(applied
+            ? [
+                {
+                  text:
+                    applied.get(resource.id) === "applied"
+                      ? glyph.on
+                      : glyph.off,
+                  color:
+                    applied.get(resource.id) === "applied"
+                      ? color.success
+                      : color.warning,
+                },
+                { text: " " },
+              ]
+            : []),
           {
             text: flagged.has(resource.id) ? severity.warning.glyph : " ",
             color: color.warning,
@@ -411,12 +428,14 @@ export function resourceDetail({
   findings,
   capabilities,
   usage = null,
+  applied,
   width,
 }: {
   resource: Resource;
   findings: Finding[];
   capabilities: Record<string, ResourceType[]>;
   usage?: Usage | null;
+  applied?: "applied" | "pending" | undefined;
   width: number;
 }): ReactNode[] {
   const lines: ReactNode[] = [];
@@ -441,6 +460,16 @@ export function resourceDetail({
       {!resource.enabled && <Text color={color.muted}> (disabled)</Text>}
     </Field>,
   );
+  if (applied)
+    lines.push(
+      <Field label="applied" width={labelWidth}>
+        <Text color={applied === "applied" ? color.success : color.warning}>
+          {applied === "applied"
+            ? "written to the harness files"
+            : "not yet written; y reconciles"}
+        </Text>
+      </Field>,
+    );
   lines.push(
     <Field label="harnesses" width={labelWidth}>
       <Text>

@@ -37,7 +37,7 @@ Every action names the CLI command it runs, in the action palette, the keyboard 
 | `s` `t` | cycle the scope and type filters |
 | `y` `r` `o` `?` `q` | sync, reload, raw result, keyboard reference, quit |
 
-The resource form validates against the same Zod schema as the CLI: `↑↓` moves between fields, `←→` cycles choices, `1`–`9` toggles harnesses, `\n` inserts a line break in content, and invalid fields are named where they are. Forms map to `create-json` and `update-json`. The status bar carries the active profile, harness detection, measured skill utilisation and the doctor's error and warning counts; the detail pane reports observed invocations per resource, or nothing at all when no transcripts were found.
+The resource form validates against the same Zod schema as the CLI: `↑↓` moves between fields, `←→` cycles choices, `1`–`9` toggles harnesses, `\n` inserts a line break in content, and invalid fields are named where they are. Forms map to `create-json` and `update-json`. The status bar carries the active profile, harness detection, measured skill utilisation and the doctor's error and warning counts. The detail pane reports observed invocations per resource, or nothing at all when no transcripts were found, and whether the resource has reached the harness files: desired state that came from outside ADK, such as a configuration pulled from git, reads as not applied until `y` reconciles it.
 
 ## State, ownership, and recovery
 
