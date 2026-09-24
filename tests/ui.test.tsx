@@ -43,28 +43,36 @@ it("searches the catalogue and adds the selected result only after preview confi
   const service = new AdkService(context);
   await service.init();
   const view = render(<App context={context} />);
+  // Flush React effects after each keystroke: Ink subscribes input handlers
+  // in useEffect, after the visible frame has already been rendered.
+  const type = async (text: string) => {
+    await vi.waitFor(() => expect(view.lastFrame()).not.toContain("working…"));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    view.stdin.write(text);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  };
   try {
     await vi.waitFor(() =>
       expect(view.lastFrame()).toContain("Select a resource"),
     );
-    view.stdin.write("\t");
+    await type("\t");
     await vi.waitFor(() => expect(view.lastFrame()).toContain("adk ›"));
-    view.stdin.write("search ponytail");
+    await type("search ponytail");
     await vi.waitFor(() =>
       expect(view.lastFrame()).toContain("adk › search ponytail"),
     );
-    view.stdin.write("\r");
+    await type("\r");
     await vi.waitFor(() =>
       expect(view.lastFrame()).toContain("catalogue / all / 1 resources"),
     );
-    view.stdin.write("add");
+    await type("add");
     await vi.waitFor(() => expect(view.lastFrame()).toContain("adk › add"));
-    view.stdin.write("\r");
+    await type("\r");
     await vi.waitFor(() => expect(view.lastFrame()).toContain("Preview only"));
     expect(await service.list()).toHaveLength(0);
-    view.stdin.write("confirm");
+    await type("confirm");
     await vi.waitFor(() => expect(view.lastFrame()).toContain("adk › confirm"));
-    view.stdin.write("\r");
+    await type("\r");
     await vi.waitFor(async () => expect(await service.list()).toHaveLength(1));
   } finally {
     view.unmount();

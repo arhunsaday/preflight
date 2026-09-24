@@ -20,7 +20,10 @@ const Input = z.object({
 });
 type InputValue = z.infer<typeof Input>;
 const envName = (name: string) =>
-  `ADK_${name.replace(/^-+/, "").replace(/[^a-z0-9_]/gi, "_").toUpperCase()}`;
+  `ADK_${name
+    .replace(/^-+/, "")
+    .replace(/[^a-z0-9_]/gi, "_")
+    .toUpperCase()}`;
 const reference = (name: string) => "${" + name + "}";
 function inputValue(input: InputValue, fallback: string): string | undefined {
   let value = input.isSecret
@@ -55,7 +58,7 @@ const Package = z.object({
   registryType: z.string(),
   registryBaseUrl: z.string().optional(),
   identifier: z.string(),
-  version: z.string(),
+  version: z.string().optional(),
   transport: Transport,
   runtimeArguments: z.array(Input).default([]),
   packageArguments: z.array(Input).default([]),
@@ -65,7 +68,7 @@ export const RegistryServer = z
   .object({
     name: z.string(),
     description: z.string().optional(),
-    repository: z.object({ url: z.string() }).optional(),
+    repository: z.object({ url: z.string().optional() }).optional(),
     remotes: z.array(Transport).optional(),
     packages: z.array(Package).optional(),
   })

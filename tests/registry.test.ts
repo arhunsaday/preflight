@@ -84,3 +84,50 @@ it("pins Python packages and does not invent unsupported launchers", () => {
     }),
   ).toHaveProperty("unsupportedReason");
 });
+it("searches records whose optional repository metadata is empty", async () => {
+  const { vi } = await import("vitest");
+  const { mcpRegistry } = await import("../src/catalog.js");
+  vi.stubGlobal(
+    "fetch",
+    async () =>
+      new Response(
+        JSON.stringify({
+          servers: [
+            {
+              server: {
+                name: "example/no-repository",
+                repository: {},
+                remotes: [
+                  { type: "streamable-http", url: "https://example.com/mcp" },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+  );
+  try {
+    expect((await mcpRegistry.search("no-repository"))[0]).toMatchObject({
+      source: "https://registry.modelcontextprotocol.io",
+      config: { url: "https://example.com/mcp" },
+    });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps unversioned package metadata inspectable without producing an unpinned launcher", () => {
+  expect(
+    registryMcpConfig({
+      name: "example/unversioned",
+      packages: [
+        {
+          registryType: "npm",
+          identifier: "example",
+          transport: { type: "stdio" },
+        },
+      ],
+    }),
+  ).toMatchObject({ unsupportedReason: expect.any(String) });
+});
