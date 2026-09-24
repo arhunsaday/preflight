@@ -93,7 +93,7 @@ Une revue indépendante de la branche avait trouvé sept problèmes, corrigés a
 - **Couverture des catalogues** : limites de 100 résultats par source, recherche GitHub par chemins, assets distants textuels et bornés uniquement. La découverte locale ne couvre pas nécessairement chaque type dans chaque format externe.
 - **Robustesse MCP** : la conversion couvre HTTP/SSE et npm/PyPI standard épinglés. Tester davantage de variantes de packages et d’arguments ; les types de packages non pris en charge restent explicites. Le schéma de réponse valide encore le lot entier : une nouvelle forme invalide pourrait rendre la source indisponible, sans casser les autres sources.
 - **Interface** : une commande en cours n'est pas annulable ; les touches sont ignorées pendant son exécution. `verify` et `install` s'affichent en JSON brut coloré, pas en panneau structuré. Les ressources détectées mais non gérées ne sont visibles que par `detect` et le doctor, pas adoptables depuis l'interface.
-- Reprendre les critères de `PLAN.md` point par point pour identifier les écarts restants avant d’annoncer la roadmap complète ; cette liste ne remplace pas un audit d’acceptation.
+- ~~Reprendre les critères de `PLAN.md` point par point~~ : fait, dans `ACCEPTANCE.md`. Six écarts y sont retenus, trois autres ont été corrigés plutôt que consignés.
 
 ### Configuration externe et roadmap différée
 
