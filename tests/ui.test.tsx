@@ -214,3 +214,51 @@ it("shows the keyboard reference with the command each action runs", async () =>
     view.unmount();
   }
 }, 20000);
+
+it("guides an empty project to its first configuration", async () => {
+  const context = await workspace();
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("No configuration in this project");
+    expect(ui.frame()).toContain("i creates adk.config.json");
+    await ui.press("i");
+    await ui.until("PREVIEW");
+    await ui.press("\r");
+    await ui.until("No resource in this profile");
+  } finally {
+    view.unmount();
+  }
+}, 20000);
+
+it("keeps the resource id fixed while editing", async () => {
+  const context = await workspace();
+  const service = new AdkService(context);
+  await service.init();
+  await service.create({
+    id: "prompt:draft",
+    type: "prompt",
+    name: "draft",
+    description: "",
+    source: "local:owned",
+    scope: "project",
+    harnesses: ["claude-code"],
+    config: {},
+    tags: [],
+    enabled: true,
+  });
+  const view = render(<App context={context} />);
+  const ui = driver(view);
+  try {
+    await ui.until("draft");
+    await ui.press("e");
+    await ui.until("EDIT prompt:draft");
+    await ui.until("fixed; fork to rename");
+    await ui.press("zz");
+    expect(ui.frame()).not.toContain("prompt:draftzz");
+    await ui.press("\u001b");
+    await ui.until("Browse");
+  } finally {
+    view.unmount();
+  }
+}, 20000);

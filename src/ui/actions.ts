@@ -206,6 +206,8 @@ export const actions: Action[] = [
     id: "init",
     label: "Create a project configuration",
     group: "Configuration",
+    key: "i",
+    short: "init",
     cli: "init",
     confirm: true,
     build: () => ["init"],

@@ -722,6 +722,7 @@ export function FormPane({
   fields,
   index,
   issues,
+  locked = [],
   title,
   command,
   input,
@@ -733,6 +734,7 @@ export function FormPane({
   fields: FormField[];
   index: number;
   issues: Partial<Record<FieldName, string>>;
+  locked?: FieldName[];
   title: string;
   command: string;
   input: ReactNode;
@@ -755,13 +757,19 @@ export function FormPane({
   fields.forEach((field, position) => {
     const active = position === index;
     const issue = issues[field.name];
+    const fixed = locked.includes(field.name);
     lines.push(
       <Text wrap="truncate">
         <Text color={color.accent}>{active ? glyph.selected : " "} </Text>
         <Text bold={active} dimColor={!active}>
           {fit(field.name, labelWidth)}
         </Text>
-        {field.kind === "text" && active ? (
+        {fixed ? (
+          <Text dimColor>
+            {"  "}
+            {truncate(displayValue(form, field), width - labelWidth - 6)}
+          </Text>
+        ) : field.kind === "text" && active ? (
           <Text>
             {"  "}
             {input}
@@ -802,6 +810,11 @@ export function FormPane({
           <Text color={color.danger}>
             {"  "}
             {severity.error.glyph} {truncate(issue, 40)}
+          </Text>
+        ) : active && fixed ? (
+          <Text dimColor>
+            {"  "}
+            {glyph.locked} fixed; fork to rename
           </Text>
         ) : active && field.hint ? (
           <Text dimColor>

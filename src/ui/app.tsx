@@ -93,6 +93,10 @@ const writeCommands = new Set([
   "retrofit",
 ]);
 
+/** update-json keeps the resource id, so editing cannot change it. */
+const lockedFields = (editing: string | null): FieldName[] =>
+  editing ? ["id"] : [];
+
 /** Whether a command changes state, and so needs a preview before it runs. */
 export function writes(argv: string[]): boolean {
   const [head, second] = argv;
@@ -561,6 +565,7 @@ export function App({ context }: { context: Context }) {
 
     if (overlay === "form" && form) {
       const field = formFields[form.index]!;
+      const locked = lockedFields(form.editing);
       if (key.escape) {
         setOverlay("none");
         setForm(null);
@@ -577,6 +582,7 @@ export function App({ context }: { context: Context }) {
         });
         return;
       }
+      if (locked.includes(field.name)) return;
       if (key.leftArrow && field.kind !== "text") {
         setForm({ ...form, state: cycle(form.state, field, -1) });
         return;
@@ -597,7 +603,8 @@ export function App({ context }: { context: Context }) {
           setForm({ ...form, state: toggle(form.state, field, option) });
         return;
       }
-      if (key.return && field.kind !== "text") void submitForm();
+      if (key.return && (field.kind !== "text" || locked.includes(field.name)))
+        void submitForm();
       return;
     }
 
@@ -825,16 +832,22 @@ export function App({ context }: { context: Context }) {
       }
       return lines;
     }
-    if (!selectedResource)
+    if (!selectedResource) {
+      const [title, next] =
+        config === null
+          ? ["No configuration in this project", "i creates adk.config.json"]
+          : view === "catalogue"
+            ? ["No catalogue result", "/ searches, O adds remote sources"]
+            : filter || scopeFilter !== "all" || typeFilter !== "all"
+              ? ["No resource matches the filter", "Esc clears it"]
+              : resources.length
+                ? ["No resource selected", ""]
+                : ["No resource in this profile", "n creates one, 2 browses the catalogue"];
       return [
-        <Text dimColor>
-          {config === null
-            ? "No configuration in this project"
-            : view === "catalogue"
-              ? "Search the catalogue to see results"
-              : "No resource selected"}
-        </Text>,
+        <Text bold>{title}</Text>,
+        <Text dimColor>{next}</Text>,
       ];
+    }
     return resourceDetail({
       resource: selectedResource,
       findings: findings ?? [],
@@ -988,14 +1001,18 @@ export function App({ context }: { context: Context }) {
           fields={formFields}
           index={form.index}
           issues={form.issues}
+          locked={lockedFields(form.editing)}
           title={form.editing ? `EDIT ${form.editing}` : "NEW RESOURCE"}
           command={`adk ${form.editing ? `update-json ${form.editing}` : "create-json"} … --dry-run`}
           width={width}
           height={bodyHeight}
-          offset={0}
+          offset={Math.max(0, form.index + 5 - bodyHeight)}
           input={
             <TextInput
-              focus={field.kind === "text"}
+              focus={
+                field.kind === "text" &&
+                !lockedFields(form.editing).includes(field.name)
+              }
               value={String(form.state[field.name] ?? "")}
               onChange={(value) =>
                 setForm({
