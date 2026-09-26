@@ -4,6 +4,7 @@ import { searchSources } from "../src/catalog.js";
 import { materializeLoadout, resolveLoadout } from "../src/loadouts.js";
 import { makeShare, shareCode, previewShare } from "../src/sharing.js";
 import { analyze, measureUsage } from "../src/analysis.js";
+import { execute } from "../src/commands.js";
 import { mkdtemp, writeFile, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -104,4 +105,43 @@ it("counts observed invocations without inventing usage from plain mentions", as
       (f) => f.code === "broad-permissions",
     ),
   ).toBe(true);
+});
+
+it("shares a loadout and a project drop-in, and refuses an empty selection", async () => {
+  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-share-"));
+  const context = { root, home: join(root, "home") };
+  await execute(["init"], context);
+  const project = ResourceSchema.parse({
+    ...resource,
+    id: "skill:project-only",
+    name: "project-only",
+    content: "---\nname: project-only\n---\nbody\n",
+  });
+  const global = ResourceSchema.parse({
+    ...project,
+    id: "skill:global-only",
+    name: "global-only",
+    scope: "global",
+  });
+  for (const r of [project, global])
+    await execute(["create-json", JSON.stringify(r)], context);
+
+  const drop = (await execute(
+    ["share", "--scope", "project", "--dry-run"],
+    context,
+  )) as { resources: { id: string }[] };
+  expect(drop.resources.map((r) => r.id)).toEqual(["skill:project-only"]);
+
+  const loadout = (await execute(
+    ["share", "--loadout", "base", "--dry-run"],
+    context,
+  )) as { resources: { id: string }[] };
+  expect(loadout.resources.length).toBeGreaterThan(0);
+
+  await expect(
+    execute(["share", "--loadout", "junior", "--dry-run"], context),
+  ).rejects.toThrow(/not shareable until it resolves/);
+  await expect(
+    execute(["share", "--id", "skill:project-only", "--scope", "global"], context),
+  ).rejects.toThrow(/Nothing to share/);
 });

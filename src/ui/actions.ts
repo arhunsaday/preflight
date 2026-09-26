@@ -313,6 +313,15 @@ export const actions: Action[] = [
     build: () => ["doctor"],
   },
   {
+    id: "doctor-connect",
+    label: "Re-run doctor, connecting to each MCP server",
+    group: "Analysis",
+    show: true,
+    external: true,
+    cli: "doctor",
+    build: () => ["doctor", "--connect"],
+  },
+  {
     id: "usage",
     label: "Measured skill and tool invocations",
     group: "Analysis",

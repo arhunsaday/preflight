@@ -55,7 +55,7 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | La page montre le contenu avant application | ✔ | `src/worker.ts` : chaque ressource, sa source, ses variables requises, plus un formulaire de diff. |
 | Les secrets ne voyagent jamais, refus au schéma | ✔ | `SharePayloadSchema` refuse à la création. Tests *rejects secrets buried in arrays*, *rejects bearer headers, URL credentials and command-line secrets*, *allows pinned GitHub commit provenance in shares*. |
 | Codes courts, six caractères, insensibles à la casse, sans glyphes ambigus | ✔ | `src/sharing.ts`, alphabet `23456789abcdefghjkmnpqrstuvwxyz`. |
-| Portée partageable : config entière, loadout, skill seule, bloc MCP, drop-in projet | ◐ | Config entière et ressource seule (`--id`). **Partager un loadout ou un drop-in projet en tant que tel n'existe pas.** |
+| Portée partageable : config entière, loadout, skill seule, bloc MCP, drop-in projet | ✔ | Config entière, ressource seule (`--id`), loadout résolu (`--loadout`, refusé tant qu'il ne résout pas), drop-in de portée (`--scope project`). |
 | Expiration, public/non listé, révocable | ✔ | Test *publishes inspectable shares, enforces ownership and revocation*. |
 
 ---
@@ -76,7 +76,7 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | Critère | | Preuve |
 | --- | --- | --- |
 | Usage mesuré depuis les transcripts, visible dans l'interface | ✔ | Barre d'état : skills utilisées sur installées ; panneau de détail : invocations par ressource. Absence de transcripts = usage inconnu, jamais « inutilisé ». |
-| Analyse de configuration | ◐ | Coût de contexte (estimation par caractères, pas un tokenizer), conflits de déclencheurs (correspondance exacte de description), posture de sécurité, hooks non câblés, liens morts. **Un serveur MCP qui échoue à se connecter n'est rapporté que par `verify --connect`, jamais par le doctor** — délibéré : le doctor ne démarre aucun programme. |
+| Analyse de configuration | ✔ | Coût de contexte (estimation par caractères, pas un tokenizer), conflits de déclencheurs (correspondance exacte de description), posture de sécurité, hooks non câblés, liens morts. `doctor --connect` teste chaque serveur MCP activé et remplace « connexion non testée » par le résultat réel ; sans ce drapeau, le doctor ne démarre aucun programme. |
 | Benchmark local, jeu de tâches fixe | ✔ | Dix tâches ; l'interface accepte un autre manifeste comme source de tâches. |
 
 ---
@@ -106,9 +106,7 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 ## Écarts retenus
 
 1. **`plugin` absent du catalogue embarqué** — aucune source de marketplace interrogeable. Les plugins restent créables à la main et installables par délégation.
-3. **Partage d'un loadout ou d'un drop-in projet** — non implémenté.
-4. **Connexion MCP hors du doctor** — délibéré, mais c'est un écart au texte du plan.
-5. **Trois validations humaines** (§11) — aucune n'a été faite ; aucun test ne les remplace.
-6. **Intégrations réelles** — Wrangler, installations Claude/Cursor réelles, run de benchmark payant : voir `HANDOFF.md`.
+2. **Trois validations humaines** (§11) — aucune n'a été faite ; aucun test ne les remplace.
+3. **Intégrations réelles restantes** — installations Claude/Cursor réelles et run de benchmark payant : voir `HANDOFF.md`. Le smoke du Worker, lui, tourne : `npm run smoke:worker`.
 
-Trois écarts trouvés par cet audit ont été corrigés plutôt que consignés : une entrée illisible ne supprime plus toute une source de résultats, le registre MCP retient la version qu'il marque courante au lieu d'une version arbitraire, et une status line peut porter son script au lieu de pointer vers un fichier absent.
+Six écarts trouvés par cet audit ont été corrigés plutôt que consignés : une entrée illisible ne supprime plus toute une source de résultats ; le registre MCP retient la version qu'il marque courante ; une status line porte son script ; la conformité couvre chaque capacité déclarée de chaque adaptateur, et `target()` refuse ce qu'un adaptateur ne déclare pas ; un loadout et un drop-in de portée sont partageables ; `doctor --connect` teste les serveurs MCP.

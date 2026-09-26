@@ -144,7 +144,7 @@ adk verify mcp:example --connect
 
 Usage streams Claude-style JSONL transcript files and counts structured `tool_use` entries, including `Skill` and MCP tool names. Text mentions do not count. No transcripts means unknown usage; prune makes no proposal in that case. Prune proposes IDs only and never deletes automatically. Transcript files are counted, not deduplicated conversational sessions; unsupported transcript formats do not constitute evidence of nonuse.
 
-`verify --connect` explicitly starts the configured MCP process or connects to its HTTP/SSE endpoint, initializes it and lists tools with bounded request timeouts. It invokes no tools. Environment references must resolve before connecting. Static doctor never starts configured programs.
+`verify --connect` explicitly starts the configured MCP process or connects to its HTTP/SSE endpoint, initializes it and lists tools with bounded request timeouts. It invokes no tools. Environment references must resolve before connecting. `doctor --connect` does the same for every enabled MCP server in the active profile and folds the result into the findings, replacing “configured; connection not tested” with what actually happened. Without that flag the doctor never starts a configured program.
 
 ## Sharing
 

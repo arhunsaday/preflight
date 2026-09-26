@@ -11,6 +11,7 @@ import {
   ScopeSchema,
   SharePayloadSchema,
   AdkConfigSchema,
+  type Resource,
 } from "./schema.js";
 import {
   fetchShare,
@@ -98,9 +99,57 @@ export async function execute(
   ).option("--connect");
   command(
     "doctor",
-    "Analyze installed setup and managed-file drift",
-    async () => service().doctor(),
-  );
+    "Analyze installed setup and managed-file drift; --connect tests MCP servers",
+    async (options) => {
+      const findings = await service().doctor();
+      if (!options.connect) return findings;
+      // Opt-in only: the static doctor never starts a configured program.
+      const probes = (await service().list()).filter(
+        (r) => r.type === "mcp" && r.enabled,
+      );
+      // A server we actually reached is no longer merely "not tested", so the
+      // static finding for its detected counterpart is replaced, not kept.
+      const probed = new Set(probes.map((r) => r.name));
+      const detected = new Map(
+        (await service().detect())
+          .flatMap((state) => state.resources)
+          .map((r) => [r.id, r.name]),
+      );
+      for (let i = findings.length - 1; i >= 0; i--) {
+        const finding = findings[i]!;
+        if (
+          finding.code === "mcp-unverified" &&
+          probed.has(detected.get(finding.resourceId ?? "") ?? "")
+        )
+          findings.splice(i, 1);
+      }
+      for (const resource of probes)
+        try {
+          const result = await verifyResource(resource, true);
+          findings.push(
+            ...(result.findings ?? []).filter(
+              (f) => f.code !== "mcp-unverified",
+            ),
+            {
+              code: result.connected ? "mcp-connected" : "mcp-unreachable",
+              severity: result.connected ? "info" : "error",
+              message: result.connected
+                ? `Connected and listed ${result.tools?.length ?? 0} tools.`
+                : "Configured but did not connect.",
+              resourceId: resource.id,
+            },
+          );
+        } catch (error) {
+          findings.push({
+            code: "mcp-unreachable",
+            severity: "error",
+            message: String(error),
+            resourceId: resource.id,
+          });
+        }
+      return findings;
+    },
+  ).option("--connect", "start or call each configured MCP server");
   command(
     "unmanaged",
     "List detected resources this profile does not manage",
@@ -297,9 +346,26 @@ export async function execute(
     "share",
     "Publish an inspectable configuration or export a payload",
     async (options) => {
-      const resources = options.id
-        ? [await service().inspect(options.id)]
-        : await service().list();
+      let resources: Resource[];
+      if (options.id) resources = [await service().inspect(options.id)];
+      else if (options.loadout) {
+        const plan = materializeLoadout(
+          loadouts,
+          options.loadout,
+          await catalog(options.catalog),
+        );
+        if (plan.missing.length)
+          throw new Error(
+            `Loadout is not shareable until it resolves: ${plan.missing.join(", ")}`,
+          );
+        resources = plan.resources;
+      } else resources = await service().list();
+      if (options.scope)
+        resources = resources.filter(
+          (resource) => resource.scope === ScopeSchema.parse(options.scope),
+        );
+      if (!resources.length)
+        throw new Error("Nothing to share with these options");
       const payload = makeShare(resources, {
         ownerId: options.owner ?? process.env.ADK_OWNER_ID ?? "local",
         visibility: options.public ? "public" : "unlisted",
@@ -325,7 +391,10 @@ export async function execute(
       );
     },
   )
-    .option("--id <id>")
+    .option("--id <id>", "share one resource")
+    .option("--loadout <name>", "share a resolved loadout")
+    .option("--scope <scope>", "share only global or project resources")
+    .option("--catalog <directory>", "resolve a loadout from another kit")
     .option("--owner <owner>")
     .option("--public")
     .option("--expires <ISO-date>")
