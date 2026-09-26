@@ -23,8 +23,9 @@ export function installationPlan(resource: Resource): Command {
         source,
         "--skill",
         resource.name,
+        // `--agent <agents>` takes one argument naming every agent.
         "--agent",
-        ...resource.harnesses,
+        resource.harnesses.join(","),
         ...(resource.scope === "global" ? ["--global"] : []),
         "--yes",
       ],

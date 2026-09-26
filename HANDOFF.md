@@ -67,7 +67,9 @@ Runs 17, 18 et 19 verts sur Node 22 et 24 plus `verify`. C'est la première CI v
 
 `unmanaged` liste ce qu'un harnais contient et que le profil actif ne gère pas ; `adopt` l'amène sous gestion **là où il est**. La ressource enregistre `adoptedBy` et `adoptedPath` (relatif à la base du harnais), l'adaptateur vise ce chemin, et un fichier dont le contenu correspond déjà n'est pas réécrit : la transaction n'ajoute que l'entrée de configuration et l'empreinte du lockfile, donc la dérive est détectée ensuite. `delete` retire le fichier, `rollback` le remet. Un chemin adopté qui tente de sortir du répertoire du harnais est ignoré au profit du chemin géré par ADK. Les types portés par un fichier de réglages s'adoptent en reconnaissant l'entrée déjà présente ; l'écriture des hooks est devenue idempotente pour ne pas dupliquer celle qu'on adopte.
 
-Limite : seules les ressources situées dans les répertoires des harnais sont détectées. Le magasin partagé `~/.agents/skills` n'est pas lu.
+Vérifié avec un vrai installateur, dans un HOME isolé : `npx skills@latest add vercel-labs/agent-skills --skill deploy-to-vercel --agent claude-code -g -y` installe **un vrai répertoire dans `~/.claude/skills`**, sans magasin `~/.agents/skills`. ADK le détecte comme non géré et l'adopte, empreinte du fichier inchangée. Le magasin partagé que documente `skills/THIRD-PARTY.md` relève donc d'une version ou d'options antérieures ; là où il existe, les skills y sont atteintes par lien symbolique et l'adoption les refuse explicitement, puisqu'ADK n'écrit jamais au travers d'un lien.
+
+Limite : seules les ressources situées dans les répertoires des harnais sont détectées.
 
 ### Mesures
 
@@ -91,7 +93,7 @@ Une revue indépendante de la branche avait trouvé sept problèmes, corrigés a
 2. Exécuter un smoke du Worker avec Wrangler et KV/R2 locaux. Le bundle et les tests du Worker passent, mais aucun environnement Wrangler réel ni déploiement Cloudflare n’a été validé. Non fait dans cette session : Wrangler n'est pas une dépendance du dépôt.
 3. Tester les parcours sur de vraies installations Claude/Cursor et les installateurs délégués, avec des ressources de test et sans écraser la configuration personnelle. Aucun téléchargement de plugin ou serveur externe n’a été effectué. Le TUI a été exercé de bout en bout sur un projet jetable (`init`, recherche catalogue, ajout, `sync`, déplacement de portée), pas sur une configuration personnelle réelle.
 4. Exécuter un véritable benchmark agent A/B et recueillir les métriques ; le runner et les dix tâches sont implémentés, mais aucun run payant d’agent n’a été lancé.
-5. Revue ciblée des ajouts : le TUI de cette session a été relu à la main et exercé dans un PTY, sans revue indépendante. Les plugins Claude et la conversion du registre MCP n'ont **pas** été revus à nouveau.
+5. ~~Revue ciblée des ajouts~~ : faite. Le registre MCP (deux défauts corrigés), les plugins Claude et la délégation d'installation ont été relus ; la délégation passait deux agents à un drapeau qui n'en prend qu'un, corrigé et testé. Le TUI a été relu à la main et exercé dans un PTY, sans revue indépendante.
 
 ### Priorité 2 — écarts fonctionnels connus
 

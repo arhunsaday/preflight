@@ -90,7 +90,7 @@ CRUD applies to all nine resource types. Native adapter wiring is intentionally 
 
 Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; ADK does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue.
 
-Existing resources are never silently adopted. `unmanaged` lists what a harness holds that the active profile does not, and `adopt <id>` brings one under management **where it already lives**: the resource records the harness and the relative path it was found in, ADK does not move the file, and a file whose content already matches is not rewritten at all — the transaction adds the configuration entry and the lockfile digest, so drift is detected from then on. `delete` afterwards removes the file, and `rollback` puts it back. An adopted path that tries to leave the harness directory is ignored in favour of ADK's own managed path.
+Existing resources are never silently adopted. `unmanaged` lists what a harness holds that the active profile does not, and `adopt <id>` brings one under management **where it already lives**: the resource records the harness and the relative path it was found in, ADK does not move the file, and a file whose content already matches is not rewritten at all — the transaction adds the configuration entry and the lockfile digest, so drift is detected from then on. `delete` afterwards removes the file, and `rollback` puts it back. An adopted path that tries to leave the harness directory is ignored in favour of ADK's own managed path, and a file reached through a symbolic link is refused: it belongs to whatever installed it, and ADK never writes through a link.
 
 ```sh
 adk unmanaged
@@ -129,7 +129,7 @@ adk profiles switch minimal
 adk sync --dry-run
 ```
 
-For tools, use `config: {"manager":"brew","package":"trivy"}` or an npm package. Skills with a repository source can delegate to `npx skills`; MCP entries can delegate to `mcpm`. Claude plugins use a qualified `name@marketplace` resource name and delegate package installation to `claude plugin install` with user/project scope. Their enable/disable settings and scope moves are reversible ADK transactions; package downloads remain delegated. These external installers must be available or obtainable on the user's machine. ADK's direct MCP configuration writes preserve neighboring entries and do not install the server binary.
+Delegated skill installation passes every target agent in the single `--agent <agents>` argument the `skills` CLI accepts. For tools, use `config: {"manager":"brew","package":"trivy"}` or an npm package. Skills with a repository source can delegate to `npx skills`; MCP entries can delegate to `mcpm`. Claude plugins use a qualified `name@marketplace` resource name and delegate package installation to `claude plugin install` with user/project scope. Their enable/disable settings and scope moves are reversible ADK transactions; package downloads remain delegated. These external installers must be available or obtainable on the user's machine. ADK's direct MCP configuration writes preserve neighboring entries and do not install the server binary.
 
 ## Doctor and observed usage
 

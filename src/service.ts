@@ -18,6 +18,7 @@ import {
 } from "./adapters.js";
 import {
   applyFiles,
+  linkedComponent,
   readText,
   jsonText,
   rollback,
@@ -310,6 +311,13 @@ export class AdkService {
       : undefined;
     if (fileBacked && !safeRelative(relative))
       throw new Error(`Cannot adopt a resource outside ${harness}: ${path}`);
+    // A linked file belongs to whatever installed it; ADK refuses writes
+    // through symlinks, so it must not claim ownership of one either.
+    const link = fileBacked ? await linkedComponent(path) : null;
+    if (link)
+      throw new Error(
+        `${link} is a link into another tool's store; manage it there, or reinstall it with --copy to adopt it`,
+      );
     return this.create(
       {
         ...resource,

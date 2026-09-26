@@ -4,6 +4,7 @@ import {
   readdir,
   realpath,
   readFile,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -230,3 +231,22 @@ it("adopts a harness setting without duplicating the entry it found", async () =
   expect(written.hooks.PreToolUse).toHaveLength(1);
   expect(await s.unmanaged()).toHaveLength(0);
 });
+
+it("refuses to adopt a file linked from another tool's store", async () => {
+  const s = await service();
+  await s.init();
+  const store = join(s.context.root, "store", "shared-skill");
+  await mkdir(store, { recursive: true });
+  await writeFile(join(store, "SKILL.md"), "---\nname: shared-skill\n---\nx\n");
+  const skills = join(s.context.home, ".claude", "skills");
+  await mkdir(skills, { recursive: true });
+  await symlink(store, join(skills, "shared-skill"));
+  const found = (await s.unmanaged()).find(
+    (e) => e.resource.name === "shared-skill",
+  )!;
+  expect(found).toBeTruthy();
+  await expect(s.adopt(found.resource.id)).rejects.toThrow(
+    /link into another tool's store/,
+  );
+});
+

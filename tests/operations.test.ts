@@ -147,3 +147,30 @@ it("benchmarks a pinned local repository in isolated checkouts", async () => {
   const result = await runBench(root, "test", config, tasks);
   expect(result).toMatchObject({ results: [{ passed: true, tokens: 5 }] });
 });
+
+it("passes every agent in the one argument the skills CLI accepts", () => {
+  const plan = installationPlan(
+    ResourceSchema.parse({
+      id: "skill:two-agents",
+      type: "skill",
+      name: "two-agents",
+      source: "https://github.com/owner/repo",
+      scope: "global",
+      harnesses: ["claude-code", "cursor"],
+    }),
+  );
+  expect(plan.args).toEqual([
+    "--yes",
+    "skills",
+    "add",
+    "https://github.com/owner/repo",
+    "--skill",
+    "two-agents",
+    "--agent",
+    "claude-code,cursor",
+    "--global",
+    "--yes",
+  ]);
+  // No bare value may follow a flag that takes a single argument.
+  expect(plan.args.filter((a) => a === "--agent")).toHaveLength(1);
+});

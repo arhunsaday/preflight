@@ -23,19 +23,24 @@ export const readText = async (path: string): Promise<string | null> => {
     throw e;
   }
 };
-async function safePath(path: string) {
+/** The first component of a path that is a symbolic link, if any. */
+export async function linkedComponent(path: string): Promise<string | null> {
   let current = resolve(path);
-  while (true) {
+  for (;;) {
     try {
-      if ((await lstat(current)).isSymbolicLink())
-        throw new Error(`Refusing symlink write: ${current}`);
+      if ((await lstat(current)).isSymbolicLink()) return current;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
     }
     const parent = dirname(current);
-    if (parent === current) break;
+    if (parent === current) return null;
     current = parent;
   }
+}
+
+async function safePath(path: string) {
+  const link = await linkedComponent(path);
+  if (link) throw new Error(`Refusing symlink write: ${link}`);
 }
 async function put(path: string, value: string | null) {
   await safePath(path);
