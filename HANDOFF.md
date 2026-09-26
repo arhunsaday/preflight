@@ -95,7 +95,8 @@ Une revue indépendante de la branche avait trouvé sept problèmes, corrigés a
    - `npx skills@latest add … -g -y` : installe un vrai répertoire dans `~/.claude/skills` ; ADK le détecte et l'adopte, empreinte inchangée. Un défaut corrigé au passage : `--agent` ne prend qu'un argument.
    - `mcpm install <nom> --force` : installe réellement le serveur, `mcpm ls` le confirme. Deux défauts corrigés : la commande était `add`, qui n'existe pas, et sans `--force` elle attend une confirmation au clavier qu'ADK ne peut pas donner.
    - `npm install -- <paquet>` : exécuté, code de sortie 0, paquet présent.
-   - `brew` (pas de macOS ici) et `claude plugin install` (CLI Claude absente) n'ont pas pu être exécutés.
+   - `claude plugin install` : la CLI Claude a été installée et l'argv vérifié — `--scope` accepte bien `user`, `project`, `local`, et un marketplace inexistant échoue proprement avec le message de la CLI. Non installé pour de vrai faute de marketplace de test. Constat important : `-y` est **requis sans TTY**, mais il accepte la commande déclarée par la marketplace sans la montrer à personne ; ADK ne le passe pas à votre place et le dit dans la note du plan.
+   - `brew` : pas de macOS ici, non exécuté.
    Rien n'a été testé sur une configuration Claude/Cursor personnelle réelle ; le TUI a été exercé de bout en bout sur des projets jetables.
 4. Exécuter un véritable benchmark agent A/B et recueillir les métriques ; le runner et les dix tâches sont implémentés, mais aucun run payant d’agent n’a été lancé.
 5. ~~Revue ciblée des ajouts~~ : faite. Le registre MCP (deux défauts corrigés), les plugins Claude et la délégation d'installation ont été relus ; la délégation passait deux agents à un drapeau qui n'en prend qu'un, corrigé et testé. Le TUI a été relu à la main et exercé dans un PTY, sans revue indépendante.

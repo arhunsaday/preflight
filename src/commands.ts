@@ -310,7 +310,11 @@ export async function execute(
         return {
           resource,
           plan,
-          note: "Use --execute to run this external package manager. Package-manager side effects are outside ADK rollback.",
+          note:
+            "Use --execute to run this external package manager. Package-manager side effects are outside ADK rollback." +
+            (resource.type === "plugin"
+              ? " A plugin whose marketplace declares an install command needs a terminal: that confirmation shows the command to a person, and ADK does not accept it on your behalf."
+              : ""),
         };
       const output = await runCommand(plan, ctx().root, 120000, {
         ...process.env,
