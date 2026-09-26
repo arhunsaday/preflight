@@ -105,8 +105,23 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 
 ## Écarts retenus
 
-1. **`plugin` absent du catalogue embarqué** — aucune source de marketplace interrogeable. Les plugins restent créables à la main et installables par délégation.
-2. **Trois validations humaines** (§11) — aucune n'a été faite ; aucun test ne les remplace.
-3. **Intégrations réelles restantes** — installations Claude/Cursor réelles et run de benchmark payant : voir `HANDOFF.md`. Le smoke du Worker, lui, tourne : `npm run smoke:worker`.
+1. **`plugin` absent du catalogue embarqué** — aucune source de marketplace interrogeable, et ce dépôt n'a aucun plugin à semer. Les plugins restent créables à la main et installables par délégation.
+2. **Trois validations humaines** (§11) — aucune n'a été faite ; aucun test ne les remplace. Elles demandent deux développeurs, deux machines et une semaine.
+3. **Un run de benchmark avec un vrai agent** — le runner complet est exercé de bout en bout avec un agent factice ; un run réel engage des appels modèle payants et relève d'une décision de l'auteur.
+4. **`brew` et une installation de plugin réelle** — pas de macOS ici, et aucun marketplace de test. L'argv des deux est vérifié ; `skills`, `mcpm` et `npm` ont bien été exécutés.
+5. **MCP.Directory** — HTTP 403, aucune API publique documentée.
+6. **Déploiement Cloudflare** — demande le compte, KV, R2 et le token de l'auteur. Le Worker, lui, passe un smoke complet sur un runtime Wrangler local.
 
-Six écarts trouvés par cet audit ont été corrigés plutôt que consignés : une entrée illisible ne supprime plus toute une source de résultats ; le registre MCP retient la version qu'il marque courante ; une status line porte son script ; la conformité couvre chaque capacité déclarée de chaque adaptateur, et `target()` refuse ce qu'un adaptateur ne déclare pas ; un loadout et un drop-in de portée sont partageables ; `doctor --connect` teste les serveurs MCP.
+## Écarts corrigés plutôt que consignés
+
+Neuf défauts trouvés en écrivant cet audit et en exécutant les vraies CLI :
+
+1. Une entrée illisible supprimait toute une source de résultats.
+2. Le registre MCP retenait une version arbitraire ; il retient celle qu'il marque courante.
+3. Une status line ne pouvait pas porter son script.
+4. `target()` répondait pour des types qu'un adaptateur ne déclare pas.
+5. Aucune conformité ne couvrait les capacités déclarées ; elle les couvre toutes.
+6. Un loadout et un drop-in de portée n'étaient pas partageables.
+7. Le doctor ne pouvait pas tester les connexions MCP, même sur demande.
+8. La délégation `skills` passait deux agents à un drapeau qui n'en prend qu'un.
+9. La délégation MCP appelait `mcpm add`, qui n'existe pas, sans le drapeau non interactif qu'il faut.
