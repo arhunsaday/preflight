@@ -19,7 +19,7 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | Profils : créer, changer, comparer | ✔ | `profiles create/switch/diff`, vue Profils. Tests dans `tests/service.test.ts`. |
 | Installation déléguée aux gestionnaires existants | ✔ | `install` imprime l'argv exact, `--execute` délègue sans shell. Tests *delegates installs as argv without a shell*, *runs a bounded subprocess and reports failure*. |
 | Dry-run, diff et rollback sur chaque écriture | ✔ | Test *dry run writes nothing and rollback refuses to destroy later edits*, *rolls back earlier files if a later write fails*, *recovers a pending transaction without overwriting later human edits*. |
-| Deux adaptateurs derrière l'interface, avec tests de conformité | ◐ | Boucle par adaptateur dans `tests/core.test.ts` (`claude-code`, `cursor`) : écriture, relecture, préservation des entrées MCP voisines, rollback. La conformité ne couvre qu'une forme de ressource par adaptateur ; elle ne balaie pas les neuf types. |
+| Deux adaptateurs derrière l'interface, avec tests de conformité | ✔ | `tests/conformance.test.ts` : pour chaque adaptateur, **chaque capacité déclarée** doit survivre écriture, relecture, retrait et rollback, et chaque type non déclaré doit être refusé. La suite a trouvé deux défauts en naissant : `target()` répondait pour des types que l'adaptateur ne déclare pas, et la relecture des hooks ne conserve pas de nom propre. |
 | Détection en lecture seule d'abord : installé, cassé, non câblé | ✔ | `detect` et `doctor`. Un lien symbolique mort est rapporté comme ressource cassée (vérifié à la main sur un `SKILL.md` pointant dans le vide) ; un lien vivant est refusé à l'écriture, pas rapporté. `unmanaged` et `adopt` amènent l'existant sous gestion sans le déplacer. |
 
 ---
@@ -106,7 +106,6 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 ## Écarts retenus
 
 1. **`plugin` absent du catalogue embarqué** — aucune source de marketplace interrogeable. Les plugins restent créables à la main et installables par délégation.
-2. **Conformité des adaptateurs étroite** — une forme de ressource par adaptateur, pas les neuf types.
 3. **Partage d'un loadout ou d'un drop-in projet** — non implémenté.
 4. **Connexion MCP hors du doctor** — délibéré, mais c'est un écart au texte du plan.
 5. **Trois validations humaines** (§11) — aucune n'a été faite ; aucun test ne les remplace.

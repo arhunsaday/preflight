@@ -159,6 +159,8 @@ The schema rejects recognizable credential patterns, secret-key literals, author
 
 The Worker implements six-character case-insensitive codes without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
 
+`npm run smoke:worker` exercises the Worker against a real Wrangler runtime with local KV and R2: a missing share, publishing with and without the write token, the landing page naming the required variables without carrying their values, reading the share back, and revoking it with and without the token. It downloads Wrangler through `npx` rather than carrying it as a dependency, creates a throwaway `.dev.vars`, and removes it again. Nothing leaves the machine and no Cloudflare account is involved.
+
 To run the supplied Hono Worker:
 
 1. Install/run Wrangler 4 and configure `wrangler.jsonc` with your Cloudflare KV namespace and R2 bucket. `OWNER_ID` identifies the deployment owner.

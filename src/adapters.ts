@@ -135,6 +135,8 @@ class FileAdapter implements HarnessAdapter {
     return this.paths()[scope];
   }
   target(resource: Resource): { path: string; key?: string; section?: string } {
+    if (!this.capabilities.includes(resource.type))
+      throw new Error(`${this.id} does not support ${resource.type}`);
     const base = this.base(resource.scope);
     const name = slug(resource.id);
     // An adopted resource keeps the file it was found in; ADK manages it where

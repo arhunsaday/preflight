@@ -29,7 +29,8 @@
     "format": "prettier --write src tests/*.ts tests/*.tsx",
     "catalog:seed": "tsx scripts/seed-catalog.ts",
     "prepack": "npm run build",
-    "build:worker": "esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=dist/worker.js"
+    "build:worker": "esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=dist/worker.js",
+    "smoke:worker": "bash scripts/worker-smoke.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
