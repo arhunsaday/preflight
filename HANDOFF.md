@@ -91,7 +91,12 @@ Une revue indépendante de la branche avait trouvé sept problèmes, corrigés a
 
 1. ~~Vérifier les jobs CI~~ : fait. CI verte sur Node 22/24 et `verify` depuis `d06e17b`. Continuer à la surveiller, notamment la stabilité des tests TUI, qui dépendent du temps : le pilote de test attend l'absence de spinner avant chaque touche, parce que l'interface ignore les touches pendant qu'une commande tourne.
 2. Exécuter un smoke du Worker avec Wrangler et KV/R2 locaux. Le bundle et les tests du Worker passent, mais aucun environnement Wrangler réel ni déploiement Cloudflare n’a été validé. Non fait dans cette session : Wrangler n'est pas une dépendance du dépôt.
-3. Tester les parcours sur de vraies installations Claude/Cursor et les installateurs délégués, avec des ressources de test et sans écraser la configuration personnelle. Aucun téléchargement de plugin ou serveur externe n’a été effectué. Le TUI a été exercé de bout en bout sur un projet jetable (`init`, recherche catalogue, ajout, `sync`, déplacement de portée), pas sur une configuration personnelle réelle.
+3. Installateurs délégués : **deux des quatre ont été exécutés pour de vrai** dans cette session, sur des répertoires jetables.
+   - `npx skills@latest add … -g -y` : installe un vrai répertoire dans `~/.claude/skills` ; ADK le détecte et l'adopte, empreinte inchangée. Un défaut corrigé au passage : `--agent` ne prend qu'un argument.
+   - `mcpm install <nom> --force` : installe réellement le serveur, `mcpm ls` le confirme. Deux défauts corrigés : la commande était `add`, qui n'existe pas, et sans `--force` elle attend une confirmation au clavier qu'ADK ne peut pas donner.
+   - `npm install -- <paquet>` : exécuté, code de sortie 0, paquet présent.
+   - `brew` (pas de macOS ici) et `claude plugin install` (CLI Claude absente) n'ont pas pu être exécutés.
+   Rien n'a été testé sur une configuration Claude/Cursor personnelle réelle ; le TUI a été exercé de bout en bout sur des projets jetables.
 4. Exécuter un véritable benchmark agent A/B et recueillir les métriques ; le runner et les dix tâches sont implémentés, mais aucun run payant d’agent n’a été lancé.
 5. ~~Revue ciblée des ajouts~~ : faite. Le registre MCP (deux défauts corrigés), les plugins Claude et la délégation d'installation ont été relus ; la délégation passait deux agents à un drapeau qui n'en prend qu'un, corrigé et testé. Le TUI a été relu à la main et exercé dans un PTY, sans revue indépendante.
 

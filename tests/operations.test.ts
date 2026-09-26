@@ -174,3 +174,19 @@ it("passes every agent in the one argument the skills CLI accepts", () => {
   // No bare value may follow a flag that takes a single argument.
   expect(plan.args.filter((a) => a === "--agent")).toHaveLength(1);
 });
+
+it("delegates MCP installation with the verb mcpm actually has", () => {
+  expect(
+    installationPlan(
+      ResourceSchema.parse({
+        id: "mcp:time",
+        type: "mcp",
+        name: "time",
+        source: "https://example.com/mcp",
+        scope: "project",
+        harnesses: ["claude-code"],
+        config: { url: "https://example.com/mcp" },
+      }),
+    ),
+  ).toEqual({ command: "mcpm", args: ["install", "time", "--force"] });
+});

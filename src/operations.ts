@@ -53,7 +53,10 @@ export function installationPlan(resource: Resource): Command {
     };
   }
   if (resource.type === "mcp")
-    return { command: "mcpm", args: ["add", resource.name] };
+    // mcpm names this `install <SERVER_NAME>`; there is no `add`. It asks for
+    // confirmation and aborts without a terminal, so the delegated run passes
+    // --force, which is also how it re-installs over an existing entry.
+    return { command: "mcpm", args: ["install", resource.name, "--force"] };
   if (resource.type === "tool") {
     const manager = resource.config.manager;
     const pkg = resource.config.package;
