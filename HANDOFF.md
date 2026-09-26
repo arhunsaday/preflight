@@ -2,9 +2,9 @@
 
 ## Demande et règles de travail
 
-Implémenter le projet décrit dans `PLAN.md`, sans demander de précisions à l’utilisateur. Il a ensuite demandé de **committer et pousser au fur et à mesure**. Continuer sur `codex/implement-adk-tui`, avec des lots vérifiés. Ne pas confondre « code local livré » et « toute la roadmap réalisée ». Aucune garantie d’absence totale de bugs n’est possible.
+Implémenter le projet décrit dans `PLAN.md`, sans demander de précisions à l’utilisateur. Il a ensuite demandé de **committer et pousser au fur et à mesure**, puis de pousser directement sur `main`. Travailler par lots vérifiés. Ne pas confondre « code local livré » et « toute la roadmap réalisée ». Aucune garantie d’absence totale de bugs n’est possible.
 
-Dépôt local : `/Users/asaday/Repos/ai-dev-kit`. Upstream : `origin/codex/implement-adk-tui`. Le remote configuré utilise encore `https://github.com/Jeusto/ai-coding-setup.git` ; GitHub accepte les pushes et signale le déplacement vers `https://github.com/arhunsaday/preflight.git`.
+Dépôt : `https://github.com/arhunsaday/preflight`. **Le travail est sur `main`** depuis `6f5f2df` : `codex/implement-adk-tui` a été avancée en fast-forward sur `main`, sans commit de fusion, et les deux références sont identiques. La branche de travail subsiste mais n'est plus la destination.
 
 Lire `PLAN.md` pour l’objectif produit et `ADK.md` pour les commandes, la matrice de support et les limitations. Le journal local `.superpowers/sdd/PLAN/progress.md` est ignoré par Git et certaines anciennes conclusions y sont dépassées : **les plugins Claude sont maintenant pris en charge et les pushes autorisés**. Ce document sert de reprise portable.
 
