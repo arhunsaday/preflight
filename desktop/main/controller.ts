@@ -38,6 +38,11 @@ const Settings = z.object({
       service: z.string(),
       ownerId: z.string(),
       encryptedToken: z.string().optional(),
+      authentication: z.enum(["session", "deployment-token"]).optional(),
+      user: z
+        .object({ id: z.string(), name: z.string(), email: z.string() })
+        .optional(),
+      expiresAt: z.string().optional(),
     })
     .nullable(),
 });
@@ -163,7 +168,16 @@ export class DesktopController {
     account: null,
   };
   private receipts = new Map<string, Receipt>();
-  private auth: { service: string; token: string; ownerId: string } | undefined;
+  private auth:
+    | {
+        service: string;
+        token: string;
+        ownerId: string;
+        authentication?: "session" | "deployment-token";
+        user?: { id: string; name: string; email: string };
+        expiresAt?: string;
+      }
+    | undefined;
   private storage: Account["storage"] = "none";
   private busy = false;
   constructor(
@@ -192,6 +206,12 @@ export class DesktopController {
         service: this.settings.account?.service ?? "",
         ownerId: this.settings.account?.ownerId ?? "",
         storage: this.storage,
+        authentication:
+          this.settings.account?.authentication ??
+          (this.auth ? "deployment-token" : "none"),
+        ...(this.settings.account?.user
+          ? { user: this.settings.account.user }
+          : {}),
       },
     };
   }
@@ -243,6 +263,8 @@ export class DesktopController {
       );
       if (this.settings.activeProjectId === id)
         this.settings.activeProjectId = this.settings.projects[0]?.id ?? null;
+      if (!this.settings.activeProjectId) this.settings.workspace = "global";
+      this.receipts.clear();
       await this.save();
       return this.publicState();
     });
@@ -373,7 +395,9 @@ export class DesktopController {
       const receipt = this.receipts.get(id);
       this.receipts.delete(id);
       if (!receipt || receipt.expires < Date.now())
-        throw new Error("Preview expired or already used");
+        throw new Error(
+          "Preview expired, project/global workspace changed, or already used",
+        );
       if (receipt.projectId !== this.contextId())
         throw new Error("Project changed; prepare another preview");
       if (receipt.fingerprint !== (await this.fingerprint()))
@@ -403,7 +427,7 @@ export class DesktopController {
     });
   }
   async setAccount(
-    value: { service: string; ownerId: string; token: string },
+    value: NonNullable<typeof this.auth>,
     encryptedToken?: string,
   ) {
     return this.exclusive(async () => {
@@ -414,6 +438,9 @@ export class DesktopController {
         service: value.service,
         ownerId: value.ownerId,
         ...(encryptedToken ? { encryptedToken } : {}),
+        authentication: value.authentication ?? "deployment-token",
+        ...(value.user ? { user: value.user } : {}),
+        ...(value.expiresAt ? { expiresAt: value.expiresAt } : {}),
       };
       await this.save();
       return this.publicState();
@@ -421,18 +448,28 @@ export class DesktopController {
   }
   restoreAuth(decrypt: (value: string) => string) {
     const account = this.settings.account;
+    if (account?.expiresAt && Date.parse(account.expiresAt) <= Date.now())
+      return;
     if (account?.encryptedToken) {
       try {
         this.auth = {
           service: account.service,
           ownerId: account.ownerId,
           token: decrypt(account.encryptedToken),
+          ...(account.authentication
+            ? { authentication: account.authentication }
+            : {}),
+          ...(account.user ? { user: account.user } : {}),
+          ...(account.expiresAt ? { expiresAt: account.expiresAt } : {}),
         };
         this.storage = "encrypted";
       } catch {
         this.storage = "none";
       }
     }
+  }
+  session() {
+    return this.auth ? { ...this.auth } : undefined;
   }
   async disconnect() {
     return this.exclusive(async () => {

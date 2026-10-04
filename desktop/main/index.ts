@@ -5,7 +5,16 @@ import {
   dialog,
   shell,
   safeStorage,
+  clipboard,
 } from "electron";
+import { randomUUID } from "node:crypto";
+import {
+  beginDeviceSignIn,
+  pollDeviceSignIn,
+  accountIdentity,
+  signOut,
+} from "../../src/auth-client.js";
+import type { DeviceAuthorization } from "../../src/auth-client.js";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -161,7 +170,138 @@ async function boot() {
   handle("team", (value) =>
     controller.updateTeam(value as Parameters<typeof controller.updateTeam>[0]),
   );
-  handle("disconnect", () => controller.disconnect());
+  handle("disconnect", async () => {
+    const session = controller.session();
+    if (session?.authentication === "session")
+      await signOut(session.service, session.token);
+    return controller.disconnect();
+  });
+  const pendingSignIns = new Map<
+    string,
+    {
+      service: string;
+      device: DeviceAuthorization;
+      expiresAt: number;
+      token?: string;
+      sessionExpiresAt?: string;
+    }
+  >();
+  handle("beginSignIn", async (input) => {
+    const service = serviceUrl(z.string().max(2000).parse(input));
+    const device = await beginDeviceSignIn(service, "preflight-desktop");
+    const id = randomUUID(),
+      expiresAt = Date.now() + device.expires_in * 1000;
+    for (const [key, pending] of pendingSignIns)
+      if (pending.expiresAt <= Date.now()) pendingSignIns.delete(key);
+    pendingSignIns.set(id, { service, device, expiresAt });
+    await shell.openExternal(device.verification_uri_complete);
+    return {
+      id,
+      userCode: device.user_code,
+      verificationUri: device.verification_uri_complete,
+      interval: device.interval,
+      expiresAt,
+    };
+  });
+  handle("pollSignIn", async (input) => {
+    const id = z.string().uuid().parse(input),
+      pending = pendingSignIns.get(id);
+    if (!pending || pending.expiresAt <= Date.now()) {
+      pendingSignIns.delete(id);
+      throw new Error("Sign-in request expired; start again.");
+    }
+    if (!pending.token) {
+      const reply = await pollDeviceSignIn(
+        pending.service,
+        "preflight-desktop",
+        pending.device,
+      );
+      if (reply.status === "pending") return reply;
+      pending.token = reply.token;
+      pending.sessionExpiresAt = reply.expiresAt;
+    }
+    const identity = await accountIdentity(pending.service, pending.token);
+    const secure =
+      safeStorage.isEncryptionAvailable() &&
+      (process.platform !== "linux" ||
+        safeStorage.getSelectedStorageBackend() !== "basic_text");
+    await controller.setAccount(
+      {
+        service: pending.service,
+        token: pending.token,
+        ownerId: identity.ownerId,
+        authentication: identity.authentication,
+        ...(identity.user ? { user: identity.user } : {}),
+        expiresAt: identity.expiresAt ?? pending.sessionExpiresAt!,
+      },
+      secure
+        ? safeStorage.encryptString(pending.token).toString("base64")
+        : undefined,
+    );
+    pendingSignIns.delete(id);
+    return { status: "connected" };
+  });
+  handle("cancelSignIn", (input) => {
+    pendingSignIns.delete(z.string().uuid().parse(input));
+  });
+  handle("copyText", (input) => {
+    clipboard.writeText(z.string().max(1000000).parse(input));
+  });
+  handle("cloud", async (input) => {
+    const operation = z
+      .object({
+        action: z.enum([
+          "shares",
+          "organizations",
+          "create-organization",
+          "organization",
+        ]),
+        name: z.string().trim().min(1).max(100).optional(),
+        slug: z
+          .string()
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+          .max(100)
+          .optional(),
+        organizationId: z.string().min(1).max(200).optional(),
+      })
+      .strict()
+      .parse(input);
+    const session = controller.session();
+    if (!session || session.authentication !== "session")
+      throw new Error(
+        "Sign in with your browser to use cloud accounts and organizations.",
+      );
+    const route =
+      operation.action === "shares"
+        ? "/api/shares"
+        : operation.action === "organizations"
+          ? "/api/auth/organization/list"
+          : operation.action === "organization"
+            ? `/api/auth/organization/get-full-organization?organizationId=${encodeURIComponent(z.string().min(1).parse(operation.organizationId))}`
+            : "/api/auth/organization/create";
+    const body =
+      operation.action === "create-organization"
+        ? {
+            name: z.string().min(1).parse(operation.name),
+            slug: z.string().min(1).parse(operation.slug),
+          }
+        : undefined;
+    const response = await fetch(`${serviceUrl(session.service)}${route}`, {
+      method: body ? "POST" : "GET",
+      headers: {
+        Authorization: `Bearer ${session.token}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await response.json();
+    if (!response.ok)
+      throw new Error(
+        `Cloud operation failed (HTTP ${response.status}): ${data.message ?? data.error ?? "Request failed"}`,
+      );
+    return data;
+  });
   handle("connect", async (input) => {
     const value = z
       .object({

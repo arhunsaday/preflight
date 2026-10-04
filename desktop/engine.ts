@@ -104,6 +104,19 @@ export async function snapshot(context: Context): Promise<Snapshot> {
       [],
     ),
   ]);
+  const inherited = context.globalOnly
+    ? []
+    : await safe(
+        "Global configuration",
+        () =>
+          new ConfigStore(join(context.home, ".adk", "global"))
+            .resources()
+            .catch((e) => {
+              if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+              throw e;
+            }),
+        [],
+      );
   return {
     root: context.root,
     home: context.home,
@@ -111,22 +124,19 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     config,
     lock,
     resources: config?.profiles[config.activeProfile]?.resources ?? [],
-    inherited: context.globalOnly
-      ? []
-      : await safe(
-          "Global configuration",
-          () =>
-            new ConfigStore(join(context.home, ".adk", "global"))
-              .resources()
-              .catch((e) => {
-                if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
-                throw e;
-              }),
-          [],
-        ),
+    inherited,
     detected: context.globalOnly
       ? detected.filter((r) => r.scope === "global")
-      : detected,
+      : detected.filter(
+          (r) =>
+            !inherited.some(
+              (g) =>
+                r.scope === "global" &&
+                r.name === g.name &&
+                r.type === g.type &&
+                r.harnesses.some((h) => g.harnesses.includes(h)),
+            ),
+        ),
     catalogue: catalogResources(),
     findings,
     usage,

@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { DesktopState, Snapshot, Prepared } from "../protocol";
+export function availableResources(snapshot: Snapshot | null) {
+  return [...new Map([...(snapshot?.inherited ?? []), ...(snapshot?.resources ?? [])].map((resource) => [resource.id, resource] as const)).values()];
+}
 export function useWorkspace() {
   const [state, setState] = useState<DesktopState | null>(null),
     [snapshot, setSnapshot] = useState<Snapshot | null>(null),

@@ -3,6 +3,7 @@ await build({
   entryPoints: ["desktop/worker.ts"],
   outfile: "desktop-out/main/worker.mjs",
   bundle: true,
+  external: ["@napi-rs/keyring"],
   platform: "node",
   format: "esm",
   target: "node22",

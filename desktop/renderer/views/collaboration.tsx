@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { z } from "zod";
+import { useEffect, useState } from "react";
 import {
   Share2,
   Download,
@@ -13,7 +14,17 @@ import {
 } from "lucide-react";
 import type { Workspace } from "../workspace";
 import { Badge, Button, Notice, Json } from "../components/ui";
+const HostedShare = z.object({
+  code: z.string(),
+  url: z.string().url(),
+  visibility: z.string(),
+  createdAt: z.string(),
+  expiresAt: z.string().nullable(),
+  resourceCount: z.number(),
+});
 export function Collaboration({ workspace: w }: { workspace: Workspace }) {
+  const [hosted, setHosted] = useState<z.infer<typeof HostedShare>[]>([]);
+  const [hostedLoaded, setHostedLoaded] = useState(false);
   const [code, setCode] = useState(""),
     [scope, setScope] = useState("all"),
     [visibility, setVisibility] = useState("unlisted"),
@@ -36,6 +47,51 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
         </div>
         <Share2 size={25} />
       </div>
+      {w.state?.account.authentication === "session" && (
+        <section className="form-section">
+          <h3>Your hosted shares</h3>
+          <Button
+            disabled={!!w.busy}
+            onClick={() =>
+              void w.task("Loading your shares…", async () => {
+                const response = z
+                  .object({ shares: z.array(HostedShare) })
+                  .parse(await window.adk.cloud({ action: "shares" }));
+                setHosted(response.shares);
+                setHostedLoaded(true);
+              })
+            }
+          >
+            Refresh my shares
+          </Button>
+          {hostedLoaded && !hosted.length && (
+            <p className="hint">No hosted shares yet. Publish a setup below.</p>
+          )}
+          {hosted.map((item) => (
+            <div className="connection-state" key={item.code}>
+              <div>
+                <h3>{item.code}</h3>
+                <p>
+                  {item.resourceCount} resources · {item.visibility}
+                  {item.expiresAt ? ` · expires ${item.expiresAt}` : ""}
+                </p>
+              </div>
+              <Button onClick={() => void window.adk.copyText(item.url)}>
+                Copy link
+              </Button>
+              <Button onClick={() => void window.adk.openExternal(item.url)}>
+                Open
+              </Button>
+              <Button
+                disabled={!!w.busy}
+                onClick={() => void w.run(["revoke", item.code])}
+              >
+                Preview revocation
+              </Button>
+            </div>
+          ))}
+        </section>
+      )}
       <div className="sharing-workspace">
         <div className="form-section">
           <h3>Publish or export</h3>
@@ -114,12 +170,12 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
             }}
           >
             <label>
-              Share code or JSON file
+              Share URL, code or JSON file
               <input
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="abc234 or /path/to/share.json"
+                placeholder="https://preflight.example.com/s/abc234"
               />
             </label>
             <div className="button-row">
@@ -170,11 +226,47 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
     ),
     [token, setToken] = useState("");
   const account = w.state?.account;
+  const [device, setDevice] = useState<Awaited<
+    ReturnType<typeof window.adk.beginSignIn>
+  > | null>(null);
+  const [loginError, setLoginError] = useState("");
+  useEffect(() => {
+    if (!device) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      if (Date.now() >= device.expiresAt) {
+        setLoginError("Sign-in expired. Start again.");
+        setDevice(null);
+        return;
+      }
+      try {
+        const result = await window.adk.pollSignIn(device.id);
+        if (cancelled) return;
+        if (result.status === "connected") {
+          w.setState(await window.adk.state());
+          setDevice(null);
+        } else
+          timer = setTimeout(poll, (result.interval ?? device.interval) * 1000);
+      } catch (error) {
+        if (!cancelled) {
+          setLoginError(String(error));
+          setDevice(null);
+        }
+      }
+    };
+    timer = setTimeout(poll, device.interval * 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      void window.adk.cancelSignIn(device.id);
+    };
+  }, [device, w.setState]);
   return (
     <div className="page-scroll account-page">
       <div className="section-intro">
         <div>
-          <h2>Connect your share service</h2>
+          <h2>Your Preflight account</h2>
           <p>
             Local configuration works without an account. Connect to publish and
             revoke hosted shares.
@@ -186,7 +278,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
         <div className="connection-state">
           <CheckCircle2 size={30} />
           <div>
-            <h3>Connected as {account.ownerId}</h3>
+            <h3>Connected as {account.user?.name ?? account.ownerId}</h3>
             <p>{account.service}</p>
             <Badge tone="green">
               {account.storage === "encrypted"
@@ -207,53 +299,200 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
           </Button>
         </div>
       ) : (
-        <form
-          className="form-section account-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void w.task("Checking your credentials…", async () => {
-              w.setState(await window.adk.connect({ service, token }));
-              setToken("");
-            });
-          }}
-        >
+        <div className="form-section account-form">
           <label>
-            Service URL
+            Backend URL
             <input
-              required
               type="url"
               value={service}
               onChange={(e) => setService(e.target.value)}
-              placeholder="https://shares.example.com"
-            />
-          </label>
-          <label>
-            Owner token
-            <input
-              required
-              type="password"
-              autoComplete="off"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Deployment write token"
+              placeholder="https://preflight.example.com"
             />
           </label>
           <p className="hint">
-            The token is checked against your service and stored using your
-            operating system's encryption. If secure storage is unavailable, it
-            lasts only for this session.
+            Sign in with GitHub or Google in your browser. Confirm the device
+            code there; credentials stay outside this interface.
           </p>
-          <Button type="submit" variant="primary" disabled={!!w.busy}>
-            <KeyRound size={15} />
-            Connect service
-          </Button>
-        </form>
+          {loginError && <Notice>{loginError}</Notice>}
+          {device ? (
+            <div>
+              <h3>Confirm code: {device.userCode}</h3>
+              <p>Waiting for browser approval…</p>
+              <Button
+                onClick={() =>
+                  void window.adk.openExternal(device.verificationUri)
+                }
+              >
+                Open sign-in page
+              </Button>
+              <Button onClick={() => setDevice(null)}>Cancel</Button>
+            </div>
+          ) : (
+            <Button
+              variant="primary"
+              disabled={!!w.busy}
+              onClick={() =>
+                void w.task("Opening sign-in…", async () => {
+                  setLoginError("");
+                  setDevice(await window.adk.beginSignIn(service));
+                })
+              }
+            >
+              Sign in with browser
+            </Button>
+          )}
+          <details>
+            <summary>Legacy deployment token</summary>
+            <form
+              className="form-section account-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void w.task("Checking your credentials…", async () => {
+                  w.setState(await window.adk.connect({ service, token }));
+                  setToken("");
+                });
+              }}
+            >
+              <label>
+                Service URL
+                <input
+                  required
+                  type="url"
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  placeholder="https://shares.example.com"
+                />
+              </label>
+              <label>
+                Owner token
+                <input
+                  required
+                  type="password"
+                  autoComplete="off"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Deployment write token"
+                />
+              </label>
+              <p className="hint">
+                The token is checked against your service and stored using your
+                operating system's encryption. If secure storage is unavailable,
+                it lasts only for this session.
+              </p>
+              <Button type="submit" variant="primary" disabled={!!w.busy}>
+                <KeyRound size={15} />
+                Connect service
+              </Button>
+            </form>
+          </details>
+        </div>
       )}
       <Notice>
-        The current Worker authenticates a deployment owner. Hosted user signup,
-        OIDC sign-in and organization access policies are not provided by this
-        service.
+        Accounts and sessions use Better Auth on Cloudflare D1. Your backend
+        administrator configures the available OAuth providers.
       </Notice>
+    </div>
+  );
+}
+const Organization = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+});
+function CloudTeams({ workspace: w }: { workspace: Workspace }) {
+  const [organizations, setOrganizations] = useState<
+    z.infer<typeof Organization>[]
+  >([]);
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [members, setMembers] = useState<unknown>(null);
+  const load = async () =>
+    setOrganizations(
+      z
+        .array(Organization)
+        .parse(await window.adk.cloud({ action: "organizations" })),
+    );
+  if (w.state?.account.authentication !== "session")
+    return (
+      <Notice>
+        Sign in with your browser in Account to manage cloud organizations. The
+        local roster below works offline.
+      </Notice>
+    );
+  return (
+    <div className="form-section">
+      <h2>Cloud organizations</h2>
+      <p className="muted">
+        Membership and roles are stored by Better Auth in your Cloudflare
+        backend.
+      </p>
+      <Button
+        disabled={!!w.busy}
+        onClick={() => void w.task("Loading organizations…", load)}
+      >
+        Refresh organizations
+      </Button>
+      {organizations.map((organization) => (
+        <div className="connection-state" key={organization.id}>
+          <div>
+            <h3>{organization.name}</h3>
+            <p>{organization.slug}</p>
+          </div>
+          <Button
+            onClick={() =>
+              void w.task("Loading members…", async () =>
+                setMembers(
+                  await window.adk.cloud({
+                    action: "organization",
+                    organizationId: organization.id,
+                  }),
+                ),
+              )
+            }
+          >
+            View members
+          </Button>
+        </div>
+      ))}
+      {members !== null && <Json value={members} />}
+      <form
+        className="inline-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void w.task("Creating organization…", async () => {
+            await window.adk.cloud({
+              action: "create-organization",
+              name,
+              slug,
+            });
+            setName("");
+            setSlug("");
+            await load();
+          });
+        }}
+      >
+        <label>
+          Organization name
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label>
+          Organization slug
+          <input
+            required
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="my-team"
+          />
+        </label>
+        <Button disabled={!!w.busy} type="submit">
+          Create organization
+        </Button>
+      </form>
     </div>
   );
 }
@@ -265,9 +504,10 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
     [teamName, setTeamName] = useState(team?.name ?? "My team");
   return (
     <div className="page-scroll">
+      <CloudTeams workspace={w} />
       <div className="section-intro">
         <div>
-          <h2>{team?.name ?? "My team"}</h2>
+          <h2>{team?.name ?? "My team"} · local roster</h2>
           <p>
             A local roster to coordinate configuration sharing with your
             teammates.

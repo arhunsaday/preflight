@@ -42,12 +42,12 @@ export class AdkService {
     const before = await readText(this.store.configPath);
     if (before !== null) return AdkConfigSchema.parse(JSON.parse(before));
     const config = defaultConfig();
-    await applyFiles(
+    const plan = await applyFiles(
       this.context.root,
       [{ path: this.store.configPath, before: null, after: jsonText(config) }],
       { actor: process.env.USER ?? "local", dryRun },
     );
-    return config;
+    return dryRun ? { ...config, ...plan } : config;
   }
   list() {
     return this.store.resources();

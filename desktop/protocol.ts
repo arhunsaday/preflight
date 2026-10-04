@@ -20,6 +20,8 @@ export interface Account {
   service: string;
   ownerId: string;
   storage: "encrypted" | "session" | "none";
+  authentication: "session" | "deployment-token" | "none";
+  user?: { id: string; name: string; email: string };
 }
 export interface DesktopState {
   projects: Project[];
@@ -61,6 +63,24 @@ export interface DesktopApi {
   prepare(args: string[]): Promise<Prepared>;
   confirm(receipt: string): Promise<unknown>;
   team(value: Team): Promise<DesktopState>;
+  beginSignIn(service: string): Promise<{
+    id: string;
+    userCode: string;
+    verificationUri: string;
+    interval: number;
+    expiresAt: number;
+  }>;
+  pollSignIn(
+    id: string,
+  ): Promise<{ status: "pending" | "connected"; interval?: number }>;
+  cancelSignIn(id: string): Promise<void>;
+  copyText(text: string): Promise<void>;
+  cloud(input: {
+    action: "shares" | "organizations" | "create-organization" | "organization";
+    name?: string;
+    slug?: string;
+    organizationId?: string;
+  }): Promise<unknown>;
   connect(value: { service: string; token: string }): Promise<DesktopState>;
   disconnect(): Promise<DesktopState>;
   openExternal(url: string): Promise<void>;

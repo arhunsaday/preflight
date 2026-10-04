@@ -14,6 +14,8 @@ BASE="http://127.0.0.1:${PORT}"
 TOKEN="smoke-$RANDOM"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOG="$(mktemp)"
+CONFIG="$(mktemp "$ROOT/legacy-worker-XXXXXX.json")"
+(cd "$ROOT" && node --input-type=module -e 'import fs from "node:fs"; const c=JSON.parse(fs.readFileSync("wrangler.jsonc","utf8")); delete c.d1_databases; delete c.vars.BASE_URL; fs.writeFileSync(process.argv[1],JSON.stringify(c));' "$CONFIG")
 failures=0
 
 cd "$ROOT"
@@ -29,11 +31,11 @@ printf 'WRITE_TOKEN=%s\n' "$TOKEN" > .dev.vars
 
 cleanup() {
   [ -n "${PID:-}" ] && kill "$PID" 2>/dev/null
-  rm -f .dev.vars
+  rm -f .dev.vars "$CONFIG"
 }
 trap cleanup EXIT
 
-npx --yes wrangler@4 dev --local --port "$PORT" \
+npx --yes wrangler@4 dev --config "$CONFIG" --local --port "$PORT" \
   --inspector-port "${ADK_SMOKE_INSPECTOR:-9899}" > "$LOG" 2>&1 &
 PID=$!
 

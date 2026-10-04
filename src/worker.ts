@@ -1,8 +1,11 @@
+import { createAuth } from "./backend/auth.js";
+import type { AuthBindings } from "./backend/auth.js";
+import { authPage, authScript } from "./backend/auth-web.js";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { SharePayloadSchema, AdkConfigSchema } from "./schema.js";
 import { shareCode, requiredEnv, previewShare } from "./sharing.js";
-interface Bindings {
+interface Bindings extends AuthBindings {
   SHARES: {
     get(key: string): Promise<string | null>;
     put(key: string, value: string): Promise<unknown>;
@@ -32,30 +35,98 @@ app.use("*", async (c, next) => {
   c.header("Cache-Control", "no-store");
   c.header(
     "Content-Security-Policy",
-    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
   );
   c.header("Referrer-Policy", "no-referrer");
 });
 app.onError((error, c) => c.json({ error: error.message }, 400));
-app.get("/api/account", (c) => {
-  if (
-    !c.env.WRITE_TOKEN ||
-    c.req.header("Authorization") !== `Bearer ${c.env.WRITE_TOKEN}`
+async function identity(env: Bindings, headers: Headers) {
+  if (env.AUTH_DB) {
+    const session = await createAuth(env).api.getSession({ headers });
+    return session
+      ? {
+          ownerId: session.user.id,
+          authentication: "session",
+          user: {
+            id: session.user.id,
+            name: session.user.name,
+            email: session.user.email,
+          },
+          expiresAt: session.session.expiresAt.toISOString(),
+        }
+      : null;
+  }
+  return env.WRITE_TOKEN &&
+    headers.get("Authorization") === `Bearer ${env.WRITE_TOKEN}`
+    ? { ownerId: env.OWNER_ID, authentication: "deployment-token" }
+    : null;
+}
+app.on(["GET", "POST"], "/api/auth/*", (c) => {
+  if (!c.env.AUTH_DB)
+    return c.json({ error: "Standard authentication is not configured" }, 503);
+  return createAuth(c.env).handler(c.req.raw);
+});
+app.get("/api/health", (c) =>
+  c.json({
+    service: "preflight",
+    authentication: c.env.AUTH_DB ? "better-auth" : "deployment-token",
+    providers: [
+      ...(c.env.GITHUB_CLIENT_ID ? ["github"] : []),
+      ...(c.env.GOOGLE_CLIENT_ID ? ["google"] : []),
+    ],
+  }),
+);
+app.get("/auth.js", (c) =>
+  c.body(authScript, 200, { "Content-Type": "text/javascript; charset=utf-8" }),
+);
+app.get("/device", async (c) => {
+  const user = await identity(c.env, c.req.raw.headers);
+  return c.html(
+    authPage({
+      providers: [
+        ...(c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET
+          ? ["github"]
+          : []),
+        ...(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET
+          ? ["google"]
+          : []),
+      ],
+      code: c.req.query("user_code") ?? "",
+      signedIn: user?.authentication === "session",
+      escape,
+    }),
+  );
+});
+app.get("/sign-in", (c) => c.redirect("/device"));
+app.get("/api/account", async (c) => {
+  const user = await identity(c.env, c.req.raw.headers);
+  return user ? c.json(user) : c.json({ error: "Unauthorized" }, 401);
+});
+app.get("/api/shares", async (c) => {
+  const user = await identity(c.env, c.req.raw.headers);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  if (!c.env.AUTH_DB)
+    return c.json(
+      { error: "Share listing requires the standard Cloudflare backend" },
+      503,
+    );
+  const { results } = await c.env.AUTH_DB.prepare(
+    "SELECT code, visibility, created_at AS createdAt, expires_at AS expiresAt, resource_count AS resourceCount FROM share_record WHERE owner_id = ? ORDER BY created_at DESC LIMIT 100",
   )
-    return c.json({ error: "Unauthorized" }, 401);
+    .bind(user.ownerId)
+    .all();
+  const base = c.env.BASE_URL
+    ? new URL(c.env.BASE_URL).origin
+    : new URL(c.req.url).origin;
   return c.json({
-    ownerId: c.env.OWNER_ID,
-    authentication: "deployment-token",
+    shares: results.map((r) => ({ ...r, url: `${base}/s/${r.code}` })),
   });
 });
 app.post("/api/shares", async (c) => {
-  if (
-    !c.env.WRITE_TOKEN ||
-    c.req.header("Authorization") !== `Bearer ${c.env.WRITE_TOKEN}`
-  )
-    return c.json({ error: "Unauthorized" }, 401);
+  const user = await identity(c.env, c.req.raw.headers);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const payload = SharePayloadSchema.parse(await c.req.json());
-  if (payload.ownerId !== c.env.OWNER_ID)
+  if (payload.ownerId !== user.ownerId)
     return c.json({ error: "Owner mismatch" }, 403);
   if (payload.expiresAt && Date.parse(payload.expiresAt) <= Date.now())
     return c.json({ error: "Expiry must be in the future" }, 400);
@@ -70,7 +141,31 @@ app.post("/api/shares", async (c) => {
     code,
     JSON.stringify({ key, ownerId: payload.ownerId }),
   );
-  return c.json({ code, url: `${new URL(c.req.url).origin}/s/${code}` }, 201);
+  if (c.env.AUTH_DB) {
+    try {
+      await c.env.AUTH_DB.prepare(
+        "INSERT INTO share_record (code, owner_id, object_key, visibility, created_at, expires_at, resource_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      )
+        .bind(
+          code,
+          user.ownerId,
+          key,
+          payload.visibility,
+          payload.createdAt,
+          payload.expiresAt ?? null,
+          payload.resources.length,
+        )
+        .run();
+    } catch (e) {
+      await c.env.SHARES.delete(code);
+      await c.env.PAYLOADS.delete(key);
+      throw e;
+    }
+  }
+  const base = c.env.BASE_URL
+    ? new URL(c.env.BASE_URL).origin
+    : new URL(c.req.url).origin;
+  return c.json({ code, url: `${base}/s/${code}` }, 201);
 });
 async function lookup(env: Bindings, code: string) {
   if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(code)) return null;
@@ -91,19 +186,22 @@ app.get("/api/shares/:code", async (c) => {
     : c.json({ error: "Share not found or expired" }, 404);
 });
 app.delete("/api/shares/:code", async (c) => {
-  if (
-    !c.env.WRITE_TOKEN ||
-    c.req.header("Authorization") !== `Bearer ${c.env.WRITE_TOKEN}`
-  )
-    return c.json({ error: "Unauthorized" }, 401);
+  const user = await identity(c.env, c.req.raw.headers);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const code = c.req.param("code").toLowerCase();
   const raw = await c.env.SHARES.get(code);
   if (!raw) return c.json({ error: "Not found" }, 404);
   const entry = JSON.parse(raw) as { ownerId: string; key: string };
-  if (entry.ownerId !== c.env.OWNER_ID)
+  if (entry.ownerId !== user.ownerId)
     return c.json({ error: "Owner mismatch" }, 403);
   await c.env.SHARES.delete(code);
   await c.env.PAYLOADS.delete(entry.key);
+  if (c.env.AUTH_DB)
+    await c.env.AUTH_DB.prepare(
+      "DELETE FROM share_record WHERE code = ? AND owner_id = ?",
+    )
+      .bind(code, user.ownerId)
+      .run();
   return c.body(null, 204);
 });
 app.get("/s/:code", async (c) => {

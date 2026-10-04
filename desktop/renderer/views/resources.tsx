@@ -19,7 +19,7 @@ import {
   Power,
 } from "lucide-react";
 import type { Resource, ResourceType } from "../../../src/schema";
-import { ResourceSchema } from "../../../src/schema";
+import { ResourceSchema, ResourceTypeSchema } from "../../../src/schema";
 import type { Workspace } from "../workspace";
 import { Button, Badge, Empty, Json, Notice } from "../components/ui";
 import { ResourceForm } from "../components/resource-form";
@@ -34,8 +34,18 @@ export function Resources({
   type?: ResourceType;
   mode?: "installed" | "catalogue" | "detected";
 }) {
+  const global = w.state?.workspace === "global";
+  const [kind, setKind] = useState(type ?? "all");
+  const [source, setSource] = useState("mcp-registry");
+  const [repository, setRepository] = useState("vercel-labs/agent-skills");
+  const [channel, setChannel] = useState("bundled");
+  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
+  const [searched, setSearched] = useState("");
+  const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState(""),
-    [scope, setScope] = useState("all"),
+    [scope, setScope] = useState(
+      mode === "installed" && global ? "global" : "all",
+    ),
     [harness, setHarness] = useState("all"),
     [selected, setSelected] = useState(""),
     [tab, setTab] = useState("overview"),
@@ -48,13 +58,18 @@ export function Resources({
       ? (online ?? w.snapshot?.catalogue ?? [])
       : mode === "detected"
         ? (w.snapshot?.detected ?? [])
-        : (w.snapshot?.resources ?? []);
+        : [
+            ...(w.snapshot?.resources ?? []),
+            ...(w.snapshot?.inherited ?? []).filter(
+              (r) => !w.snapshot?.resources.some((local) => local.id === r.id),
+            ),
+          ];
   const items = useMemo(
     () =>
       base
         .filter(
           (r) =>
-            (!type || r.type === type) &&
+            (kind === "all" || r.type === kind) &&
             (scope === "all" || r.scope === scope) &&
             (harness === "all" ||
               r.harnesses.includes(harness as "cursor" | "claude-code")) &&
@@ -67,10 +82,14 @@ export function Resources({
             ? a.name.localeCompare(b.name)
             : (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
         ),
-    [base, type, scope, harness, query, sort],
+    [base, kind, scope, harness, query, sort],
   );
   const raw = items.find((r) => r.id === selected) ?? items[0];
   const resource = inspected?.id === raw?.id ? inspected : raw;
+  const inherited =
+    mode === "installed" &&
+    !!resource &&
+    !w.snapshot?.resources.some((r) => r.id === resource.id);
   const Icon = iconFor(resource?.type ?? type ?? "skill");
   const usage = resource
     ? Object.entries(w.snapshot?.usage?.invocations ?? {}).reduce(
@@ -94,9 +113,64 @@ export function Resources({
     setInspected(null);
     setTab("overview");
   };
+  const searchOnline = async () => {
+    const data = await w.run(
+      [
+        "search",
+        query,
+        "--online",
+        "--source",
+        source,
+        ...(kind !== "all" ? ["--type", kind] : []),
+        ...(source === "github" ? ["--github", repository] : []),
+      ],
+      false,
+    );
+    if (data && typeof data === "object" && "resources" in data) {
+      const reply = data as { resources: Resource[]; errors: string[] };
+      setOnline(reply.resources);
+      setSourceErrors(reply.errors ?? []);
+      setSearched(query);
+      setSelected("");
+      setInspected(null);
+    }
+  };
   const perform = (args: string[]) => void w.run(args);
   return (
     <>
+      {mode === "catalogue" && (
+        <div className="discovery-header">
+          <div>
+            <h2>Find your next skill or MCP server</h2>
+            <p>
+              Browse the bundled library offline, or search an online source.
+              Inspect and configure every resource before adding it.
+            </p>
+          </div>
+          <div className="segmented">
+            <button
+              className={channel === "bundled" ? "active" : ""}
+              onClick={() => {
+                setChannel("bundled");
+                setOnline(null);
+                setSourceErrors([]);
+              }}
+            >
+              Bundled library
+            </button>
+            <button
+              className={channel === "online" ? "active" : ""}
+              onClick={() => {
+                setChannel("online");
+                setOnline([]);
+                setSearched("");
+              }}
+            >
+              Search online
+            </button>
+          </div>
+        </div>
+      )}
       <div className="collection-tools">
         <div className="search-field">
           <Search size={16} />
@@ -109,6 +183,14 @@ export function Resources({
             }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                mode === "catalogue" &&
+                channel === "online"
+              )
+                void searchOnline();
+            }}
           />
           <kbd>⌘ K</kbd>
         </div>
@@ -133,35 +215,108 @@ export function Resources({
         <Button
           variant="primary"
           disabled={!!w.busy}
-          onClick={() => setForm("new")}
+          onClick={() => {
+            setAdding(false);
+            setForm("new");
+          }}
         >
           <Plus size={15} />
           New resource
         </Button>
       </div>
-      {mode === "catalogue" && (
-        <div className="catalogue-bar">
-          <span>
-            <Globe size={14} />{" "}
-            {online
-              ? "Remote + bundled results"
-              : `${w.snapshot?.catalogue.length ?? 0} curated resources, ready to inspect`}
-          </span>
-          <Button
-            disabled={!!w.busy}
-            onClick={async () => {
-              const data = await w.run(["search", query, "--online"], false);
-              if (data && typeof data === "object" && "resources" in data)
-                setOnline((data as { resources: Resource[] }).resources);
-            }}
-          >
-            Search online
-          </Button>
-          {online && (
-            <Button variant="ghost" onClick={() => setOnline(null)}>
-              Back to bundled
-            </Button>
+      {mode === "catalogue" && channel === "online" ? (
+        <div className="discovery-sources">
+          <label>
+            Source
+            <select
+              aria-label="Search source"
+              value={source}
+              onChange={(e) => {
+                setSource(e.target.value);
+                setOnline([]);
+                setSourceErrors([]);
+              }}
+            >
+              <option value="mcp-registry">Official MCP Registry</option>
+              <option value="github">GitHub repository</option>
+              <option value="skills.sh">skills.sh (token required)</option>
+              <option value="all">All online sources + library</option>
+            </select>
+          </label>
+          <label>
+            Resource type
+            <select
+              aria-label="Search resource type"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+            >
+              <option value="all">All resources</option>
+              {ResourceTypeSchema.options.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+          {source === "github" && (
+            <label>
+              GitHub repository
+              <input
+                aria-label="GitHub repository"
+                value={repository}
+                onChange={(e) => setRepository(e.target.value)}
+                placeholder="owner/repository"
+              />
+            </label>
           )}
+          <Button
+            variant="primary"
+            disabled={!!w.busy || (source === "github" && !repository.trim())}
+            onClick={() => void searchOnline()}
+          >
+            <Search size={15} />
+            Search source
+          </Button>
+          <p className="muted">
+            {source === "skills.sh"
+              ? "Requires VERCEL_OIDC_TOKEN in the desktop launch environment. GitHub repository search works without it."
+              : "Remote results are bounded to 100 entries per source. Content is fetched only when you inspect or add."}
+          </p>
+        </div>
+      ) : (
+        mode === "catalogue" && (
+          <div className="catalogue-bar">
+            <span>
+              <Globe size={14} />{" "}
+              {online
+                ? "Remote + bundled results"
+                : `${w.snapshot?.catalogue.length ?? 0} curated resources, ready to inspect`}
+            </span>
+            <select
+              aria-label="Library resource type"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+            >
+              <option value="all">All resource types</option>
+              {ResourceTypeSchema.options.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+      )}
+      {sourceErrors.map((error, i) => (
+        <div className="discovery-error" key={i}>
+          <Notice>{error}</Notice>
+        </div>
+      ))}
+      {mode === "catalogue" && channel === "online" && (
+        <div className="search-summary" role="status">
+          {searched
+            ? `${items.length} results for “${searched}”`
+            : "Choose a source and submit a search above."}
         </div>
       )}
       <div className="resource-workspace">
@@ -234,7 +389,12 @@ export function Resources({
                 }
                 action={
                   !query && mode === "installed" ? (
-                    <Button onClick={() => setForm("new")}>
+                    <Button
+                      onClick={() => {
+                        setAdding(false);
+                        setForm("new");
+                      }}
+                    >
                       <Plus size={15} />
                       Create resource
                     </Button>
@@ -256,8 +416,14 @@ export function Resources({
                     <Badge tone="blue">{resource.type}</Badge>
                     <Badge>{resource.scope}</Badge>
                     {mode === "installed" && (
-                      <Badge tone={applied ? "green" : "amber"}>
-                        {applied ? "Applied" : "Not applied"}
+                      <Badge
+                        tone={inherited ? "blue" : applied ? "green" : "amber"}
+                      >
+                        {inherited
+                          ? "Inherited from global"
+                          : applied
+                            ? "Applied"
+                            : "Not applied"}
                       </Badge>
                     )}
                   </div>
@@ -270,7 +436,11 @@ export function Resources({
                   <>
                     <Button
                       variant="primary"
-                      disabled={!!w.busy || !w.snapshot?.initialized}
+                      disabled={
+                        !!w.busy ||
+                        !w.snapshot?.initialized ||
+                        w.snapshot.resources.some((r) => r.id === resource.id)
+                      }
                       onClick={async () => {
                         const materialized = await w.task(
                           "Inspecting source…",
@@ -284,15 +454,16 @@ export function Resources({
                         );
                         if (materialized) {
                           setInspected(materialized);
-                          await w.run([
-                            "create-json",
-                            JSON.stringify(materialized),
-                          ]);
+                          setAdding(true);
+                          setForm({
+                            ...materialized,
+                            scope: global ? "global" : "project",
+                          });
                         }
                       }}
                     >
                       <Download size={15} />
-                      Add to project
+                      Configure & add
                     </Button>
                     <Button
                       disabled={!!w.busy}
@@ -322,11 +493,19 @@ export function Resources({
                     <Check size={15} />
                     Adopt resource
                   </Button>
+                ) : inherited ? (
+                  <Button onClick={() => void w.switchGlobal()}>
+                    <Globe size={15} />
+                    Edit in global configuration
+                  </Button>
                 ) : (
                   <>
                     <Button
                       disabled={!!w.busy}
-                      onClick={() => setForm(resource)}
+                      onClick={() => {
+                        setAdding(false);
+                        setForm(resource);
+                      }}
                     >
                       <Pencil size={15} />
                       Edit
@@ -357,6 +536,7 @@ export function Resources({
                       </Button>
                       <div className="dropdown" hidden>
                         <button
+                          disabled={global}
                           onClick={() =>
                             perform([
                               "move",
@@ -417,7 +597,9 @@ export function Resources({
               </div>
               {!w.snapshot?.initialized && (
                 <Notice>
-                  Initialize this project to add or adopt resources.
+                  {global
+                    ? "Initialize your global configuration to add or adopt resources."
+                    : "Initialize this project to add or adopt resources."}
                 </Notice>
               )}
               <div
@@ -564,11 +746,14 @@ export function Resources({
       {form && (
         <ResourceForm
           {...(form === "new" ? { type: type ?? "skill" } : { resource: form })}
+          adding={adding}
+          defaultScope={global ? "global" : "project"}
+          globalOnly={global}
           onClose={() => setForm(null)}
           onSave={async (value) => {
             setForm(null);
             await w.run(
-              form === "new"
+              form === "new" || adding
                 ? ["create-json", JSON.stringify(value)]
                 : ["update-json", form.id, JSON.stringify(value)],
             );

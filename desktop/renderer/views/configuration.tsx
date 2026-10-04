@@ -44,15 +44,20 @@ export function Projects({ workspace: w }: { workspace: Workspace }) {
             <div>
               <h3>
                 {p.name}{" "}
-                {p.id === w.state?.activeProjectId && (
-                  <Badge tone="green">Active</Badge>
-                )}
+                {w.state?.workspace === "project" &&
+                  p.id === w.state?.activeProjectId && (
+                    <Badge tone="green">Active</Badge>
+                  )}
               </h3>
               <p>{p.root}</p>
               <small>Added {new Date(p.addedAt).toLocaleDateString()}</small>
             </div>
             <Button
-              disabled={!!w.busy || p.id === w.state?.activeProjectId}
+              disabled={
+                !!w.busy ||
+                (w.state?.workspace === "project" &&
+                  p.id === w.state?.activeProjectId)
+              }
               onClick={() => void w.switchProject(p.id)}
             >
               Open
@@ -73,7 +78,7 @@ export function Projects({ workspace: w }: { workspace: Workspace }) {
           </div>
         ))}
       </div>
-      {w.snapshot && (
+      {w.snapshot && w.state?.workspace === "project" && (
         <div className="section-intro secondary-intro">
           <div>
             <h2>Project maintenance</h2>

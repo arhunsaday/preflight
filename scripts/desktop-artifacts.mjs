@@ -41,12 +41,20 @@ export async function artifactManifest(directory = "desktop-release") {
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   );
   const os = { darwin: "mac", win32: "win", linux: "linux" }[process.platform];
-  const prefix = `Preflight-${version}-${os}-${process.arch}.`;
+  const arches =
+    process.platform === "linux"
+      ? ({
+          x64: ["x64", "x86_64", "amd64"],
+          arm64: ["arm64", "aarch64"],
+          ia32: ["ia32", "i386"],
+        }[process.arch] ?? [process.arch])
+      : [process.arch];
+  const prefixes = arches.map((arch) => `Preflight-${version}-${os}-${arch}.`);
   const names = (await readdir(root, { withFileTypes: true }))
     .filter(
       (entry) =>
         entry.isFile() &&
-        entry.name.startsWith(prefix) &&
+        prefixes.some((prefix) => entry.name.startsWith(prefix)) &&
         /\.(dmg|zip|exe|AppImage|deb)$/.test(entry.name),
     )
     .map((entry) => entry.name)

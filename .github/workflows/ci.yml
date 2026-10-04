@@ -18,7 +18,7 @@ jobs:
       - run: npm run check
       - run: npm run desktop:check
       - name: Worker bundle is browser compatible
-        run: npx esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=/tmp/adk-worker.js
+        run: npm run build:worker
       - name: CLI starts from the built package
         run: node dist/cli.js --help
       - run: npm pack --dry-run
@@ -148,3 +148,16 @@ jobs:
         with: {node-version: 22, cache: npm, cache-dependency-path: docs/package-lock.json}
       - run: npm ci
       - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run backend:smoke
+      - run: npm run smoke:worker

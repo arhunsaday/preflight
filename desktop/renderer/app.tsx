@@ -16,15 +16,16 @@ import {
   Settings2,
   ArrowDownToLine,
   RefreshCw,
-  ChevronDown,
   Check,
   Circle,
   X,
   Command,
   Rocket,
+  LayoutDashboard,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useWorkspace } from "./workspace";
+import { useWorkspace, availableResources } from "./workspace";
+import { Overview } from "./views/overview";
 import { Resources } from "./views/resources";
 import {
   Projects,
@@ -37,15 +38,7 @@ import {
 import { Benchmarks } from "./views/benchmarks";
 import { Collaboration, Team, Account } from "./views/collaboration";
 import { Console } from "./views/console";
-import {
-  Button,
-  Badge,
-  Busy,
-  Empty,
-  Dialog,
-  Json,
-  Notice,
-} from "./components/ui";
+import { Button, Badge, Busy, Dialog, Json, Notice } from "./components/ui";
 import { Preview } from "./components/preview";
 
 const preflightIcon = new URL("../assets/icon.svg", import.meta.url).href;
@@ -58,35 +51,38 @@ interface NavItem {
 }
 export function App() {
   const w = useWorkspace();
-  const [view, setView] = useState("skills"),
+  const [view, setView] = useState("overview"),
     [palette, setPalette] = useState(false),
     [paletteQuery, setPaletteQuery] = useState("");
-  const active = w.state?.projects.find(
-    (p) => p.id === w.state?.activeProjectId,
-  );
+  const global = w.state?.workspace === "global";
+  const active = !global
+    ? w.state?.projects.find((p) => p.id === w.state?.activeProjectId)
+    : undefined;
+  const resources = availableResources(w.snapshot);
   const groups: { label: string; items: NavItem[] }[] = [
     {
-      label: "Workspace",
+      label: "Configuration",
       items: [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
         {
           id: "skills",
           label: "Skills",
           icon: Layers,
           count:
-            w.snapshot?.resources.filter((r) => r.type === "skill").length ?? 0,
+            resources.filter((r) => r.type === "skill").length,
         },
         {
           id: "mcp",
           label: "MCP servers",
           icon: Plug,
           count:
-            w.snapshot?.resources.filter((r) => r.type === "mcp").length ?? 0,
+            resources.filter((r) => r.type === "mcp").length,
         },
         {
           id: "resources",
           label: "All resources",
           icon: Blocks,
-          count: w.snapshot?.resources.length ?? 0,
+          count: resources.length,
         },
         {
           id: "detected",
@@ -94,7 +90,7 @@ export function App() {
           icon: ArrowDownToLine,
           count: w.snapshot?.detected.length ?? 0,
         },
-        { id: "catalogue", label: "Catalogue", icon: Compass },
+
         {
           id: "projects",
           label: "Projects",
@@ -102,6 +98,10 @@ export function App() {
           count: w.state?.projects.length ?? 0,
         },
       ],
+    },
+    {
+      label: "Discover",
+      items: [{ id: "catalogue", label: "Discover resources", icon: Compass }],
     },
     {
       label: "Improve",
@@ -162,7 +162,7 @@ export function App() {
       : view === "detected"
         ? "detected"
         : "installed";
-  const resourceKey = `${view}:${active?.id ?? "none"}`;
+  const resourceKey = `${view}:${global ? "global" : (active?.id ?? "none")}`;
   return (
     <div className={`app-shell ${w.busy ? "is-busy" : ""}`}>
       <aside className="sidebar">
@@ -173,22 +173,31 @@ export function App() {
           <strong>Preflight</strong>
           <span className="version">0.1</span>
         </div>
-        <button
-          className="project-switcher"
-          disabled={!!w.busy}
-          onClick={() => navigate("projects")}
-        >
-          <div className="project-switch-icon">
-            <FolderOpen size={18} />
-          </div>
-          <div>
-            <strong>{active?.name ?? "Open a project"}</strong>
-            <span>
-              {w.snapshot?.config?.activeProfile ?? "AI development workspace"}
-            </span>
-          </div>
-          <ChevronDown size={14} />
-        </button>
+        <div className="workspace-selector">
+          <span className="nav-label">Editing configuration for</span>
+          <select
+            aria-label="Configuration workspace"
+            disabled={!!w.busy}
+            value={global ? "global" : (active?.id ?? "global")}
+            onChange={(e) => {
+              void (e.target.value === "global"
+                ? w.switchGlobal()
+                : w.switchProject(e.target.value));
+            }}
+          >
+            <option value="global">Global · all projects</option>
+            {w.state?.projects.map((p) => (
+              <option value={p.id} key={p.id}>
+                {p.name} · project
+              </option>
+            ))}
+          </select>
+          <small>
+            {global
+              ? "Shared across all your projects"
+              : (w.snapshot?.config?.activeProfile ?? "Project configuration")}
+          </small>
+        </div>
         <nav aria-label="Main navigation">
           {groups.map((group) => (
             <div className="nav-group" key={group.label}>
@@ -238,7 +247,9 @@ export function App() {
           <div className="toolbar-title">
             <current.icon size={20} />
             <h1>{current.label}</h1>
-            {active && <span className="toolbar-project">{active.name}</span>}
+            <span className="toolbar-project">
+              {global ? "Global" : active?.name}
+            </span>
           </div>
           <div className="toolbar-actions">
             {w.busy ? (
@@ -252,7 +263,7 @@ export function App() {
             <Button
               variant="ghost"
               aria-label="Refresh workspace"
-              disabled={!!w.busy || !active}
+              disabled={!!w.busy}
               onClick={() => void w.task("Refreshing…", () => w.reload())}
             >
               <RefreshCw size={16} />
@@ -286,50 +297,38 @@ export function App() {
             <Notice>{error}</Notice>
           </div>
         ))}
-        {active &&
-          !w.snapshot?.initialized &&
-          w.snapshot &&
-          !w.snapshot.config && (
-            <div className="init-banner">
-              <Rocket size={20} />
-              <div>
-                <strong>
-                  {w.snapshot.errors.some((e) => e.startsWith("Configuration:"))
-                    ? "Configuration needs attention"
+        {!w.snapshot?.initialized && w.snapshot && !w.snapshot.config && (
+          <div className="init-banner">
+            <Rocket size={20} />
+            <div>
+              <strong>
+                {w.snapshot.errors.some((e) => e.startsWith("Configuration:"))
+                  ? "Configuration needs attention"
+                  : global
+                    ? "Set up your global configuration"
                     : "Set up this project"}
-                </strong>
-                <span>
-                  {w.snapshot.errors.some((e) => e.startsWith("Configuration:"))
-                    ? "Fix the configuration error before making changes."
+              </strong>
+              <span>
+                {w.snapshot.errors.some((e) => e.startsWith("Configuration:"))
+                  ? "Fix the configuration error before making changes."
+                  : global
+                    ? "Create your shared configuration at ~/.adk/global. Existing agent files are preserved."
                     : "Create adk.config.json to manage resources. Existing harness files are preserved."}
-                </span>
-              </div>
-              <Button
-                variant="primary"
-                disabled={!!w.busy || w.snapshot.initialized}
-                onClick={() => void w.run(["init"])}
-              >
-                Initialize project
-              </Button>
+              </span>
             </div>
-          )}
+            <Button
+              variant="primary"
+              disabled={!!w.busy || w.snapshot.initialized}
+              onClick={() => void w.run(["init"])}
+            >
+              {global
+                ? "Initialize global configuration"
+                : "Initialize project"}
+            </Button>
+          </div>
+        )}
         <div className="main-content">
-          {!active && !["projects", "account", "team"].includes(view) ? (
-            <Empty
-              title="Bring your AI setup into focus"
-              description="Open a project folder to inspect its skills, MCP servers and agent configuration. Your existing files stay in place."
-              action={
-                <Button
-                  variant="primary"
-                  disabled={!!w.busy}
-                  onClick={() => void w.chooseProject()}
-                >
-                  <FolderOpen size={16} />
-                  Open a project
-                </Button>
-              }
-            />
-          ) : view === "projects" ? (
+          {view === "projects" ? (
             <Projects workspace={w} />
           ) : view === "account" ? (
             <Account workspace={w} />
@@ -339,6 +338,8 @@ export function App() {
             <div className="loading-workspace">
               <Busy label="Reading project configuration…" />
             </div>
+          ) : view === "overview" ? (
+            <Overview workspace={w} navigate={navigate} />
           ) : ["skills", "mcp", "resources", "catalogue", "detected"].includes(
               view,
             ) ? (
@@ -373,7 +374,9 @@ export function App() {
         <footer className="statusbar">
           <span>
             <Circle size={9} fill="currentColor" />
-            {active ? "Project scope available" : "No project open"}
+            {global
+              ? "Editing global configuration · all projects"
+              : `Editing project configuration · ${active?.name ?? ""}`}
           </span>
           <span>{w.snapshot?.resources.length ?? 0} managed resources</span>
           <button onClick={() => navigate("console")}>
@@ -396,6 +399,36 @@ export function App() {
         wide
       >
         <div className="dialog-body">
+          {typeof w.result === "object" &&
+            w.result !== null &&
+            "url" in w.result &&
+            typeof w.result.url === "string" &&
+            /^https?:\/\//.test(w.result.url) && (
+              <div className="form-section">
+                <h3>Your share link</h3>
+                <p>{w.result.url}</p>
+                <div className="button-row">
+                  <Button
+                    onClick={() =>
+                      void window.adk.copyText(
+                        (w.result as { url: string }).url,
+                      )
+                    }
+                  >
+                    Copy link
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      void window.adk.openExternal(
+                        (w.result as { url: string }).url,
+                      )
+                    }
+                  >
+                    Open share
+                  </Button>
+                </div>
+              </div>
+            )}
           <Json value={w.result} />
         </div>
         <div className="dialog-footer">

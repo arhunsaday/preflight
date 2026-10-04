@@ -21,6 +21,8 @@ const env = {
   ADK_DESKTOP_TEST_DATA: data,
 };
 delete env.ELECTRON_RUN_AS_NODE;
+delete env.VERCEL_OIDC_TOKEN;
+delete env.GITHUB_TOKEN;
 await build({
   entryPoints: ["src/worker.ts"],
   outfile: join(temporary, "share-service.mjs"),
@@ -109,12 +111,21 @@ try {
       .activeProfile,
     "default",
   );
-  await page.getByRole("button", { name: "Catalogue", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Discover resources", exact: true })
+    .click();
   await page
     .getByRole("textbox", { name: "Search resources" })
     .fill("ponytail");
   await page
-    .getByRole("button", { name: "Add to project", exact: true })
+    .getByRole("button", { name: "Configure & add", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Configure resource before adding" })
+    .waitFor();
+  await page
+    .getByRole("button", { name: "Preview changes", exact: true })
     .click();
   await page.getByRole("heading", { name: "Review changes" }).waitFor();
   assert.equal(
@@ -202,9 +213,8 @@ try {
   await page.getByRole("button", { name: "Add teammate", exact: true }).click();
   await page.getByRole("cell", { name: /Ada/ }).first().waitFor();
   await page.getByRole("button", { name: "Account", exact: true }).click();
-  await page
-    .getByRole("heading", { name: "Connect your share service" })
-    .waitFor();
+  await page.getByRole("heading", { name: "Your Preflight account" }).waitFor();
+  await page.getByText("Legacy deployment token", { exact: true }).click();
   await page.getByRole("textbox", { name: "Service URL" }).fill(service);
   await page
     .getByRole("textbox", { name: "Owner token" })
@@ -242,7 +252,7 @@ try {
   assert.equal(records.size, 1);
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page
-    .getByRole("textbox", { name: "Share code or JSON file" })
+    .getByRole("textbox", { name: "Share URL, code or JSON file" })
     .fill(publication.code);
   await page
     .getByRole("button", { name: "Preview import", exact: true })
@@ -285,7 +295,97 @@ try {
     .locator(".toolbar-project")
     .filter({ hasText: /^project$/ })
     .waitFor({ state: "attached" });
-  await page.getByRole("button", { name: "Catalogue", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Configuration workspace" })
+    .selectOption("global");
+  await page
+    .getByRole("button", {
+      name: "Initialize global configuration",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("heading", { name: "Review changes" }).waitFor();
+  await assert.rejects(
+    readFile(join(home, ".adk", "global", "adk.config.json")),
+  );
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: /^MCP servers/ }).click();
+  await page.getByRole("button", { name: "New resource", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Name", exact: true })
+    .fill("global-server");
+  await page
+    .getByRole("combobox", { name: "Connection type" })
+    .selectOption("http");
+  await page
+    .getByRole("textbox", { name: "Server URL" })
+    .fill("https://example.com/mcp");
+  await page.getByRole("checkbox", { name: "Cursor", exact: true }).check();
+  await page
+    .getByRole("button", { name: "Preview changes", exact: true })
+    .click();
+  assert.equal(
+    JSON.parse(
+      await readFile(join(home, ".adk", "global", "adk.config.json"), "utf8"),
+    ).profiles.default.resources.length,
+    0,
+  );
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  assert.equal(
+    JSON.parse(await readFile(join(home, ".claude.json"), "utf8")).mcpServers[
+      "global-server"
+    ].url,
+    "https://example.com/mcp",
+  );
+  assert.equal(
+    JSON.parse(await readFile(join(home, ".cursor", "mcp.json"), "utf8"))
+      .mcpServers["global-server"].url,
+    "https://example.com/mcp",
+  );
+  await page
+    .getByRole("heading", { name: "global-server", exact: true })
+    .waitFor();
+  await page.screenshot({ path: join(temporary, "global-mcp.png") });
+  await page
+    .getByRole("combobox", { name: "Configuration workspace" })
+    .selectOption({ label: "project · project" });
+  await page
+    .getByRole("button", { name: "Edit in global configuration", exact: true })
+    .waitFor();
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Inherited global configuration" })
+    .waitFor();
+  await page.screenshot({ path: join(temporary, "overview.png") });
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Discover resources", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Search online", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Search source" })
+    .selectOption("skills.sh");
+  await page.getByRole("textbox", { name: "Search resources" }).fill("react");
+  await page
+    .getByRole("button", { name: "Search source", exact: true })
+    .click();
+  await page.getByText(/skills.sh: Error: Set VERCEL_OIDC_TOKEN/).waitFor();
+  await page.screenshot({ path: join(temporary, "online-search.png") });
+  await page
+    .getByRole("button", { name: "Bundled library", exact: true })
+    .click();
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Discover resources", exact: true })
+    .click();
   await page.getByRole("textbox", { name: "Search resources" }).fill("");
   await page.locator("nav").evaluate((el) => (el.scrollTop = 0));
   await page.screenshot({ path: join(temporary, "catalogue.png") });

@@ -357,3 +357,50 @@ it("CLI global configuration shares the desktop store and preserves project conf
     code: "ENOENT",
   });
 });
+
+it("invalidates previews between global and project workspaces and returns to global after forgetting the last project", async () => {
+  const { root, controller } = await setup();
+  await controller
+    .prepare(["init"])
+    .then((p) => controller.confirm(p.receipt!));
+  const pending = await controller.prepare([
+    "profiles",
+    "create",
+    "global-next",
+  ]);
+  const state = await controller.addProject(root);
+  await expect(controller.confirm(pending.receipt!)).rejects.toThrow();
+  expect((await controller.selectGlobal()).workspace).toBe("global");
+  await controller.selectProject(state.activeProjectId!);
+  expect(
+    (await controller.forgetProject(state.activeProjectId!)).workspace,
+  ).toBe("global");
+  expect(controller.context().root).toBe(join(root, ".adk", "global"));
+});
+
+it("projects show inherited global resources without offering them for adoption again", async () => {
+  const { root } = await setup();
+  await execute(["init", "--global"], { root, home: root });
+  await execute(
+    [
+      "create-json",
+      JSON.stringify({
+        id: "mcp:shared",
+        name: "shared",
+        type: "mcp",
+        source: "local:test",
+        scope: "global",
+        harnesses: ["claude-code"],
+        config: { url: "https://example.com/mcp" },
+      }),
+      "--global",
+    ],
+    { root, home: root },
+  );
+  await execute(["init"], { root, home: root });
+  const { snapshot } = await import("../desktop/engine.js");
+  const result = await snapshot({ root, home: root });
+  expect(result.inherited).toHaveLength(1);
+  expect(result.inherited[0]?.id).toBe("mcp:shared");
+  expect(result.detected.filter((r) => r.name === "shared")).toHaveLength(0);
+});

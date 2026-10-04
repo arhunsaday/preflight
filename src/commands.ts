@@ -45,6 +45,10 @@ export async function execute(
 ): Promise<unknown> {
   let result: unknown;
   const program = new Command();
+  program.addHelpText(
+    "after",
+    "\nAccount commands:\n  adk auth login --service <url> [--no-browser]\n  adk auth status\n  adk auth logout\n  adk team list|create|members\n",
+  );
   program
     .name("adk")
     .description("Inspect, manage, scope, share and verify your AI setup")
@@ -437,9 +441,24 @@ export async function execute(
     "apply <file-or-code>",
     "Preview or apply a share through the policy and audit pipeline",
     async (value, options) => {
-      const payload = /^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(value)
-        ? await fetchShare(shareBase(options.service), value)
-        : SharePayloadSchema.parse(await input(value));
+      let sharedUrl: URL | undefined;
+      if (/^https?:\/\//i.test(value)) {
+        sharedUrl = new URL(value);
+        serviceUrl(sharedUrl.origin);
+        if (
+          sharedUrl.username ||
+          sharedUrl.password ||
+          !/^\/s\/[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(
+            sharedUrl.pathname,
+          )
+        )
+          throw new Error("Use a Preflight share URL ending in /s/<code>");
+      }
+      const payload = sharedUrl
+        ? await fetchShare(sharedUrl.origin, sharedUrl.pathname.slice(3))
+        : /^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(value)
+          ? await fetchShare(shareBase(options.service), value)
+          : SharePayloadSchema.parse(await input(value));
       previewShare(payload, await service().list());
       return service().import(payload.resources, dry(), value);
     },
