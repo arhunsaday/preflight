@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { createServer } from "node:http";
 import { build } from "esbuild";
 import assert from "node:assert/strict";
+import { packagedExecutable } from "./desktop-artifacts.mjs";
 const temporary = await mkdtemp(
   join(await realpath(tmpdir()), "preflight-smoke-"),
 );
@@ -71,9 +72,15 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const service = `http://127.0.0.1:${server.address().port}`;
+const executable =
+  process.env.ADK_DESKTOP_EXECUTABLE ??
+  (process.argv.includes("--packaged")
+    ? await packagedExecutable()
+    : undefined);
 const app = await electron.launch({
-  ...(process.env.ADK_DESKTOP_EXECUTABLE
-    ? { executablePath: process.env.ADK_DESKTOP_EXECUTABLE, args: [] }
+  chromiumSandbox: process.platform !== "linux",
+  ...(executable
+    ? { executablePath: executable, args: [] }
     : { args: [resolve(".")] }),
   env,
 });
@@ -82,6 +89,13 @@ try {
   const page = await app.firstWindow();
   page.setDefaultTimeout(15000);
   page.on("pageerror", (e) => errors.push(e.message));
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      node: typeof window.require,
+      process: typeof window.process,
+    })),
+    { node: "undefined", process: "undefined" },
+  );
   await page.getByRole("button", { name: "Initialize project" }).click();
   await page.getByRole("heading", { name: "Review changes" }).waitFor();
   await assert.rejects(readFile(join(project, "adk.config.json")));

@@ -2,6 +2,7 @@ appId: dev.preflight.desktop
 productName: Preflight
 icon: desktop/assets/icon.png
 asar: true
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 directories:
   output: desktop-release
 files:
@@ -15,4 +16,8 @@ mac:
 win:
   target: [nsis]
 linux:
+  executableName: preflight
+  maintainer: Preflight contributors
+  synopsis: Manage AI development setups
+  category: Development
   target: [AppImage, deb]

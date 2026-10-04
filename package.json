@@ -35,10 +35,13 @@
     "desktop:build": "electron-vite build && node scripts/build-desktop-worker.mjs",
     "desktop:start": "electron .",
     "desktop:typecheck": "tsc -p desktop/tsconfig.json",
-    "desktop:check": "npm run desktop:typecheck && npm run desktop:build",
+    "desktop:check": "npm run desktop:tools:test && npm run desktop:typecheck && npm run desktop:build",
     "desktop:pack": "npm run desktop:build && electron-builder --dir",
-    "desktop:dist": "npm run desktop:build && electron-builder",
-    "desktop:smoke": "node scripts/desktop-smoke.mjs"
+    "desktop:dist": "npm run desktop:build && electron-builder --publish never",
+    "desktop:smoke": "node scripts/desktop-smoke.mjs",
+    "desktop:smoke:packaged": "node scripts/desktop-smoke.mjs --packaged",
+    "desktop:manifest": "node scripts/desktop-artifacts.mjs",
+    "desktop:tools:test": "node --test scripts/desktop-artifacts.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
@@ -80,5 +83,6 @@
   "overrides": {
     "esbuild": "^0.28.2"
   },
-  "main": "desktop-out/main/index.mjs"
+  "main": "desktop-out/main/index.mjs",
+  "homepage": "https://github.com/arhunsaday/preflight"
 }
