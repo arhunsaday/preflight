@@ -1,0 +1,17 @@
+appId: dev.preflight.desktop
+productName: Preflight
+asar: true
+directories:
+  output: desktop-release
+files:
+  - desktop-out/**
+  - package.json
+extraMetadata:
+  main: desktop-out/main/index.mjs
+mac:
+  category: public.app-category.developer-tools
+  target: [dmg, zip]
+win:
+  target: [nsis]
+linux:
+  target: [AppImage, deb]

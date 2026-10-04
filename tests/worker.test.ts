@@ -79,3 +79,27 @@ it("publishes inspectable shares, enforces ownership and revocation", async () =
     (await app.request(`/api/shares/${result.code}`, {}, env)).status,
   ).toBe(404);
 });
+
+it("authenticates a deployment owner without publishing or leaking credentials", async () => {
+  const env = { OWNER_ID: "platform", WRITE_TOKEN: "private-owner-token" };
+  expect((await app.request("/api/account", {}, env)).status).toBe(401);
+  expect(
+    (
+      await app.request(
+        "/api/account",
+        { headers: { Authorization: "Bearer wrong" } },
+        env,
+      )
+    ).status,
+  ).toBe(401);
+  const reply = await app.request(
+    "/api/account",
+    { headers: { Authorization: "Bearer private-owner-token" } },
+    env,
+  );
+  expect(reply.status).toBe(200);
+  expect(await reply.json()).toEqual({
+    ownerId: "platform",
+    authentication: "deployment-token",
+  });
+});

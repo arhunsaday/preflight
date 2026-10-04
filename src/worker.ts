@@ -37,6 +37,17 @@ app.use("*", async (c, next) => {
   c.header("Referrer-Policy", "no-referrer");
 });
 app.onError((error, c) => c.json({ error: error.message }, 400));
+app.get("/api/account", (c) => {
+  if (
+    !c.env.WRITE_TOKEN ||
+    c.req.header("Authorization") !== `Bearer ${c.env.WRITE_TOKEN}`
+  )
+    return c.json({ error: "Unauthorized" }, 401);
+  return c.json({
+    ownerId: c.env.OWNER_ID,
+    authentication: "deployment-token",
+  });
+});
 app.post("/api/shares", async (c) => {
   if (
     !c.env.WRITE_TOKEN ||

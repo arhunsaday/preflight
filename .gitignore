@@ -34,3 +34,9 @@ adk.lock.json
 .dev.vars
 .wrangler/
 *.tgz
+
+# Electron builds
+desktop-out/
+desktop-release/
+test-results/
+playwright-report/

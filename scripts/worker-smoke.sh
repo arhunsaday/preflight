@@ -72,6 +72,9 @@ process.stdout.write(JSON.stringify({
   }],
 }));')
 
+check "account without token" 401 "$(code_for "$BASE/api/account")"
+check "account with token" 200 "$(code_for "$BASE/api/account" -H "authorization: Bearer $TOKEN")"
+
 check "missing share is not found" 404 "$(code_for "$BASE/s/aaaaaa")"
 check "publish without a token" 401 \
   "$(code_for -X POST "$BASE/api/shares" -H 'content-type: application/json' -d "$payload")"
