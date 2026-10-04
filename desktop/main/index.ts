@@ -37,27 +37,20 @@ const engine: Engine = (args, context, auth) =>
     let output = "",
       error = "";
     let settled = false;
+    let overflow = false;
     const finish = (failure?: Error, value?: unknown) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
       children.delete(child);
       if (failure) reject(failure);
       else resolve(value);
     };
-    const timer = setTimeout(() => {
-      child.kill();
-      finish(
-        new Error(
-          "Operation exceeded two hours. Inspect audit/recover before retrying.",
-        ),
-      );
-    }, 7200000);
+    // Keep the supervisor alive: CLI subprocesses enforce their own timeouts.
     child.stdout.on("data", (chunk) => {
       output += chunk;
       if (output.length > 16000000) {
-        child.kill();
-        finish(new Error("Operation output exceeds 16 MB"));
+        output = output.slice(0, 16000000);
+        overflow = true;
       }
     });
     child.stderr.on("data", (chunk) => {
@@ -65,6 +58,10 @@ const engine: Engine = (args, context, auth) =>
     });
     child.on("error", (e) => finish(e));
     child.on("close", () => {
+      if (overflow) {
+        finish(new Error("Operation output exceeds 16 MB"));
+        return;
+      }
       try {
         const reply = JSON.parse(output);
         if (reply.ok) finish(undefined, reply.value);

@@ -16,11 +16,34 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm run desktop:check
       - name: Worker bundle is browser compatible
         run: npx esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=/tmp/adk-worker.js
       - name: CLI starts from the built package
         run: node dist/cli.js --help
       - run: npm pack --dry-run
+
+  desktop:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run desktop:check
+      - name: Real Electron workflows in an isolated workspace
+        run: npm run desktop:smoke
+      - name: Build unsigned native application
+        run: npm run desktop:pack
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Test the packaged application
+        run: |
+          executable=$(find desktop-release -path '*/Preflight.app/Contents/MacOS/Preflight' -type f -print -quit)
+          test -n "$executable"
+          ADK_DESKTOP_EXECUTABLE="$PWD/$executable" npm run desktop:smoke
 
   verify:
     runs-on: ubuntu-latest

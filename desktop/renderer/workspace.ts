@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { DesktopState, Snapshot, Prepared } from "../protocol";
 export function useWorkspace() {
   const [state, setState] = useState<DesktopState | null>(null),
@@ -8,11 +8,21 @@ export function useWorkspace() {
     [message, setMessage] = useState(""),
     [prepared, setPrepared] = useState<Prepared | null>(null),
     [result, setResult] = useState<unknown>(undefined);
+  const refreshing = useRef<Promise<void> | null>(null);
   const reload = useCallback(async () => {
-    const state = await window.adk.state();
-    setState(state);
-    if (state.activeProjectId) setSnapshot(await window.adk.snapshot());
-    else setSnapshot(null);
+    if (refreshing.current) return refreshing.current;
+    const pending = (async () => {
+      const state = await window.adk.state();
+      setState(state);
+      if (state.activeProjectId) setSnapshot(await window.adk.snapshot());
+      else setSnapshot(null);
+    })();
+    refreshing.current = pending;
+    try {
+      await pending;
+    } finally {
+      refreshing.current = null;
+    }
   }, []);
   useEffect(() => {
     setBusy("Opening workspace…");

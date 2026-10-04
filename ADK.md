@@ -1,4 +1,4 @@
-# ADK CLI and terminal interface
+# Preflight desktop, ADK CLI and terminal interface
 
 ADK manages declarative AI development setups with a scriptable CLI and an Ink terminal interface. Requires Node.js 22 or newer. The existing shell/Python development kit remains available.
 
@@ -17,6 +17,28 @@ node dist/cli.js ui
 Use `npm link` to expose the `adk` executable locally. This package has not been published to npm. Commands emit JSON by default; errors go to stderr and exit nonzero. Use `--root /absolute/project` and `--home /absolute/test-home` to target another project or an isolated harness home. Both paths should be real directories, not symlink aliases. `ADK_HOME` changes the CLI's default harness home.
 
 Detection and doctor are read-only and do not require `init`.
+
+## Desktop application
+
+Preflight is an Electron application over the same command engine and resource schemas. Its sidebar covers skills, MCPs, other resources, detected installations, catalogue, projects, profiles, loadouts, doctor, usage, benchmarks, sharing, team, account and activity. The command console exposes the remaining CLI operations without executing a shell. Dedicated forms use the same validation as CLI; edits, installations, connected checks and benchmark runs require a preview and confirmation.
+
+```sh
+npm ci
+npm run desktop:dev            # development with hot reload
+npm run desktop:check          # types and production bundles
+npm run desktop:start          # run the previously built application
+npm run desktop:pack           # native directory under desktop-release/
+npm run desktop:dist           # platform installers
+npm run desktop:smoke          # real Electron; disposable project, home and settings
+```
+
+Select a project through the native folder picker. Opening a folder does not initialize it or change its harness configuration. The selected project determines project scope; global scope targets your actual home directory. Review the exact paths in the preview before confirming. Cmd/Ctrl+K opens navigation; Cmd/Ctrl+R refreshes. Operations serialize in the main process; project/account changes invalidate pending previews, and confirmation rechecks files and imported inputs. Normal quit is blocked while an engine operation is supervising subprocesses; there is no cancellation button yet.
+
+The renderer has no Node access and uses an isolated, sandboxed preload with explicit methods. Account tokens are kept in the main process, encrypted with Electron safeStorage when available, otherwise session-only; they are not included in renderer snapshots, project config, or installer/agent environments. Account connection validates the existing sharing deployment via authenticated `GET /api/account`; upgrade the Worker before connecting. HTTPS is required except for loopback development. This is owner-token authentication, **not a hosted signup/OIDC service**.
+
+Sharing supports local JSON export/import and authenticated publish/revoke against the existing Worker. The team page persists a **local coordination roster only**; it does not send invitations, grant access, enforce roles, or synchronize members. Benchmark views show saved real runs and scaffold/preview/run/compare manifests; an empty workspace has no fabricated results. External installers and agents retain their CLI boundaries and costs.
+
+The macOS Apple Silicon directory build and packaged app are exercised locally; CI checks Node 22/24 bundles and native macOS workflows. Windows NSIS and Linux AppImage/deb targets are configured but have not been exercised. Builds are currently unsigned and not notarized; release signing, automatic updates and public installer distribution remain separate work. Tests may set `ADK_DESKTOP_TEST_ROOT`, `ADK_DESKTOP_TEST_HOME`, `ADK_DESKTOP_TEST_DATA` to disposable paths. For packaged smoke, set `ADK_DESKTOP_EXECUTABLE` to the native executable.
 
 ## Terminal interface
 

@@ -1,5 +1,6 @@
 appId: dev.preflight.desktop
 productName: Preflight
+icon: desktop/assets/icon.png
 asar: true
 directories:
   output: desktop-release

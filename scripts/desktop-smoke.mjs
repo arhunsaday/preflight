@@ -2,6 +2,9 @@ import { _electron as electron } from "@playwright/test";
 import { mkdtemp, mkdir, readFile, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { createServer } from "node:http";
+import { build } from "esbuild";
 import assert from "node:assert/strict";
 const temporary = await mkdtemp(
   join(await realpath(tmpdir()), "preflight-smoke-"),
@@ -17,7 +20,63 @@ const env = {
   ADK_DESKTOP_TEST_DATA: data,
 };
 delete env.ELECTRON_RUN_AS_NODE;
-const app = await electron.launch({ args: [resolve(".")], env });
+await build({
+  entryPoints: ["src/worker.ts"],
+  outfile: join(temporary, "share-service.mjs"),
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  banner: {
+    js: 'import {createRequire} from "node:module"; const require=createRequire(import.meta.url);',
+  },
+});
+const worker = (
+  await import(pathToFileURL(join(temporary, "share-service.mjs")).href)
+).default;
+const records = new Map();
+const objects = new Map();
+const bindings = {
+  OWNER_ID: "smoke-owner",
+  WRITE_TOKEN: "desktop-smoke-token",
+  SHARES: {
+    get: async (k) => records.get(k) ?? null,
+    put: async (k, v) => records.set(k, v),
+    delete: async (k) => records.delete(k),
+  },
+  PAYLOADS: {
+    put: async (k, v) => objects.set(k, v),
+    get: async (k) =>
+      objects.has(k) ? { text: async () => objects.get(k) } : null,
+    delete: async (k) => objects.delete(k),
+  },
+};
+const server = createServer(async (req, res) => {
+  try {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    const response = await worker.fetch(
+      new Request(`${service}${req.url}`, {
+        method: req.method,
+        headers: req.headers,
+        ...(body ? { body } : {}),
+      }),
+      bindings,
+    );
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    res.end(await response.text());
+  } catch (e) {
+    res.writeHead(500);
+    res.end(String(e));
+  }
+});
+await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+const service = `http://127.0.0.1:${server.address().port}`;
+const app = await electron.launch({
+  ...(process.env.ADK_DESKTOP_EXECUTABLE
+    ? { executablePath: process.env.ADK_DESKTOP_EXECUTABLE, args: [] }
+    : { args: [resolve(".")] }),
+  env,
+});
 const errors = [];
 try {
   const page = await app.firstWindow();
@@ -121,21 +180,100 @@ try {
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.getByRole("button", { name: "Benchmarks", exact: true }).click();
   await page.getByRole("heading", { name: "No benchmark runs yet" }).waitFor();
-  console.log("team");
   await page.getByRole("button", { name: "Team", exact: true }).click();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await page
     .getByRole("textbox", { name: "Email", exact: true })
     .fill("ada@example.com");
   await page.getByRole("button", { name: "Add teammate", exact: true }).click();
-  console.log("team clicked");
   await page.getByRole("cell", { name: /Ada/ }).first().waitFor();
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page
     .getByRole("heading", { name: "Connect your share service" })
     .waitFor();
+  await page.getByRole("textbox", { name: "Service URL" }).fill(service);
+  await page
+    .getByRole("textbox", { name: "Owner token" })
+    .fill("desktop-smoke-token");
+  await page
+    .getByRole("button", { name: "Connect service", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Connected as smoke-owner" })
+    .waitFor();
+  assert.equal(
+    JSON.stringify(await page.evaluate(() => window.adk.state())).includes(
+      "desktop-smoke-token",
+    ),
+    false,
+  );
+  assert.equal(
+    (await readFile(join(data, "workspace.json"), "utf8")).includes(
+      "desktop-smoke-token",
+    ),
+    false,
+  );
+  await page.getByRole("button", { name: "Sharing", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Preview publication", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("heading", { name: "Operation result" }).waitFor();
+  const publication = JSON.parse(
+    await page.locator(".dialog .code").innerText(),
+  );
+  assert.equal(publication.code.length, 6);
+  assert.equal(records.size, 1);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Share code or JSON file" })
+    .fill(publication.code);
+  await page
+    .getByRole("button", { name: "Preview import", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Preview revocation", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  assert.equal(records.size, 0);
+  const secondProject = join(temporary, "other-project");
+  await mkdir(secondProject);
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showOpenDialog = async () => ({
+      canceled: false,
+      filePaths: [path],
+    });
+  }, secondProject);
+  await page
+    .getByRole("button", { name: "Open project folder", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Initialize project", exact: true })
+    .waitFor();
+  await assert.rejects(readFile(join(secondProject, "adk.config.json")));
+  await page.getByRole("button", { name: /^Projects/ }).click();
+  await page
+    .locator(".project-item")
+    .filter({ hasText: project })
+    .first()
+    .getByRole("button", { name: "Open", exact: true })
+    .click();
+  await page
+    .locator(".toolbar-project")
+    .filter({ hasText: /^project$/ })
+    .waitFor({ state: "attached" });
   await page.getByRole("button", { name: "Catalogue", exact: true }).click();
   await page.getByRole("textbox", { name: "Search resources" }).fill("");
+  await page.locator("nav").evaluate((el) => (el.scrollTop = 0));
   await page.screenshot({ path: join(temporary, "catalogue.png") });
   await page.setViewportSize({ width: 900, height: 700 });
   await page.screenshot({ path: join(temporary, "compact.png") });
@@ -155,4 +293,5 @@ try {
   throw error;
 } finally {
   await app.close();
+  await new Promise((resolve) => server.close(resolve));
 }

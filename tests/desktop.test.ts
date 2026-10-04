@@ -276,3 +276,38 @@ it("strips managed and inherited share tokens before running a real MCP subproce
   expect(JSON.parse(reply).value.connected).toBe(true);
   expect(await readFile(observed, "utf8")).toBe("absent");
 }, 15000);
+
+it("previews export overwrites and rejects a changed destination", async () => {
+  const { writeFile } = await import("node:fs/promises");
+  const { root, controller } = await setup();
+  await controller.addProject(root);
+  await controller.confirm((await controller.prepare(["init"])).receipt!);
+  await execute(
+    [
+      "create-json",
+      JSON.stringify({
+        id: "skill:export-test",
+        name: "export-test",
+        type: "skill",
+        source: "local:test",
+        scope: "project",
+        harnesses: ["claude-code"],
+        content: "# Export test",
+      }),
+    ],
+    { root, home: root },
+  );
+  const path = join(root, "payload.json");
+  await writeFile(path, "original contents");
+  const preview = await controller.prepare(["share", "--out", path]);
+  expect(preview.value).toMatchObject({
+    dryRun: true,
+    files: [{ path, before: "original contents" }],
+  });
+  expect(await readFile(path, "utf8")).toBe("original contents");
+  await writeFile(path, "external edit");
+  await expect(controller.confirm(preview.receipt!)).rejects.toThrow(
+    /changed/i,
+  );
+  expect(await readFile(path, "utf8")).toBe("external edit");
+});

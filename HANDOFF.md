@@ -1,4 +1,47 @@
-# Reprise du projet ADK — 24 septembre 2026 (mis à jour en fin de session TUI)
+# Reprise du projet Preflight / ADK — 4 octobre 2026
+
+## État courant et règles de reprise
+
+La dernière demande utilisateur donne priorité à une application desktop couvrant le CLI : skills, MCP, projets, loadouts, benchmark, collaboration, équipe, doctor et auth. Il autorise le travail autonome sans questions et les commits/pushes progressifs. La capture Skillscout sert d'inspiration visuelle, pas de spécification fonctionnelle supplémentaire.
+
+Le travail desktop est sur **`codex/implement-adk-tui`**, base `b185631`, premier lot poussé `caf2d38`. Le dépôt distant redirige vers `https://github.com/arhunsaday/preflight`. Vérifier les références actuelles avant toute suite ; les paragraphes historiques ci-dessous décrivent une session antérieure et leur affirmation « travail sur main » ne décrit pas ce lot. Aucun merge, déploiement Cloudflare ou publication npm n'a été effectué pendant ce lot.
+
+**Préserver `adk.config.json`, fichier utilisateur non suivi présent dans le checkout.** Ne pas l'ajouter au commit ni le remplacer. Le changement initial de package-lock concernait les indicateurs peer et a été conservé lors du fast-forward puis intégré à l'installation des dépendances desktop.
+
+## Livré dans ce lot
+
+- Audit et fast-forward des huit commits de l'autre agent : adoption, TUI, registre MCP tolérant, vraies installations, partage par scope/loadout, doctor connecté, acceptation et Worker smoke étaient déjà livrés. Baseline vérifiée : 94 tests.
+- Electron/React/electron-vite avec interface native à trois panneaux inspirée de la capture : liste/détail des skills et MCP, catalogue/détection/adoption, formulaires CRUD, profils, projets, loadouts, doctor, usage, benchmarks, partage, compte, roster local et activité. Console sans shell pour les commandes restantes.
+- Projets choisis par dialogue natif, sans initialisation implicite. Schémas/services/transactions CLI réutilisés par un worker isolé ; renderer sandboxé sans Node, preload restreint, validation dans main. Aperçus à reçus uniques, expiration, contexte immuable, contrôle de l'état et relecture des inputs avant confirmation.
+- Partage JSON et Worker : connexion propriétaire via nouveau `GET /api/account`, publication/import/révocation réels, token chiffré safeStorage ou session-only. Token absent des snapshots, configs projet et environnements d'installateurs/agents.
+- Packaging electron-builder, icône reproductible, test Electron Playwright sur projet/home/userData jetables ; CI vérifie bundles Node 22/24 et workflows natifs macOS, puis paquet natif.
+- Revue indépendante : credentials hérités, changements de projet/compte, inputs importés modifiés et fermeture pendant supervision ont été corrigés avec régressions. Export JSON montre maintenant le fichier avant/après et refuse sa confirmation si la destination change. Suppression du timeout global qui pouvait abandonner des processus détachés ; le CLI conserve ses timeouts de sous-processus.
+
+Points d'entrée : `desktop/main/controller.ts` (sécurité/aperçus/settings), `desktop/main/index.ts` (Electron/IPC/worker), `desktop/engine.ts` (snapshot réel), `desktop/renderer/`, `desktop/worker.ts`, `scripts/desktop-smoke.mjs`, `electron-builder.yml`. Design et plan dans `docs/superpowers/{specs,plans}/2026-10-04-desktop*.md`. Guide utilisateur dans `ADK.md`.
+
+## Validation et limites
+
+- `npm run check` : 108 tests / 18 fichiers, lint/types/build passent.
+- `npm run desktop:check` et workflows Electron réels passent : init, ajout, déplacement global, édition, profils, doctor, loadouts, console, équipe locale, auth/publication/import/révocation et changement de projet.
+- Python : 33 tests ; `python3 scripts/kit.py check` : zéro problème.
+- Worker navigateur compilé ; Wrangler KV/R2 local : 11 contrôles passent (dont account autorisé/non autorisé).
+- Paquet `.app` macOS arm64 construit sans signature. Windows/Linux sont des cibles configurées, pas validées sur leurs OS.
+- Le roster équipe est **local, sans invitations, contrôle d'accès ni synchronisation**. Auth est le **jeton propriétaire du Worker existant**, sans OIDC/signup multi-utilisateur. Aucune métrique ou identité de démonstration n'est livrée dans les écrans.
+- Aucun benchmark payant d'agent n'est lancé. Les scénarios humains de longue durée et les intégrations externes non testées restent ceux du bilan historique.
+- Pas d'annulation d'opération, d'auto-update, de signature/notarisation ou de distribution publique. Une fermeture normale attend les moteurs actifs ; un arrêt forcé de l'OS conserve les limites habituelles du CLI.
+
+## Prochaines tranches
+
+1. Vérifier le résultat de la CI du dernier commit desktop, puis poursuivre les tests natifs Windows/Linux et préparer des installateurs signés/notarisés selon les comptes disponibles.
+2. Remplacer le roster local par un vrai backend multi-utilisateur (invitations, rôles, politiques) et OIDC seulement si cette tranche est choisie ; ne pas présenter le roster actuel comme de l'administration d'organisation.
+3. Déployer le Worker avec les bindings réels et domaine, puis exécuter un vrai benchmark A/B avec des agents et budgets explicites. Aucun accès Cloudflare ou crédit d'agent n'est présumé.
+4. Continuer les écarts de `ACCEPTANCE.md`, notamment catalogues externes et validation humaine. Le desktop ne change pas les capacités des adaptateurs Claude/Cursor.
+
+Commandes : `npm run desktop:dev`, `npm run desktop:check`, `npm run desktop:smoke`, `CSC_IDENTITY_AUTO_DISCOVERY=false npm run desktop:pack`. Pour valider le paquet, passer `ADK_DESKTOP_EXECUTABLE` au smoke avec le chemin `desktop-release/mac-arm64/Preflight.app/Contents/MacOS/Preflight` sur cette machine. Tous les tests d'écriture doivent utiliser un projet/home jetables.
+
+---
+
+## Historique — session CLI/TUI du 24 septembre 2026
 
 ## Demande et règles de travail
 

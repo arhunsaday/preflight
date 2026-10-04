@@ -375,15 +375,15 @@ export async function execute(
         visibility: options.public ? "public" : "unlisted",
         ...(options.expires ? { expiresAt: options.expires } : {}),
       });
-      if (dry()) return payload;
       if (options.out) {
         const path = resolve(ctx().root, options.out);
         return applyFiles(
           ctx().root,
           [{ path, before: await readText(path), after: jsonText(payload) }],
-          { actor: process.env.USER ?? "local" },
+          { actor: process.env.USER ?? "local", dryRun: dry() },
         );
       }
+      if (dry()) return payload;
       if (!process.env.ADK_SHARE_TOKEN)
         throw new Error(
           "Set ADK_SHARE_TOKEN for publishing or use --out payload.json",
