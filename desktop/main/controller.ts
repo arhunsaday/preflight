@@ -31,6 +31,7 @@ const Settings = z.object({
     }),
   ),
   activeProjectId: z.string().nullable(),
+  workspace: z.enum(["global", "project"]).optional(),
   team: TeamSchema,
   account: z
     .object({
@@ -84,7 +85,7 @@ export function validateCommand(input: unknown): string[] {
   const args = z.array(z.string().max(2000000)).min(1).max(100).parse(input);
   if (!allowedCommands.has(args[0]!))
     throw new Error("Unknown desktop command");
-  if (args.some((a) => /^--(?:root|home)(?:=|$)/.test(a)))
+  if (args.some((a) => /^--(?:root|home|global)(?:=|$)/.test(a)))
     throw new Error("Project and home overrides are not allowed");
   return args;
 }
@@ -184,6 +185,7 @@ export class DesktopController {
     return {
       projects: this.settings.projects.map((p) => ({ ...p })),
       activeProjectId: this.settings.activeProjectId,
+      workspace: this.workspace(),
       team: structuredClone(this.settings.team),
       account: {
         connected: !!this.auth,
@@ -217,6 +219,8 @@ export class DesktopController {
         this.settings.projects.push(p);
       }
       this.settings.activeProjectId = p.id;
+      this.settings.workspace = "project";
+      this.receipts.clear();
       await this.save();
       return this.publicState();
     });
@@ -226,6 +230,8 @@ export class DesktopController {
       if (!this.settings.projects.some((p) => p.id === id))
         throw new Error("Project not found");
       this.settings.activeProjectId = id;
+      this.settings.workspace = "project";
+      this.receipts.clear();
       await this.save();
       return this.publicState();
     });
@@ -241,7 +247,33 @@ export class DesktopController {
       return this.publicState();
     });
   }
-  context() {
+  private workspace() {
+    return (
+      this.settings.workspace ??
+      (this.settings.activeProjectId ? "project" : "global")
+    );
+  }
+  private contextId() {
+    return this.workspace() === "global"
+      ? "@global"
+      : this.settings.activeProjectId;
+  }
+  async selectGlobal() {
+    return this.exclusive(async () => {
+      this.settings.workspace = "global";
+      this.receipts.clear();
+      await this.save();
+      return this.publicState();
+    });
+  }
+  context(): Context {
+    if (this.workspace() === "global")
+      return {
+        root: join(this.home, ".adk", "global"),
+        home: this.home,
+        globalOnly: true,
+      };
+
     const p = this.settings.projects.find(
       (p) => p.id === this.settings.activeProjectId,
     );
@@ -289,7 +321,7 @@ export class DesktopController {
           "The connected account controls share service and owner; change them in Account.",
         );
       const context = this.context();
-      const projectId = this.settings.activeProjectId!;
+      const projectId = this.contextId()!;
       const auth = this.commandAuth(args);
       if (isRead(args))
         return {
@@ -307,7 +339,7 @@ export class DesktopController {
         auth,
       );
       if (
-        projectId !== this.settings.activeProjectId ||
+        projectId !== this.contextId() ||
         fingerprint !== (await this.fingerprint(context))
       )
         throw new Error("Project changed while preparing; retry");
@@ -342,7 +374,7 @@ export class DesktopController {
       this.receipts.delete(id);
       if (!receipt || receipt.expires < Date.now())
         throw new Error("Preview expired or already used");
-      if (receipt.projectId !== this.settings.activeProjectId)
+      if (receipt.projectId !== this.contextId())
         throw new Error("Project changed; prepare another preview");
       if (receipt.fingerprint !== (await this.fingerprint()))
         throw new Error("Project changed since preview");

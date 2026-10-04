@@ -146,6 +146,7 @@ async function boot() {
   handle("snapshot", () => controller.snapshot());
   handle("prepare", (args) => controller.prepare(args));
   handle("confirm", (receipt) => controller.confirm(z.uuid().parse(receipt)));
+  handle("selectGlobal", () => controller.selectGlobal());
   handle("selectProject", (id) => controller.selectProject(z.uuid().parse(id)));
   handle("forgetProject", (id) => controller.forgetProject(z.uuid().parse(id)));
   handle("chooseProject", async () => {

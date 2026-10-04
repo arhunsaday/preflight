@@ -24,6 +24,7 @@ export interface Account {
 export interface DesktopState {
   projects: Project[];
   activeProjectId: string | null;
+  workspace: "global" | "project";
   team: Team;
   account: Account;
 }
@@ -34,6 +35,7 @@ export interface Snapshot {
   config: AdkConfig | null;
   lock: AdkLock | null;
   resources: Resource[];
+  inherited: Resource[];
   detected: Resource[];
   catalogue: Resource[];
   findings: Finding[];
@@ -52,6 +54,7 @@ export interface Prepared {
 export interface DesktopApi {
   state(): Promise<DesktopState>;
   chooseProject(): Promise<DesktopState>;
+  selectGlobal(): Promise<DesktopState>;
   selectProject(id: string): Promise<DesktopState>;
   forgetProject(id: string): Promise<DesktopState>;
   snapshot(): Promise<Snapshot>;

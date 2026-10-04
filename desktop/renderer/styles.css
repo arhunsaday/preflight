@@ -145,6 +145,12 @@ kbd {
   display: grid;
   place-items: center;
 }
+.brand-mark img {
+  display: block;
+  width: 39px;
+  height: 39px;
+  max-width: none;
+}
 .version {
   font-size: 10px;
   color: #939cab;

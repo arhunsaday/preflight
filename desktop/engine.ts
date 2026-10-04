@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { execute, catalogResources } from "../src/commands.js";
 import { AdkService } from "../src/service.js";
 import { AdkLockSchema } from "../src/schema.js";
+import { ConfigStore } from "../src/state.js";
 import { BenchRun } from "../src/bench.js";
 import type { Context } from "../src/adapters.js";
 import type { Snapshot } from "./protocol.js";
@@ -110,7 +111,22 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     config,
     lock,
     resources: config?.profiles[config.activeProfile]?.resources ?? [],
-    detected,
+    inherited: context.globalOnly
+      ? []
+      : await safe(
+          "Global configuration",
+          () =>
+            new ConfigStore(join(context.home, ".adk", "global"))
+              .resources()
+              .catch((e) => {
+                if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+                throw e;
+              }),
+          [],
+        ),
+    detected: context.globalOnly
+      ? detected.filter((r) => r.scope === "global")
+      : detected,
     catalogue: catalogResources(),
     findings,
     usage,

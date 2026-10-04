@@ -19,6 +19,7 @@ import {
 export interface Context {
   root: string;
   home: string;
+  globalOnly?: boolean;
 }
 export interface HarnessPaths {
   global: string;
@@ -145,15 +146,21 @@ class FileAdapter implements HarnessAdapter {
     switch (resource.type) {
       case "skill":
         return {
-          path: adopted ? join(base, adopted) : join(base, "skills", name, "SKILL.md"),
+          path: adopted
+            ? join(base, adopted)
+            : join(base, "skills", name, "SKILL.md"),
         };
       case "subagent":
         return {
-          path: adopted ? join(base, adopted) : join(base, "agents", `${name}.md`),
+          path: adopted
+            ? join(base, adopted)
+            : join(base, "agents", `${name}.md`),
         };
       case "command":
         return {
-          path: adopted ? join(base, adopted) : join(base, "commands", `${name}.md`),
+          path: adopted
+            ? join(base, adopted)
+            : join(base, "commands", `${name}.md`),
         };
       case "mcp":
         return {
@@ -279,7 +286,10 @@ class FileAdapter implements HarnessAdapter {
           entry = {
             matcher: String(resource.config.matcher ?? ""),
             hooks: [
-              { type: "command", command: await materialize(resource, removing) },
+              {
+                type: "command",
+                command: await materialize(resource, removing),
+              },
             ],
           };
         const entries = (current as unknown[] | undefined) ?? [];

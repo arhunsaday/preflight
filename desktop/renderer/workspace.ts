@@ -14,8 +14,7 @@ export function useWorkspace() {
     const pending = (async () => {
       const state = await window.adk.state();
       setState(state);
-      if (state.activeProjectId) setSnapshot(await window.adk.snapshot());
-      else setSnapshot(null);
+      setSnapshot(await window.adk.snapshot());
     })();
     refreshing.current = pending;
     try {
@@ -66,6 +65,13 @@ export function useWorkspace() {
       setResult(undefined);
       await reload();
     });
+  const switchGlobal = () =>
+    task("Opening global configuration…", async () => {
+      await window.adk.selectGlobal();
+      setPrepared(null);
+      setResult(undefined);
+      await reload();
+    });
   const chooseProject = () =>
     task("Opening project…", async () => {
       await window.adk.chooseProject();
@@ -89,6 +95,7 @@ export function useWorkspace() {
     confirm,
     task,
     switchProject,
+    switchGlobal,
     chooseProject,
   };
 }

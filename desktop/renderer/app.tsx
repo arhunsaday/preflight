@@ -47,6 +47,9 @@ import {
   Notice,
 } from "./components/ui";
 import { Preview } from "./components/preview";
+
+const preflightIcon = new URL("../assets/icon.svg", import.meta.url).href;
+
 interface NavItem {
   id: string;
   label: string;
@@ -165,7 +168,7 @@ export function App() {
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">
-            <Layers size={21} />
+            <img src={preflightIcon} alt="" width={31} height={31} />
           </span>
           <strong>Preflight</strong>
           <span className="version">0.1</span>

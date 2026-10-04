@@ -125,6 +125,15 @@ export class AdkService {
     source?: string,
   ) {
     config = AdkConfigSchema.parse(config);
+    if (
+      this.context.globalOnly &&
+      Object.values(config.profiles).some((p) =>
+        p.resources.some((r) => r.scope !== "global"),
+      )
+    )
+      throw new Error(
+        "The global workspace only accepts global resources; choose a project for project scope.",
+      );
     const desired = config.profiles[config.activeProfile]!.resources;
     const lockBefore = await readText(this.store.lockPath);
     const lock = lockBefore ? Lock.parse(JSON.parse(lockBefore)) : undefined;

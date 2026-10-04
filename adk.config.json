@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "activeProfile": "default",
+  "profiles": {
+    "default": {
+      "description": "Default development setup",
+      "resources": []
+    }
+  }
+}

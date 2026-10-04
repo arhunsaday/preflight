@@ -55,14 +55,25 @@ export async function execute(
       },
       writeErr: () => {},
     })
+    .option(
+      "--global",
+      "manage the shared global configuration at HOME/.adk/global",
+    )
     .option("--dry-run", "preview all changes without writing")
     .option("--json", "machine-readable output (default)")
     .option("--root <path>", "project root", context.root)
     .option("--home <path>", "harness home", context.home);
-  const ctx = () => ({
-    root: resolve(program.opts().root),
-    home: resolve(program.opts().home),
-  });
+  const ctx = (): Context => {
+    const home = resolve(program.opts().home);
+    const globalOnly = !!program.opts().global || !!context.globalOnly;
+    return {
+      root: globalOnly
+        ? join(home, ".adk", "global")
+        : resolve(program.opts().root),
+      home,
+      ...(globalOnly ? { globalOnly: true } : {}),
+    };
+  };
   const service = () => new AdkService(ctx());
   const dry = () => !!program.opts().dryRun;
   const command = (
@@ -254,11 +265,25 @@ export async function execute(
     "Search the typed catalogue and optional remote sources",
     async (query = "", options) => {
       const local = await catalog(options.catalog);
-      const sources: CatalogSource[] = [
-        { id: "catalog", search: async () => local },
-      ];
-      if (options.online) sources.push(mcpRegistry, skillsSource);
-      if (options.github)
+      const selected = z
+        .enum(["all", "bundled", "mcp-registry", "skills.sh", "github"])
+        .parse(options.source ?? "all");
+      const sources: CatalogSource[] =
+        selected === "all" || selected === "bundled"
+          ? [{ id: "catalog", search: async () => local }]
+          : [];
+      if (options.online || ["mcp-registry", "skills.sh"].includes(selected)) {
+        if (
+          ["all", "mcp-registry"].includes(selected) &&
+          options.type !== "skill"
+        )
+          sources.push(mcpRegistry);
+        if (["all", "skills.sh"].includes(selected) && options.type !== "mcp")
+          sources.push(skillsSource);
+      }
+      if (selected === "github" && !options.github)
+        throw new Error("Specify --github owner/repo for GitHub search");
+      if (options.github && ["all", "github"].includes(selected))
         sources.push(
           githubSource(
             options.github,
@@ -273,6 +298,10 @@ export async function execute(
     },
   );
   search
+    .option(
+      "--source <source>",
+      "all, bundled, mcp-registry, skills.sh or github",
+    )
     .option("--online")
     .option("--github <owner/repo>")
     .option("--type <type>")

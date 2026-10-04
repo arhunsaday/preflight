@@ -311,3 +311,49 @@ it("previews export overwrites and rejects a changed destination", async () => {
   );
   expect(await readFile(path, "utf8")).toBe("external edit");
 });
+
+it("manages global resources without a project and isolates the desired configuration", async () => {
+  const { root, controller } = await setup();
+  await controller
+    .prepare(["init"])
+    .then((p) => controller.confirm(p.receipt!));
+  const resource = {
+    id: "mcp:global-test",
+    name: "global-test",
+    type: "mcp",
+    source: "local:test",
+    scope: "global",
+    harnesses: ["claude-code"],
+    config: { url: "https://example.com/mcp" },
+  };
+  await controller
+    .prepare(["create-json", JSON.stringify(resource)])
+    .then((p) => controller.confirm(p.receipt!));
+  const globalConfig = join(root, ".adk", "global", "adk.config.json");
+  expect(
+    JSON.parse(await readFile(globalConfig, "utf8")).profiles.default
+      .resources[0].scope,
+  ).toBe("global");
+  await expect(readFile(join(root, "adk.config.json"))).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+  await expect(
+    controller.prepare([
+      "create-json",
+      JSON.stringify({ ...resource, id: "mcp:project", scope: "project" }),
+    ]),
+  ).rejects.toThrow(/global/i);
+});
+
+it("CLI global configuration shares the desktop store and preserves project config", async () => {
+  const { root } = await setup();
+  await execute(["init", "--global"], { root, home: root });
+  expect(
+    JSON.parse(
+      await readFile(join(root, ".adk", "global", "adk.config.json"), "utf8"),
+    ).activeProfile,
+  ).toBe("default");
+  await expect(readFile(join(root, "adk.config.json"))).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+});
