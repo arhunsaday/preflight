@@ -1,6 +1,6 @@
 ## Mise à jour du 5 octobre 2026 — équipes et identité visuelle
 
-La CI complète du commit `2d85366` est verte : backend Cloudflare, Node 22/24, docs, packages et parcours Electron macOS/Windows/Linux. Wrangler est désormais verrouillé dans package-lock ; le smoke tue son groupe de processus, ce qui résout le blocage Linux. Les liens nouveaux ont 16 caractères aléatoires, les anciens restent compatibles.
+La CI complète du commit équipes/UI `720af1a` est verte (https://github.com/arhunsaday/preflight/actions/runs/37344158861), comme celle du socle `2d85366` : backend Cloudflare, Node 22/24, docs, packages et parcours Electron macOS/Windows/Linux. Wrangler est désormais verrouillé dans package-lock ; le smoke tue son groupe de processus, ce qui résout le blocage Linux. Les liens nouveaux ont 16 caractères aléatoires, les anciens restent compatibles.
 
 Implémentation suivante : client cloud validé partagé main/CLI (`src/cloud-client.ts`), équipes réelles avec invitations/acceptation/refus/annulation, rôles owner/admin/member, retrait et départ. Better Auth impose les permissions côté serveur et protège le dernier propriétaire. URL `/invite/UUID` avec retour OAuth, destinataire/email vérifié et acceptation explicite ; livraison manuelle du lien, aucun faux envoi email. UI membre sans commandes admin.
 
