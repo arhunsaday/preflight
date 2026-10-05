@@ -34,7 +34,7 @@ CLI credentials use macOS Keychain, Windows Credential Manager or Linux Secret S
 
 Publication returns a hosted inspection URL such as `https://YOUR_ORIGIN/s/abc234`. Import that URL with `adk apply URL --dry-run`, review its changes, then apply it. New links use randomly generated 16-character codes; existing six-character links remain compatible. Share payloads reject literal secrets and preserve environment-variable references. The authenticated user owns each share; another account cannot revoke it. `GET /api/shares` lists the signed-in user's shares. Public and unlisted links are accessible to anyone who has the link; unlisted does not mean private or restricted to an organization.
 
-Better Auth's organization endpoints under `/api/auth/organization/*` manage real organization membership. The desktop Team screen can list/create cloud organizations and inspect membership. Its separate local roster remains an offline coordination feature and does not grant backend access or send invitations. Invitation and role-management screens remain to be implemented.
+Better Auth's organization endpoints under `/api/auth/organization/*` manage real organization membership. The desktop Team screen can list/create cloud organizations and inspect membership. Its separate local roster remains an offline coordination feature and does not grant backend access or send invitations. The desktop provides invitation links, recipient acceptance/decline, cancellation, role changes, member removal and leaving. Access changes require confirmation and are checked server-side; the last owner cannot be removed or demoted. No invitation email is sent automatically: copy the generated `/invite/UUID` URL for the recipient. Their signed-in email must match the invitation and be verified.
 
 Legacy deployments without `AUTH_DB` retain deployment-token compatibility. When `AUTH_DB` is present, legacy write tokens are rejected and user sessions are required.
 
@@ -48,3 +48,21 @@ npm run smoke:worker
 ```
 
 The backend smoke test creates isolated local D1/KV/R2 storage, applies real migrations and exercises sessions, device authorization, organization creation and logout in Wrangler's Cloudflare runtime. It does not deploy or contact OAuth providers.
+
+## Organization commands
+
+```sh
+adk team invite ORGANIZATION_ID teammate@example.com --role member
+adk team invitations ORGANIZATION_ID
+adk team inbox
+adk team accept INVITATION_ID
+adk team reject INVITATION_ID
+adk team cancel-invitation INVITATION_ID
+adk team role ORGANIZATION_ID MEMBER_ID admin
+adk team remove ORGANIZATION_ID MEMBER_ID
+adk team leave ORGANIZATION_ID
+```
+
+Members can view their organizations. Administrators manage members and invitations. Only owners can assign or change owners. Better Auth enforces these rules and the last-owner constraint. Public/unlisted shares keep their existing link visibility; joining an organization does not make them private or grant another user the right to revoke the owner's share.
+
+Cloudflare's `CF-Connecting-IP` supplies the trusted client address for Better Auth rate limiting. Do not put this Worker behind a gateway that forwards an arbitrary client-supplied value for that header.

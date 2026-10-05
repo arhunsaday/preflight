@@ -11,12 +11,14 @@ export function ResourceForm({
   defaultScope = "project",
   globalOnly = false,
   adding = false,
+  serverError = "",
 }: {
   resource?: Resource;
   type?: Resource["type"];
   defaultScope?: "global" | "project";
   globalOnly?: boolean;
   adding?: boolean;
+  serverError?: string;
   onClose: () => void;
   onSave: (value: Resource) => Promise<void>;
 }) {
@@ -369,9 +371,9 @@ export function ResourceForm({
               </details>
             </>
           )}
-          {error && (
+          {(error || serverError) && (
             <div className="span-2">
-              <Notice>{error}</Notice>
+              <Notice>{error || serverError}</Notice>
             </div>
           )}
         </div>

@@ -61,7 +61,10 @@ export function createAuth(env: AuthBindings) {
       }),
       organization(),
     ],
-    advanced: { database: { generateId: () => crypto.randomUUID() } },
+    advanced: {
+      database: { generateId: () => crypto.randomUUID() },
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
+    },
     rateLimit: { enabled: true, storage: "database" },
   });
 }

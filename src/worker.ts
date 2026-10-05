@@ -1,6 +1,7 @@
+import { z } from "zod";
 import { createAuth } from "./backend/auth.js";
 import type { AuthBindings } from "./backend/auth.js";
-import { authPage, authScript } from "./backend/auth-web.js";
+import { authPage, invitationAuthScript } from "./backend/auth-web.js";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { SharePayloadSchema, AdkConfigSchema } from "./schema.js";
@@ -82,7 +83,9 @@ app.get("/api/health", (c) =>
   }),
 );
 app.get("/auth.js", (c) =>
-  c.body(authScript, 200, { "Content-Type": "text/javascript; charset=utf-8" }),
+  c.body(invitationAuthScript, 200, {
+    "Content-Type": "text/javascript; charset=utf-8",
+  }),
 );
 app.get("/device", async (c) => {
   const user = await identity(c.env, c.req.raw.headers);
@@ -97,6 +100,26 @@ app.get("/device", async (c) => {
           : []),
       ],
       code: c.req.query("user_code") ?? "",
+      signedIn: user?.authentication === "session",
+      escape,
+    }),
+  );
+});
+app.get("/invite/:id", async (c) => {
+  const invitationId = z.string().uuid().parse(c.req.param("id"));
+  const user = await identity(c.env, c.req.raw.headers);
+  return c.html(
+    authPage({
+      providers: [
+        ...(c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET
+          ? ["github"]
+          : []),
+        ...(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET
+          ? ["google"]
+          : []),
+      ],
+      code: "",
+      invitationId,
       signedIn: user?.authentication === "session",
       escape,
     }),

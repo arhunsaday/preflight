@@ -1,3 +1,4 @@
+import { cloudRequest, type CloudOperation } from "./cloud-client.js";
 import { Command } from "commander";
 import { readFile, mkdir, writeFile, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -192,60 +193,90 @@ export async function withCliAccount<T>(
 
 export async function cliTeam(args: string[], home: string) {
   let result: unknown;
-  const request = async (path: string, body?: unknown) => {
+  const request = async (operation: CloudOperation) => {
     const account = await storedAccount(home);
     if (!account)
       throw new Error("Run adk auth login before managing organizations.");
     const token = (await credential(home, account.service)).getPassword();
     if (!token) throw new Error("Run adk auth login to restore your session.");
-    const response = await fetch(
-      `${serviceUrl(account.service)}/api/auth/organization/${path}`,
-      {
-        method: body ? "POST" : "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(body ? { "Content-Type": "application/json" } : {}),
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-        signal: AbortSignal.timeout(15000),
-      },
-    );
-    const value = await response.json();
-    if (!response.ok)
-      throw new Error(
-        `Organization operation failed (HTTP ${response.status}): ${value.message ?? value.error ?? "Request failed"}`,
-      );
-    return value;
+    return cloudRequest(account.service, token, operation);
   };
   const program = new Command().name("adk team").exitOverride();
   program
     .command("list")
     .description("List your cloud organizations")
     .action(async () => {
-      result = await request("list");
+      result = await request({ action: "organizations" });
     });
   program
     .command("create <name>")
     .requiredOption("--slug <slug>")
-    .description("Create a cloud organization")
     .action(async (name, options) => {
-      const slug = z
-        .string()
-        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-        .parse(options.slug);
-      result = await request("create", {
-        name: z.string().trim().min(1).max(100).parse(name),
-        slug,
+      result = await request({
+        action: "create-organization",
+        name,
+        slug: options.slug,
       });
     });
   program
     .command("members <organization-id>")
-    .description("Show organization membership")
-    .action(async (id) => {
-      result = await request(
-        `get-full-organization?organizationId=${encodeURIComponent(id)}`,
-      );
+    .action(async (organizationId) => {
+      result = await request({ action: "organization", organizationId });
     });
+  program
+    .command("invite <organization-id> <email>")
+    .option("--role <role>", "owner, admin or member", "member")
+    .action(async (organizationId, email, options) => {
+      result = await request({
+        action: "invite",
+        organizationId,
+        email,
+        role: options.role,
+      });
+      const invitation = z.object({ id: z.string() }).parse(result);
+      const account = await storedAccount(home);
+      result = {
+        ...(result as object),
+        url: `${serviceUrl(account!.service)}/invite/${encodeURIComponent(invitation.id)}`,
+        delivery: "copy-link",
+      };
+    });
+  program
+    .command("invitations <organization-id>")
+    .action(async (organizationId) => {
+      result = await request({ action: "invitations", organizationId });
+    });
+  program.command("inbox").action(async () => {
+    result = await request({ action: "incoming" });
+  });
+  for (const action of ["accept", "reject", "cancel-invitation"] as const)
+    program
+      .command(`${action} <invitation-id>`)
+      .action(async (invitationId) => {
+        result = await request({ action, invitationId });
+      });
+  program
+    .command("role <organization-id> <member-id> <role>")
+    .action(async (organizationId, memberId, role) => {
+      result = await request({
+        action: "update-role",
+        organizationId,
+        memberId,
+        role,
+      });
+    });
+  program
+    .command("remove <organization-id> <member-id>")
+    .action(async (organizationId, memberId) => {
+      result = await request({
+        action: "remove-member",
+        organizationId,
+        memberId,
+      });
+    });
+  program.command("leave <organization-id>").action(async (organizationId) => {
+    result = await request({ action: "leave", organizationId });
+  });
   try {
     await program.parseAsync(args, { from: "user" });
   } catch (error) {

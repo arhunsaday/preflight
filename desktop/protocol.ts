@@ -1,3 +1,4 @@
+import type { CloudOperation } from "../src/cloud-client.js";
 import type { AdkConfig, AdkLock, Resource } from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
@@ -75,12 +76,7 @@ export interface DesktopApi {
   ): Promise<{ status: "pending" | "connected"; interval?: number }>;
   cancelSignIn(id: string): Promise<void>;
   copyText(text: string): Promise<void>;
-  cloud(input: {
-    action: "shares" | "organizations" | "create-organization" | "organization";
-    name?: string;
-    slug?: string;
-    organizationId?: string;
-  }): Promise<unknown>;
+  cloud(input: CloudOperation): Promise<unknown>;
   connect(value: { service: string; token: string }): Promise<DesktopState>;
   disconnect(): Promise<DesktopState>;
   openExternal(url: string): Promise<void>;

@@ -1,3 +1,4 @@
+import { localD1 } from "./local-d1.mjs";
 import { _electron as electron } from "@playwright/test";
 import { mkdtemp, mkdir, readFile, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -53,18 +54,29 @@ const bindings = {
     delete: async (k) => objects.delete(k),
   },
 };
+let accountGate;
+let releasePendingAccount;
+let latestDeviceToken;
 const server = createServer(async (req, res) => {
   try {
     let body = "";
     for await (const chunk of req) body += chunk;
+    if (req.url === "/api/account" && accountGate) {
+      const gate = accountGate;
+      accountGate = undefined;
+      gate.started();
+      await gate.wait;
+    }
     const response = await worker.fetch(
       new Request(`${service}${req.url}`, {
         method: req.method,
-        headers: req.headers,
+        headers: { ...req.headers, "cf-connecting-ip": "127.0.0.1" },
         ...(body ? { body } : {}),
       }),
       bindings,
     );
+    if (req.url === "/api/auth/device/token" && response.ok)
+      latestDeviceToken = (await response.clone().json()).access_token;
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(await response.text());
   } catch (e) {
@@ -86,6 +98,7 @@ const app = await electron.launch({
     : { args: [resolve(".")] }),
   env,
 });
+let standardDatabase;
 const errors = [];
 try {
   const page = await app.firstWindow();
@@ -206,6 +219,7 @@ try {
   await page.getByRole("button", { name: "Benchmarks", exact: true }).click();
   await page.getByRole("heading", { name: "No benchmark runs yet" }).waitFor();
   await page.getByRole("button", { name: "Team", exact: true }).click();
+  await page.getByText("Offline roster", { exact: true }).click();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await page
     .getByRole("textbox", { name: "Email", exact: true })
@@ -397,6 +411,220 @@ try {
     ),
     true,
   );
+  await page.setViewportSize({ width: 1440, height: 940 });
+  await app.evaluate(({ shell }) => {
+    shell.openExternal = async () => {};
+  });
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  standardDatabase = await localD1();
+  bindings.AUTH_DB = standardDatabase.database;
+  bindings.BASE_URL = service;
+  bindings.BETTER_AUTH_SECRET =
+    "electron-test-only-secret-at-least-thirty-two-characters";
+  bindings.AUTH_LOCAL_TEST = "1";
+  const cloudCall = async (path, body, token) => {
+    const response = await fetch(service + "/api/auth/" + path, {
+      method: body ? "POST" : "GET",
+      headers: {
+        Origin: service,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    return response.json();
+  };
+  const signup = async (name, email) => {
+    const account = await cloudCall("sign-up/email", {
+      name,
+      email,
+      password: "safe-electron-test-password-123",
+    });
+    await bindings.AUTH_DB.prepare(
+      "UPDATE user SET email_verified = 1 WHERE id = ?",
+    )
+      .bind(account.user.id)
+      .run();
+    return account;
+  };
+  const signIn = async (account) => {
+    await page
+      .getByRole("textbox", { name: "Backend URL", exact: true })
+      .fill(service);
+    await page
+      .getByRole("button", { name: "Sign in with browser", exact: true })
+      .click();
+    const heading = page.getByRole("heading", { name: /Confirm code:/ });
+    await heading.waitFor();
+    const userCode = (await heading.textContent())
+      .replace("Confirm code: ", "")
+      .trim();
+    await cloudCall(
+      "device?user_code=" + encodeURIComponent(userCode),
+      undefined,
+      account.token,
+    );
+    await cloudCall("device/approve", { userCode }, account.token);
+    await page
+      .getByRole("heading", {
+        name: "Connected as " + account.user.name,
+        exact: true,
+      })
+      .waitFor();
+  };
+  const owner = await signup("Crew owner", "owner@example.com");
+  const member = await signup("New member", "new-member@example.com");
+  await signIn(owner);
+  await page.screenshot({ path: join(temporary, "account-standard.png") });
+  await page.getByRole("button", { name: "Team", exact: true }).click();
+  await page.getByText("Create organization", { exact: true }).first().click();
+  await page
+    .locator(".team-create")
+    .getByRole("textbox", { name: "Name", exact: true })
+    .fill("Preflight crew");
+  await page
+    .locator(".team-create")
+    .getByRole("textbox", { name: "Unique slug", exact: true })
+    .fill("preflight-crew");
+  await page
+    .locator(".team-create")
+    .getByRole("button", { name: "Create organization", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Preflight crew", exact: true })
+    .waitFor();
+  await page
+    .locator(".team-invites")
+    .getByRole("textbox", { name: "Email", exact: true })
+    .fill("new-member@example.com");
+  await page
+    .getByRole("button", { name: "Create invitation", exact: true })
+    .click();
+  await page
+    .locator(".team-invites")
+    .getByRole("cell", { name: /new-member@example.com/ })
+    .first()
+    .waitFor();
+  const groups = await cloudCall("organization/list", undefined, owner.token);
+  const pending = await cloudCall(
+    "organization/list-invitations?organizationId=" + groups[0].id,
+    undefined,
+    owner.token,
+  );
+  const invitationPage = await fetch(service + "/invite/" + pending[0].id, {
+    headers: { Authorization: `Bearer ${member.token}` },
+  });
+  assert.equal(invitationPage.status, 200);
+  assert.match(await invitationPage.text(), /Accept invitation/);
+  await page.screenshot({ path: join(temporary, "team-owner.png") });
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  await signIn(member);
+  await page.getByRole("button", { name: "Team", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Review invitation", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm change", exact: true })
+    .click();
+  await page
+    .locator(".team-choice")
+    .filter({ hasText: "Preflight crew" })
+    .click();
+  await page
+    .getByRole("heading", { name: "Preflight crew", exact: true })
+    .waitFor();
+  await page
+    .locator(".member-table")
+    .getByRole("cell", { name: /New member/ })
+    .waitFor();
+  assert.equal(await page.locator(".member-table select").count(), 0);
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Create invitation", exact: true })
+      .count(),
+    0,
+  );
+  await page.screenshot({ path: join(temporary, "team-member.png") });
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.screenshot({ path: join(temporary, "team-compact.png") });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+    true,
+  );
+  await page.setViewportSize({ width: 1440, height: 940 });
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  let releaseAccount;
+  let accountReached;
+  const reached = new Promise((resolve) => {
+    accountReached = resolve;
+  });
+  const wait = new Promise((resolve) => {
+    releaseAccount = resolve;
+  });
+  accountGate = { started: accountReached, wait };
+  releasePendingAccount = releaseAccount;
+  latestDeviceToken = undefined;
+  await page
+    .getByRole("button", { name: "Sign in with browser", exact: true })
+    .click();
+  const cancelling = page.getByRole("heading", { name: /Confirm code:/ });
+  await cancelling.waitFor();
+  const cancelledCode = (await cancelling.textContent())
+    .replace("Confirm code: ", "")
+    .trim();
+  await cloudCall(
+    "device?user_code=" + encodeURIComponent(cancelledCode),
+    undefined,
+    owner.token,
+  );
+  await cloudCall("device/approve", { userCode: cancelledCode }, owner.token);
+  await Promise.race([
+    reached,
+    new Promise((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error("Device redemption did not reach account verification"),
+          ),
+        12000,
+      ),
+    ),
+  ]);
+  const cancelledToken = latestDeviceToken;
+  assert.ok(cancelledToken);
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  releaseAccount();
+  await page
+    .getByRole("button", { name: "Sign in with browser", exact: true })
+    .waitFor();
+  let revoked = false;
+  for (let i = 0; i < 30; i++) {
+    const response = await fetch(service + "/api/account", {
+      headers: { Authorization: `Bearer ${cancelledToken}` },
+    });
+    if (response.status === 401) {
+      revoked = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.ok(
+    revoked,
+    "Cancelling a redeemed device grant must revoke its session",
+  );
+  assert.equal(
+    await page.evaluate(
+      async () => (await window.adk.state()).account.connected,
+    ),
+    false,
+  );
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ passed: true, temporary, project, errors }));
 } catch (error) {
@@ -406,6 +634,8 @@ try {
   console.error(temporary);
   throw error;
 } finally {
+  releasePendingAccount?.();
   await app.close();
   await new Promise((resolve) => server.close(resolve));
+  standardDatabase?.close();
 }

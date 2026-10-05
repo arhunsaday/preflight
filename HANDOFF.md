@@ -1,3 +1,13 @@
+## Mise à jour du 5 octobre 2026 — équipes et identité visuelle
+
+La CI complète du commit `2d85366` est verte : backend Cloudflare, Node 22/24, docs, packages et parcours Electron macOS/Windows/Linux. Wrangler est désormais verrouillé dans package-lock ; le smoke tue son groupe de processus, ce qui résout le blocage Linux. Les liens nouveaux ont 16 caractères aléatoires, les anciens restent compatibles.
+
+Implémentation suivante : client cloud validé partagé main/CLI (`src/cloud-client.ts`), équipes réelles avec invitations/acceptation/refus/annulation, rôles owner/admin/member, retrait et départ. Better Auth impose les permissions côté serveur et protège le dernier propriétaire. URL `/invite/UUID` avec retour OAuth, destinataire/email vérifié et acceptation explicite ; livraison manuelle du lien, aucun faux envoi email. UI membre sans commandes admin.
+
+Refonte visuelle : Manrope embarquée/offline, palette marine/pétrole, Overview asymétrique avec schéma global→projet et inventaire, tableaux membres/invitations, roster local replié, compte fixé en bas de sidebar. Icône avion utilisateur conservée. Tests Electron avec vrai Better Auth et SQLite : deux connexions par device authorization, création/invitation/acceptation et vue membre. Smoke Wrangler réel couvre D1 invitations/rôles et KV/R2. Les scopes, reçus de preview, stockage sécurisé et isolation renderer restent conservés.
+
+Reste extérieur : fournir les OAuth/Cloudflare secrets et provisionner/déployer le backend réel, signature/notarisation des installateurs. Les liens unlisted/public ne sont pas des partages privés d'équipe. Priorités fonctionnelles ultérieures : partage privé avec ACL explicites si souhaité, transfert entre stores global/projet, transport email si souhaité.
+
 ## Mise à jour du 4 octobre 2026 — UX et backend standard
 
 - Le commit utilisateur `bebe256` (desktop et icône avion) est conservé. Configuration globale indépendante dans `HOME/.adk/global/adk.config.json`, contexte global/projet explicite, Overview et ressources globales héritées en lecture seule.

@@ -62,39 +62,96 @@ export function Overview({
           Discover resources
         </Button>
       </div>
-      <div className="overview-cards">
-        {cards.map((card) => (
-          <button
-            className="overview-card"
-            key={card.view}
-            onClick={() => navigate(card.view)}
-          >
-            <card.icon size={21} />
-            <strong>{card.count}</strong>
-            <h3>{card.title}</h3>
-            <p>{card.text}</p>
+      <div className="briefing-layout">
+        <section className="workspace-briefing">
+          <div className="briefing-top">
+            <Globe size={25} />
             <span>
-              Manage <ArrowRight size={14} />
+              {global
+                ? "Defaults that travel with you"
+                : "A setup for this project"}
             </span>
-          </button>
-        ))}
+          </div>
+          <h3>
+            {global
+              ? "One setup. Every project."
+              : "A shared foundation, your own tools."}
+          </h3>
+          <p>
+            {global
+              ? "Build your baseline here. Project workspaces can add the tools they need while keeping your global setup available."
+              : "Your global setup stays connected. Add project resources here and review exactly what changes before applying them."}
+          </p>
+          <div className="scope-route">
+            <span>
+              <Globe size={17} />
+              Global configuration
+            </span>
+            <div aria-hidden="true" className="scope-route-line" />
+            <span>
+              <FolderOpen size={17} />
+              {global ? "Your projects" : "This project"}
+            </span>
+          </div>
+          <div className="briefing-actions">
+            <Button onClick={() => navigate("resources")}>
+              Manage configuration
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("doctor")}>
+              <ShieldCheck size={15} />
+              Check setup
+            </Button>
+          </div>
+        </section>
+        <section className="setup-inventory" aria-label="Workspace resources">
+          <h3>On board</h3>
+          {cards.map((card) => (
+            <button
+              className="inventory-row"
+              key={card.view}
+              onClick={() => navigate(card.view)}
+            >
+              <span className="inventory-icon">
+                <card.icon size={21} />
+              </span>
+              <span>
+                <strong>{card.title}</strong>
+                <small>{card.text}</small>
+              </span>
+              <b>{card.count}</b>
+              <ArrowRight size={15} />
+            </button>
+          ))}
+          <p className="hint">
+            Includes global resources inherited by this workspace.
+          </p>
+        </section>
       </div>
-      <section className="workspace-location">
-        <h3>
-          {global
-            ? "Where your global configuration lives"
-            : "Where this project's configuration lives"}
-        </h3>
-        <p>Desired configuration</p>
-        <code>{w.snapshot?.root}/adk.config.json</code>
-        <p>{global ? "Applied agent files" : "Project agent files"}</p>
-        <code>
-          {global ? w.snapshot?.home : w.snapshot?.root}/.claude ·{" "}
-          {global ? w.snapshot?.home : w.snapshot?.root}/.cursor
-        </code>
-        <p className="muted">
-          Changes are applied to the paths shown in the confirmation preview.
-          Existing installations are adopted explicitly.
+      <section className="workspace-location path-register">
+        <div>
+          <h3>{global ? "Global configuration" : "Project configuration"}</h3>
+          <p>Your configuration file and agent destinations</p>
+        </div>
+        <dl>
+          <div>
+            <dt>Configuration</dt>
+            <dd>
+              <code>{w.snapshot?.root}/adk.config.json</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Agent files</dt>
+            <dd>
+              <code>
+                {global ? w.snapshot?.home : w.snapshot?.root}/.claude ·{" "}
+                {global ? w.snapshot?.home : w.snapshot?.root}/.cursor
+              </code>
+            </dd>
+          </div>
+        </dl>
+        <p className="hint">
+          Every preview shows the exact paths before writing. Existing
+          installations are adopted explicitly.
         </p>
       </section>
       {!global && (
@@ -112,7 +169,7 @@ export function Overview({
               Manage global
             </Button>
           </div>
-          {resources.some((r) => r.scope === "global") && (
+          {w.snapshot?.resources.some((r) => r.scope === "global") && (
             <Notice>
               This project also manages global resources from an earlier
               configuration. They remain here; nothing has been migrated or

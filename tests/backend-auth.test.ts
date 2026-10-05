@@ -269,3 +269,183 @@ it("keeps organization membership private to authorized members", async () => {
     close();
   }
 });
+
+it("enforces invitation recipients, role permissions and last-owner protection", async () => {
+  const { request, env, close } = await fixture();
+  try {
+    const signup = async (name: string) => {
+      const response = await request("/api/auth/sign-up/email", {
+        name,
+        email: `${name}@example.com`,
+        password: "safe-test-password-123",
+      });
+      expect(response.status).toBe(200);
+      const account = (await response.json()) as {
+        token: string;
+        user: { id: string };
+      };
+      await env.AUTH_DB.prepare(
+        "UPDATE user SET email_verified = 1 WHERE id = ?",
+      )
+        .bind(account.user.id)
+        .run();
+      return account;
+    };
+    const owner = await signup("owner"),
+      member = await signup("member"),
+      stranger = await signup("stranger");
+    const organization = (await (
+      await request(
+        "/api/auth/organization/create",
+        { name: "Crew", slug: "crew" },
+        owner.token,
+      )
+    ).json()) as { id: string; members: { id: string }[] };
+    const invite = async (email: string, token = owner.token) =>
+      request(
+        "/api/auth/organization/invite-member",
+        { organizationId: organization.id, email, role: "member" },
+        token,
+      );
+    const invitationResponse = await invite("member@example.com");
+    expect(invitationResponse.status).toBe(200);
+    const invitation = (await invitationResponse.json()) as { id: string };
+    expect(
+      (
+        await request(
+          "/api/auth/organization/get-invitation?id=" + invitation.id,
+          undefined,
+          stranger.token,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          "/api/auth/organization/accept-invitation",
+          { invitationId: invitation.id },
+          stranger.token,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          "/api/auth/organization/accept-invitation",
+          { invitationId: invitation.id },
+          member.token,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(
+          "/api/auth/organization/accept-invitation",
+          { invitationId: invitation.id },
+          member.token,
+        )
+      ).status,
+    ).toBe(400);
+    const details = (await (
+      await request(
+        `/api/auth/organization/get-full-organization?organizationId=${organization.id}`,
+        undefined,
+        owner.token,
+      )
+    ).json()) as { members: { id: string; userId: string; role: string }[] };
+    const ownerMember = details.members.find(
+      (m) => m.userId === owner.user.id,
+    )!;
+    const memberEntry = details.members.find(
+      (m) => m.userId === member.user.id,
+    )!;
+    const update = (memberId: string, role: string, token: string) =>
+      request(
+        "/api/auth/organization/update-member-role",
+        { organizationId: organization.id, memberId, role },
+        token,
+      );
+    expect((await update(memberEntry.id, "admin", member.token)).status).toBe(
+      403,
+    );
+    expect((await invite("stranger@example.com", member.token)).status).toBe(
+      403,
+    );
+    expect((await update(ownerMember.id, "member", owner.token)).status).toBe(
+      400,
+    );
+    expect(
+      (
+        await request(
+          "/api/auth/organization/leave",
+          { organizationId: organization.id },
+          owner.token,
+        )
+      ).status,
+    ).toBe(400);
+    expect((await update(memberEntry.id, "admin", owner.token)).status).toBe(
+      200,
+    );
+    expect((await update(memberEntry.id, "owner", member.token)).status).toBe(
+      403,
+    );
+    const cancellable = (await (
+      await invite("stranger@example.com", member.token)
+    ).json()) as { id: string };
+    expect(
+      (
+        await request(
+          "/api/auth/organization/cancel-invitation",
+          { invitationId: cancellable.id },
+          member.token,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(
+          "/api/auth/organization/accept-invitation",
+          { invitationId: cancellable.id },
+          stranger.token,
+        )
+      ).status,
+    ).toBe(400);
+    const expiring = (await (await invite("expired@example.com")).json()) as {
+      id: string;
+    };
+    await env.AUTH_DB.prepare(
+      "UPDATE invitation SET expires_at = ? WHERE id = ?",
+    )
+      .bind(Date.now() - 1000, expiring.id)
+      .run();
+    expect(
+      (
+        await request(
+          "/api/auth/organization/get-invitation?id=" + expiring.id,
+          undefined,
+          stranger.token,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(
+          "/api/auth/organization/remove-member",
+          { organizationId: organization.id, memberIdOrEmail: memberEntry.id },
+          owner.token,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(
+          `/api/auth/organization/get-full-organization?organizationId=${organization.id}`,
+          undefined,
+          member.token,
+        )
+      ).status,
+    ).toBe(403);
+  } finally {
+    close();
+  }
+});

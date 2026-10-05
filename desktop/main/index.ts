@@ -7,6 +7,7 @@ import {
   safeStorage,
   clipboard,
 } from "electron";
+import { cloudRequest, CloudOperation } from "../../src/cloud-client.js";
 import { randomUUID } from "node:crypto";
 import {
   beginDeviceSignIn,
@@ -221,6 +222,10 @@ async function boot() {
       pending.sessionExpiresAt = reply.expiresAt;
     }
     const identity = await accountIdentity(pending.service, pending.token);
+    if (pendingSignIns.get(id) !== pending) {
+      await signOut(pending.service, pending.token).catch(() => {});
+      throw new Error("Sign-in was cancelled.");
+    }
     const secure =
       safeStorage.isEncryptionAvailable() &&
       (process.platform !== "linux" ||
@@ -238,69 +243,38 @@ async function boot() {
         ? safeStorage.encryptString(pending.token).toString("base64")
         : undefined,
     );
+    if (pendingSignIns.get(id) !== pending) {
+      if (controller.session()?.token === pending.token)
+        await controller.disconnect();
+      await signOut(pending.service, pending.token).catch(() => {});
+      throw new Error("Sign-in was cancelled.");
+    }
     pendingSignIns.delete(id);
     return { status: "connected" };
   });
-  handle("cancelSignIn", (input) => {
-    pendingSignIns.delete(z.string().uuid().parse(input));
+  handle("cancelSignIn", async (input) => {
+    const id = z.string().uuid().parse(input);
+    const pending = pendingSignIns.get(id);
+    pendingSignIns.delete(id);
+    if (pending?.token)
+      await signOut(pending.service, pending.token).catch(() => {});
   });
   handle("copyText", (input) => {
     clipboard.writeText(z.string().max(1000000).parse(input));
   });
   handle("cloud", async (input) => {
-    const operation = z
-      .object({
-        action: z.enum([
-          "shares",
-          "organizations",
-          "create-organization",
-          "organization",
-        ]),
-        name: z.string().trim().min(1).max(100).optional(),
-        slug: z
-          .string()
-          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-          .max(100)
-          .optional(),
-        organizationId: z.string().min(1).max(200).optional(),
-      })
-      .strict()
-      .parse(input);
+    const operation = CloudOperation.parse(input);
     const session = controller.session();
     if (!session || session.authentication !== "session")
       throw new Error(
-        "Sign in with your browser to use cloud accounts and organizations.",
+        "Sign in with your browser to manage cloud organizations.",
       );
-    const route =
-      operation.action === "shares"
-        ? "/api/shares"
-        : operation.action === "organizations"
-          ? "/api/auth/organization/list"
-          : operation.action === "organization"
-            ? `/api/auth/organization/get-full-organization?organizationId=${encodeURIComponent(z.string().min(1).parse(operation.organizationId))}`
-            : "/api/auth/organization/create";
-    const body =
-      operation.action === "create-organization"
-        ? {
-            name: z.string().min(1).parse(operation.name),
-            slug: z.string().min(1).parse(operation.slug),
-          }
-        : undefined;
-    const response = await fetch(`${serviceUrl(session.service)}${route}`, {
-      method: body ? "POST" : "GET",
-      headers: {
-        Authorization: `Bearer ${session.token}`,
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-      signal: AbortSignal.timeout(15000),
-    });
-    const data = await response.json();
-    if (!response.ok)
+    const value = await cloudRequest(session.service, session.token, operation);
+    if (controller.session()?.token !== session.token)
       throw new Error(
-        `Cloud operation failed (HTTP ${response.status}): ${data.message ?? data.error ?? "Request failed"}`,
+        "Account changed; refresh the organization before continuing.",
       );
-    return data;
+    return value;
   });
   handle("connect", async (input) => {
     const value = z

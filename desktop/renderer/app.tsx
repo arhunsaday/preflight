@@ -68,15 +68,13 @@ export function App() {
           id: "skills",
           label: "Skills",
           icon: Layers,
-          count:
-            resources.filter((r) => r.type === "skill").length,
+          count: resources.filter((r) => r.type === "skill").length,
         },
         {
           id: "mcp",
           label: "MCP servers",
           icon: Plug,
-          count:
-            resources.filter((r) => r.type === "mcp").length,
+          count: resources.filter((r) => r.type === "mcp").length,
         },
         {
           id: "resources",
@@ -202,29 +200,48 @@ export function App() {
           {groups.map((group) => (
             <div className="nav-group" key={group.label}>
               <span className="nav-label">{group.label}</span>
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  disabled={!!w.busy}
-                  className={`nav-item ${view === item.id ? "active" : ""}`}
-                  onClick={() => navigate(item.id)}
-                  aria-current={view === item.id ? "page" : undefined}
-                >
-                  <item.icon size={17} />
-                  <span>{item.label}</span>
-                  {item.count !== undefined && (
-                    <span
-                      className={`nav-count ${item.id === "doctor" && item.count ? "alert" : ""}`}
-                    >
-                      {item.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+              {group.items
+                .filter((item) => item.id !== "account")
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    disabled={!!w.busy}
+                    className={`nav-item ${view === item.id ? "active" : ""}`}
+                    onClick={() => navigate(item.id)}
+                    aria-current={view === item.id ? "page" : undefined}
+                  >
+                    <item.icon size={17} />
+                    <span>{item.label}</span>
+                    {item.count !== undefined && (
+                      <span
+                        className={`nav-count ${item.id === "doctor" && item.count ? "alert" : ""}`}
+                      >
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
             </div>
           ))}
         </nav>
         <div className="sidebar-footer">
+          <button
+            aria-label="Account"
+            aria-current={view === "account" ? "page" : undefined}
+            className="account-chip"
+            disabled={!!w.busy}
+            onClick={() => navigate("account")}
+          >
+            <CircleUserRound size={22} />
+            <span>
+              <strong>Account</strong>
+              <small>
+                {w.state?.account.connected
+                  ? (w.state.account.user?.name ?? "Service connected")
+                  : "Sign in to collaborate"}
+              </small>
+            </span>
+          </button>
           <button className="command-shortcut" onClick={() => setPalette(true)}>
             <Command size={15} />
             <span>Quick navigation</span>
@@ -235,11 +252,6 @@ export function App() {
             <span>Local workspace</span>
             <Badge>Offline ready</Badge>
           </div>
-          <small>
-            {w.state?.account.connected
-              ? "Share service connected"
-              : "Your configuration stays on your machine"}
-          </small>
         </div>
       </aside>
       <main className="main">

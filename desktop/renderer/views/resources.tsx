@@ -217,6 +217,7 @@ export function Resources({
           disabled={!!w.busy}
           onClick={() => {
             setAdding(false);
+            w.setError("");
             setForm("new");
           }}
         >
@@ -392,6 +393,7 @@ export function Resources({
                     <Button
                       onClick={() => {
                         setAdding(false);
+                        w.setError("");
                         setForm("new");
                       }}
                     >
@@ -747,16 +749,17 @@ export function Resources({
         <ResourceForm
           {...(form === "new" ? { type: type ?? "skill" } : { resource: form })}
           adding={adding}
+          serverError={w.error}
           defaultScope={global ? "global" : "project"}
           globalOnly={global}
           onClose={() => setForm(null)}
           onSave={async (value) => {
-            setForm(null);
-            await w.run(
+            const prepared = await w.run(
               form === "new" || adding
                 ? ["create-json", JSON.stringify(value)]
                 : ["update-json", form.id, JSON.stringify(value)],
             );
+            if (prepared !== undefined) setForm(null);
           }}
         />
       )}

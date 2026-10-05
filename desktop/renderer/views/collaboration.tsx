@@ -1,3 +1,4 @@
+import { CloudTeams } from "./cloud-team";
 import { isShareCode } from "../../../src/sharing";
 import { z } from "zod";
 import { useEffect, useState } from "react";
@@ -393,108 +394,6 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
     </div>
   );
 }
-const Organization = z.object({
-  id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-});
-function CloudTeams({ workspace: w }: { workspace: Workspace }) {
-  const [organizations, setOrganizations] = useState<
-    z.infer<typeof Organization>[]
-  >([]);
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [members, setMembers] = useState<unknown>(null);
-  const load = async () =>
-    setOrganizations(
-      z
-        .array(Organization)
-        .parse(await window.adk.cloud({ action: "organizations" })),
-    );
-  if (w.state?.account.authentication !== "session")
-    return (
-      <Notice>
-        Sign in with your browser in Account to manage cloud organizations. The
-        local roster below works offline.
-      </Notice>
-    );
-  return (
-    <div className="form-section">
-      <h2>Cloud organizations</h2>
-      <p className="muted">
-        Membership and roles are stored by Better Auth in your Cloudflare
-        backend.
-      </p>
-      <Button
-        disabled={!!w.busy}
-        onClick={() => void w.task("Loading organizations…", load)}
-      >
-        Refresh organizations
-      </Button>
-      {organizations.map((organization) => (
-        <div className="connection-state" key={organization.id}>
-          <div>
-            <h3>{organization.name}</h3>
-            <p>{organization.slug}</p>
-          </div>
-          <Button
-            onClick={() =>
-              void w.task("Loading members…", async () =>
-                setMembers(
-                  await window.adk.cloud({
-                    action: "organization",
-                    organizationId: organization.id,
-                  }),
-                ),
-              )
-            }
-          >
-            View members
-          </Button>
-        </div>
-      ))}
-      {members !== null && <Json value={members} />}
-      <form
-        className="inline-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void w.task("Creating organization…", async () => {
-            await window.adk.cloud({
-              action: "create-organization",
-              name,
-              slug,
-            });
-            setName("");
-            setSlug("");
-            await load();
-          });
-        }}
-      >
-        <label>
-          Organization name
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label>
-          Organization slug
-          <input
-            required
-            pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="my-team"
-          />
-        </label>
-        <Button disabled={!!w.busy} type="submit">
-          Create organization
-        </Button>
-      </form>
-    </div>
-  );
-}
 export function Team({ workspace: w }: { workspace: Workspace }) {
   const team = w.state?.team;
   const [name, setName] = useState(""),
@@ -504,151 +403,154 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
   return (
     <div className="page-scroll">
       <CloudTeams workspace={w} />
-      <div className="section-intro">
-        <div>
-          <h2>{team?.name ?? "My team"} · local roster</h2>
-          <p>
-            A local roster to coordinate configuration sharing with your
-            teammates.
-          </p>
+      <details className="legacy-team-roster">
+        <summary>Offline roster</summary>
+        <div className="section-intro">
+          <div>
+            <h2>{team?.name ?? "My team"} · local roster</h2>
+            <p>
+              A local roster to coordinate configuration sharing with your
+              teammates.
+            </p>
+          </div>
+          <Users size={25} />
         </div>
-        <Users size={25} />
-      </div>
-      <Notice>
-        This roster is saved on this device. It does not send invitations or
-        grant access to the hosted service; shared links remain public or
-        unlisted.
-      </Notice>
-      <form
-        className="inline-form form-section"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void w.task("Saving team…", async () =>
-            w.setState(
-              await window.adk.team({
-                name: teamName,
-                members: team?.members ?? [],
-              }),
-            ),
-          );
-        }}
-      >
-        <label>
-          Team name
-          <input
-            required
-            value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
-          />
-        </label>
-        <Button type="submit" disabled={!!w.busy}>
-          Save name
-        </Button>
-      </form>
-      <table>
-        <thead>
-          <tr>
-            <th>Teammate</th>
-            <th>Email</th>
-            <th>Coordination role</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {team?.members.map((member, i) => (
-            <tr key={`${member.email}-${i}`}>
-              <td>
-                <span className="avatar">
-                  {member.name.slice(0, 1).toUpperCase()}
-                </span>
-                {member.name}
-              </td>
-              <td>{member.email}</td>
-              <td>
-                <Badge>{member.role}</Badge>
-              </td>
-              <td>
-                <Button
-                  variant="ghost"
-                  aria-label={`Remove ${member.name}`}
-                  disabled={!!w.busy}
-                  onClick={() =>
-                    void w.task("Updating roster…", async () =>
-                      w.setState(
-                        await window.adk.team({
-                          name: team.name,
-                          members: team.members.filter(
-                            (_, index) => index !== i,
-                          ),
-                        }),
-                      ),
-                    )
-                  }
-                >
-                  <Trash2 size={15} />
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {!team?.members.length && (
-        <p className="hint">
-          No teammates saved yet. Add someone to your local roster.
-        </p>
-      )}
-      <div className="form-section">
-        <h3>Add a teammate</h3>
+        <Notice>
+          This roster is saved on this device. It does not send invitations or
+          grant access to the hosted service; shared links remain public or
+          unlisted.
+        </Notice>
         <form
-          className="inline-form"
+          className="inline-form form-section"
           onSubmit={(e) => {
             e.preventDefault();
-            void w.task("Saving teammate…", async () => {
+            void w.task("Saving team…", async () =>
               w.setState(
                 await window.adk.team({
-                  name: team?.name ?? teamName,
-                  members: [...(team?.members ?? []), { name, email, role }],
+                  name: teamName,
+                  members: team?.members ?? [],
                 }),
-              );
-              setName("");
-              setEmail("");
-            });
+              ),
+            );
           }}
         >
           <label>
-            Name
+            Team name
             <input
               required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
             />
           </label>
-          <label>
-            Email
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            Role
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
-            >
-              <option value="owner">Owner</option>
-              <option value="member">Member</option>
-              <option value="viewer">Viewer</option>
-            </select>
-          </label>
-          <Button disabled={!!w.busy} type="submit">
-            <Plus size={15} />
-            Add teammate
+          <Button type="submit" disabled={!!w.busy}>
+            Save name
           </Button>
         </form>
-      </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Teammate</th>
+              <th>Email</th>
+              <th>Coordination role</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {team?.members.map((member, i) => (
+              <tr key={`${member.email}-${i}`}>
+                <td>
+                  <span className="avatar">
+                    {member.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  {member.name}
+                </td>
+                <td>{member.email}</td>
+                <td>
+                  <Badge>{member.role}</Badge>
+                </td>
+                <td>
+                  <Button
+                    variant="ghost"
+                    aria-label={`Remove ${member.name}`}
+                    disabled={!!w.busy}
+                    onClick={() =>
+                      void w.task("Updating roster…", async () =>
+                        w.setState(
+                          await window.adk.team({
+                            name: team.name,
+                            members: team.members.filter(
+                              (_, index) => index !== i,
+                            ),
+                          }),
+                        ),
+                      )
+                    }
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!team?.members.length && (
+          <p className="hint">
+            No teammates saved yet. Add someone to your local roster.
+          </p>
+        )}
+        <div className="form-section">
+          <h3>Add a teammate</h3>
+          <form
+            className="inline-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void w.task("Saving teammate…", async () => {
+                w.setState(
+                  await window.adk.team({
+                    name: team?.name ?? teamName,
+                    members: [...(team?.members ?? []), { name, email, role }],
+                  }),
+                );
+                setName("");
+                setEmail("");
+              });
+            }}
+          >
+            <label>
+              Name
+              <input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            <label>
+              Email
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <label>
+              Role
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as typeof role)}
+              >
+                <option value="owner">Owner</option>
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </label>
+            <Button disabled={!!w.busy} type="submit">
+              <Plus size={15} />
+              Add teammate
+            </Button>
+          </form>
+        </div>
+      </details>
     </div>
   );
 }

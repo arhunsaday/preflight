@@ -58,7 +58,10 @@ try {
       "--inspector-port",
       "9901",
     ],
-    { stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" },
+    {
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+    },
   );
   child.stdout.on("data", (chunk) => {
     logs += chunk;
@@ -179,6 +182,93 @@ try {
       password: "local-smoke-password-456",
     })
   ).json();
+  const verified = spawnSync(
+    executable,
+    [
+      wrangler,
+      "d1",
+      "execute",
+      "preflight-auth",
+      "--local",
+      "--config",
+      configPath,
+      "--command",
+      "UPDATE user SET email_verified = 1",
+    ],
+    { encoding: "utf8", timeout: 30000 },
+  );
+  assert.equal(verified.status, 0, verified.stderr + verified.stdout);
+  const group = await organization.json();
+  const invitedResponse = await call(
+    "/api/auth/organization/invite-member",
+    { organizationId: group.id, email: "stranger@example.com", role: "member" },
+    session.access_token,
+  );
+  assert.equal(
+    invitedResponse.status,
+    200,
+    await invitedResponse.clone().text(),
+  );
+  const invited = await invitedResponse.json();
+  assert.equal(
+    (
+      await call(
+        "/api/auth/organization/accept-invitation",
+        { invitationId: invited.id },
+        session.access_token,
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/auth/organization/accept-invitation",
+        { invitationId: invited.id },
+        stranger.token,
+      )
+    ).status,
+    200,
+  );
+  const full = await (
+    await call(
+      `/api/auth/organization/get-full-organization?organizationId=${group.id}`,
+      undefined,
+      session.access_token,
+    )
+  ).json();
+  const joined = full.members.find((m) => m.userId === stranger.user.id);
+  assert.ok(joined);
+  assert.equal(
+    (
+      await call(
+        "/api/auth/organization/update-member-role",
+        { organizationId: group.id, memberId: joined.id, role: "admin" },
+        stranger.token,
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/auth/organization/update-member-role",
+        { organizationId: group.id, memberId: joined.id, role: "admin" },
+        session.access_token,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/auth/organization/leave",
+        { organizationId: group.id },
+        session.access_token,
+      )
+    ).status,
+    400,
+  );
   const revoke = (token) =>
     fetch(`${base}/api/shares/${share.code}`, {
       method: "DELETE",
@@ -201,7 +291,7 @@ try {
     401,
   );
   console.log(
-    "Cloudflare runtime: D1 migrations, sessions, device authorization, organizations, owned KV/R2 shares and logout passed.",
+    "Cloudflare runtime: D1 migrations, sessions, device authorization, organizations, invitations, roles, owned KV/R2 shares and logout passed.",
   );
 } catch (error) {
   console.error(logs);
@@ -211,7 +301,9 @@ try {
     try {
       if (process.platform === "win32") child.kill("SIGTERM");
       else process.kill(-child.pid, "SIGTERM");
-    } catch (error) { if (error.code !== "ESRCH") throw error; }
+    } catch (error) {
+      if (error.code !== "ESRCH") throw error;
+    }
   }
   await rm(directory, { recursive: true, force: true });
 }
