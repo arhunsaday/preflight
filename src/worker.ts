@@ -4,7 +4,12 @@ import { authPage, authScript } from "./backend/auth-web.js";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { SharePayloadSchema, AdkConfigSchema } from "./schema.js";
-import { shareCode, requiredEnv, previewShare } from "./sharing.js";
+import {
+  shareCode,
+  isShareCode,
+  requiredEnv,
+  previewShare,
+} from "./sharing.js";
 interface Bindings extends AuthBindings {
   SHARES: {
     get(key: string): Promise<string | null>;
@@ -168,7 +173,7 @@ app.post("/api/shares", async (c) => {
   return c.json({ code, url: `${base}/s/${code}` }, 201);
 });
 async function lookup(env: Bindings, code: string) {
-  if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(code)) return null;
+  if (!isShareCode(code)) return null;
   const raw = await env.SHARES.get(code.toLowerCase());
   if (!raw) return null;
   const entry = JSON.parse(raw) as { key: string; ownerId: string };

@@ -15,6 +15,7 @@ import {
 } from "./schema.js";
 import {
   fetchShare,
+  isShareCode,
   makeShare,
   previewShare,
   publishShare,
@@ -448,15 +449,14 @@ export async function execute(
         if (
           sharedUrl.username ||
           sharedUrl.password ||
-          !/^\/s\/[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(
-            sharedUrl.pathname,
-          )
+          !sharedUrl.pathname.startsWith("/s/") ||
+          !isShareCode(sharedUrl.pathname.slice(3))
         )
           throw new Error("Use a Preflight share URL ending in /s/<code>");
       }
       const payload = sharedUrl
         ? await fetchShare(sharedUrl.origin, sharedUrl.pathname.slice(3))
-        : /^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(value)
+        : isShareCode(value)
           ? await fetchShare(shareBase(options.service), value)
           : SharePayloadSchema.parse(await input(value));
       previewShare(payload, await service().list());
@@ -464,8 +464,7 @@ export async function execute(
     },
   ).option("--service <url>");
   command("revoke <code>", "Revoke a hosted share", async (code, options) => {
-    if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(code))
-      throw new Error("Invalid code");
+    if (!isShareCode(code)) throw new Error("Invalid code");
     const url = `${serviceUrl(shareBase(options.service))}/api/shares/${code.toLowerCase()}`;
     if (dry()) return { method: "DELETE", url };
     if (!process.env.ADK_SHARE_TOKEN) throw new Error("Set ADK_SHARE_TOKEN");

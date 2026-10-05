@@ -16,15 +16,24 @@ config.vars = {
 config.d1_databases[0].migrations_dir = join(root, "migrations");
 const configPath = join(directory, "wrangler.json");
 await writeFile(configPath, JSON.stringify(config));
-const executable = process.platform === "win32" ? "npx.cmd" : "npx";
+const executable = process.execPath;
+const wrangler = join(root, "node_modules/wrangler/bin/wrangler.js");
 let child;
 let logs = "";
 try {
+  let portOccupied = false;
+  try {
+    await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1000) });
+    portOccupied = true;
+  } catch {}
+  assert.ok(
+    !portOccupied,
+    "Smoke-test port is occupied; choose ADK_AUTH_SMOKE_PORT before testing.",
+  );
   const migration = spawnSync(
     executable,
     [
-      "--yes",
-      "wrangler@4",
+      wrangler,
       "d1",
       "migrations",
       "apply",
@@ -39,8 +48,7 @@ try {
   child = spawn(
     executable,
     [
-      "--yes",
-      "wrangler@4",
+      wrangler,
       "dev",
       "--local",
       "--config",
@@ -50,7 +58,7 @@ try {
       "--inspector-port",
       "9901",
     ],
-    { stdio: ["ignore", "pipe", "pipe"] },
+    { stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" },
   );
   child.stdout.on("data", (chunk) => {
     logs += chunk;
@@ -135,6 +143,55 @@ try {
     session.access_token,
   );
   assert.equal(organization.status, 200, await organization.clone().text());
+  const publication = await call(
+    "/api/shares",
+    {
+      version: 1,
+      ownerId: account.user.id,
+      visibility: "unlisted",
+      createdAt: new Date().toISOString(),
+      resources: [
+        {
+          id: "prompt:smoke",
+          type: "prompt",
+          name: "Smoke prompt",
+          source: "local:smoke",
+          scope: "global",
+          harnesses: ["claude-code"],
+          content: "Use ${SMOKE_ENV} as an environment reference.",
+        },
+      ],
+    },
+    session.access_token,
+  );
+  assert.equal(publication.status, 201, await publication.clone().text());
+  const share = await publication.json();
+  assert.equal(share.url, `${base}/s/${share.code}`);
+  assert.equal((await fetch(share.url)).status, 200);
+  const listing = await (
+    await call("/api/shares", undefined, session.access_token)
+  ).json();
+  assert.equal(listing.shares[0].code, share.code);
+  const stranger = await (
+    await call("/api/auth/sign-up/email", {
+      name: "Stranger",
+      email: "stranger@example.com",
+      password: "local-smoke-password-456",
+    })
+  ).json();
+  const revoke = (token) =>
+    fetch(`${base}/api/shares/${share.code}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  assert.equal((await revoke(stranger.token)).status, 403);
+  assert.equal((await revoke(session.access_token)).status, 204);
+  assert.equal((await fetch(share.url)).status, 404);
+  assert.deepEqual(
+    (await (await call("/api/shares", undefined, session.access_token)).json())
+      .shares,
+    [],
+  );
   assert.equal(
     (await call("/api/auth/sign-out", {}, session.access_token)).status,
     200,
@@ -144,12 +201,17 @@ try {
     401,
   );
   console.log(
-    "Cloudflare runtime: D1 migrations, sessions, device authorization, organizations and logout passed.",
+    "Cloudflare runtime: D1 migrations, sessions, device authorization, organizations, owned KV/R2 shares and logout passed.",
   );
 } catch (error) {
   console.error(logs);
   throw error;
 } finally {
-  child?.kill("SIGTERM");
+  if (child?.pid && child.exitCode === null) {
+    try {
+      if (process.platform === "win32") child.kill("SIGTERM");
+      else process.kill(-child.pid, "SIGTERM");
+    } catch (error) { if (error.code !== "ESRCH") throw error; }
+  }
   await rm(directory, { recursive: true, force: true });
 }

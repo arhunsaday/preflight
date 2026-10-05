@@ -32,7 +32,7 @@ CLI credentials use macOS Keychain, Windows Credential Manager or Linux Secret S
 
 ## Sharing
 
-Publication returns a hosted inspection URL such as `https://YOUR_ORIGIN/s/abc234`. Import that URL with `adk apply URL --dry-run`, review its changes, then apply it. Share payloads reject literal secrets and preserve environment-variable references. The authenticated user owns each share; another account cannot revoke it. `GET /api/shares` lists the signed-in user's shares. Public and unlisted links are accessible to anyone who has the link; unlisted does not mean private or restricted to an organization.
+Publication returns a hosted inspection URL such as `https://YOUR_ORIGIN/s/abc234`. Import that URL with `adk apply URL --dry-run`, review its changes, then apply it. New links use randomly generated 16-character codes; existing six-character links remain compatible. Share payloads reject literal secrets and preserve environment-variable references. The authenticated user owns each share; another account cannot revoke it. `GET /api/shares` lists the signed-in user's shares. Public and unlisted links are accessible to anyone who has the link; unlisted does not mean private or restricted to an organization.
 
 Better Auth's organization endpoints under `/api/auth/organization/*` manage real organization membership. The desktop Team screen can list/create cloud organizations and inspect membership. Its separate local roster remains an offline coordination feature and does not grant backend access or send invitations. Invitation and role-management screens remain to be implemented.
 

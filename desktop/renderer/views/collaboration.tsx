@@ -1,3 +1,4 @@
+import { isShareCode } from "../../../src/sharing";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import {
@@ -206,9 +207,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
             </p>
             <Button
               disabled={
-                !!w.busy ||
-                !w.state?.account.connected ||
-                !/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(code)
+                !!w.busy || !w.state?.account.connected || !isShareCode(code)
               }
               onClick={() => void w.run(["revoke", code])}
             >

@@ -5,8 +5,7 @@
 #
 #   npm run smoke:worker
 #
-# Wrangler is not a dependency of this package — it is large and only needed
-# here — so the first run downloads it through npx.
+# Uses the lockfile-pinned Wrangler installed by npm ci.
 set -uo pipefail
 
 PORT="${ADK_SMOKE_PORT:-8799}"
@@ -35,7 +34,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-npx --yes wrangler@4 dev --config "$CONFIG" --local --port "$PORT" \
+node node_modules/wrangler/bin/wrangler.js dev --config "$CONFIG" --local --port "$PORT" \
   --inspector-port "${ADK_SMOKE_INSPECTOR:-9899}" > "$LOG" 2>&1 &
 PID=$!
 
@@ -85,10 +84,10 @@ code=$(curl -s -X POST "$BASE/api/shares" \
   -H 'content-type: application/json' -H "authorization: Bearer $TOKEN" \
   -d "$payload" | node -e 'let s="";process.stdin.on("data",d=>s+=d)
     .on("end",()=>process.stdout.write(String(JSON.parse(s).code ?? "")))')
-if [ ${#code} -eq 6 ]; then
-  printf '  ok    %-34s %s\n' "publish returns a short code" "$code"
+if [ ${#code} -eq 16 ]; then
+  printf '  ok    %-34s %s\n' "publish returns a random code" "$code"
 else
-  printf '  FAIL  %-34s got %s\n' "publish returns a short code" "${code:-nothing}"
+  printf '  FAIL  %-34s got %s\n' "publish returns a random code" "${code:-nothing}"
   failures=$((failures + 1))
   exit 1
 fi

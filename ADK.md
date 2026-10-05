@@ -32,13 +32,13 @@ npm run desktop:dist           # platform installers
 npm run desktop:smoke          # real Electron; disposable project, home and settings
 ```
 
-Select a project through the native folder picker. Opening a folder does not initialize it or change its harness configuration. The selected project determines project scope; global scope targets your actual home directory. Review the exact paths in the preview before confirming. Cmd/Ctrl+K opens navigation; Cmd/Ctrl+R refreshes. Operations serialize in the main process; project/account changes invalidate pending previews, and confirmation rechecks files and imported inputs. Normal quit is blocked while an engine operation is supervising subprocesses; there is no cancellation button yet.
+Use the workspace selector to manage Global configuration without opening a project, or select a project through the native folder picker. The global desired configuration lives at `HOME/.adk/global/adk.config.json`; projects show inherited global resources and link back to their editor. Opening a folder does not initialize it or change its harness configuration. The selected project determines project scope; global scope targets your actual home directory. Review the exact paths in the preview before confirming. Cmd/Ctrl+K opens navigation; Cmd/Ctrl+R refreshes. Operations serialize in the main process; project/account changes invalidate pending previews, and confirmation rechecks files and imported inputs. Normal quit is blocked while an engine operation is supervising subprocesses; there is no cancellation button yet.
 
-The renderer has no Node access and uses an isolated, sandboxed preload with explicit methods. Account tokens are kept in the main process, encrypted with Electron safeStorage when available, otherwise session-only; they are not included in renderer snapshots, project config, or installer/agent environments. Account connection validates the existing sharing deployment via authenticated `GET /api/account`; upgrade the Worker before connecting. HTTPS is required except for loopback development. This is owner-token authentication, **not a hosted signup/OIDC service**.
+The renderer has no Node access and uses an isolated, sandboxed preload with explicit methods. Account tokens are kept in the main process, encrypted with Electron safeStorage when available, otherwise session-only; they are not included in renderer snapshots, project config, or installer/agent environments. Account connection validates the existing sharing deployment via authenticated `GET /api/account`; upgrade the Worker before connecting. HTTPS is required except for loopback development. Browser sign-in uses Better Auth OAuth and standard device authorization against the Cloudflare backend. Tokens remain outside the renderer. Legacy deployment tokens are secondary and rejected by backends configured with D1 authentication. See `docs/docs/cloudflare-backend.md` for migrations, provider setup and login.
 
-Sharing supports local JSON export/import and authenticated publish/revoke against the existing Worker. The team page persists a **local coordination roster only**; it does not send invitations, grant access, enforce roles, or synchronize members. Benchmark views show saved real runs and scaffold/preview/run/compare manifests; an empty workspace has no fabricated results. External installers and agents retain their CLI boundaries and costs.
+Sharing supports local JSON export/import and authenticated publish/revoke against the existing Worker. The Team page lists/creates real cloud organizations and inspects their membership through Better Auth. A separate local coordination roster remains available offline and does not grant backend access. Invitation and role-management screens remain pending. Benchmark views show saved real runs and scaffold/preview/run/compare manifests; an empty workspace has no fabricated results. External installers and agents retain their CLI boundaries and costs.
 
-The macOS Apple Silicon directory build and packaged app are exercised locally; CI checks Node 22/24 bundles and native macOS workflows. Windows NSIS and Linux AppImage/deb targets are configured but have not been exercised. Builds are currently unsigned and not notarized; release signing, automatic updates and public installer distribution remain separate work. Tests may set `ADK_DESKTOP_TEST_ROOT`, `ADK_DESKTOP_TEST_HOME`, `ADK_DESKTOP_TEST_DATA` to disposable paths. For packaged smoke, set `ADK_DESKTOP_EXECUTABLE` to the native executable.
+The macOS Apple Silicon directory build and packaged app are exercised locally; CI checks Node 22/24 and builds/tests native macOS, Windows NSIS and Linux AppImage/deb packages. Each platform has passed the real Electron and installer workflow. Builds are currently unsigned and not notarized; release signing, automatic updates and public installer distribution remain separate work. Tests may set `ADK_DESKTOP_TEST_ROOT`, `ADK_DESKTOP_TEST_HOME`, `ADK_DESKTOP_TEST_DATA` to disposable paths. For packaged smoke, set `ADK_DESKTOP_EXECUTABLE` to the native executable.
 
 ## Terminal interface
 
@@ -179,24 +179,25 @@ adk share --id skill:ponytail --dry-run
 
 The schema rejects recognizable credential patterns, secret-key literals, authorization headers, credential-bearing URLs and secret argv pairs. It accepts `${VARIABLE}` references, including `Bearer ${VARIABLE}`. It does not silently redact or transform source content. Heuristic scanning cannot identify every arbitrary secret; inspect exported payloads before publishing. Required variable names appear on the share page. Use resource descriptions to explain where credentials come from.
 
-The Worker implements six-character case-insensitive codes without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
+The Worker implements 16-character random case-insensitive codes (with compatibility for existing six-character codes) without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
 
-`npm run smoke:worker` exercises the Worker against a real Wrangler runtime with local KV and R2: a missing share, publishing with and without the write token, the landing page naming the required variables without carrying their values, reading the share back, and revoking it with and without the token. It downloads Wrangler through `npx` rather than carrying it as a dependency, creates a throwaway `.dev.vars`, and removes it again. Nothing leaves the machine and no Cloudflare account is involved.
+`npm run backend:smoke` exercises real local Cloudflare D1/KV/R2: migrations, sessions, device approval, organizations, owned publication/listing/revocation and logout. `npm run smoke:worker` separately verifies legacy token deployments without D1. Wrangler is pinned in the lockfile. Tests create isolated storage and do not deploy.
 
-To run the supplied Hono Worker:
-
-1. Install/run Wrangler 4 and configure `wrangler.jsonc` with your Cloudflare KV namespace and R2 bucket. `OWNER_ID` identifies the deployment owner.
-2. Set `WRITE_TOKEN` using `wrangler secret put WRITE_TOKEN` (or a local `.dev.vars` file for development).
-3. Run `npx wrangler dev` locally, or deploy using your configured account.
-4. Set client `ADK_SHARE_URL`, `ADK_SHARE_TOKEN`, and `ADK_OWNER_ID` to match.
+Configure D1, KV and R2 bindings, the canonical HTTPS `BASE_URL`, a `BETTER_AUTH_SECRET` and GitHub/Google OAuth provider secrets. Apply D1 migrations, then deploy with Wrangler under your configured Cloudflare account. Full setup instructions: [Cloudflare backend and accounts](docs/docs/cloudflare-backend.md).
 
 ```sh
+adk auth login --service https://YOUR_BACKEND
+adk auth status
 adk share --expires 2027-01-01T00:00:00.000Z
-adk apply abc234 --dry-run
+adk apply https://YOUR_BACKEND/s/abc234 --dry-run
 adk revoke abc234 --dry-run
+adk team list
+adk team create "My team" --slug my-team
+adk team members ORGANIZATION_ID
+adk auth logout
 ```
 
-The code includes tenant ownership in both lookup records and storage keys. This release uses a deployment-level write token; OIDC, organization administration and a public multi-user service remain deferred. Production deployment should apply request quotas at the Cloudflare boundary. Nothing is deployed to `adk.sh` by this repository. Public share reads are unauthenticated; publishing and revoking require the owner token. Revocation/expiry are not recoverable local file transactions. Exported local payloads can be rolled back like other ADK writes.
+CLI credentials use the operating system's credential store; public metadata alone is saved in `HOME/.adk/account.json`. Publishing and revoking require the authenticated owner's session. Public/unlisted reads are unauthenticated; organization membership does not make share links private. Production request quotas belong at the Cloudflare boundary. No public service is deployed by this repository. Revocation/expiry are not recoverable local file transactions; exported local payloads use the normal transaction pipeline.
 
 ## Loadouts, retrofit and Git
 
@@ -236,3 +237,17 @@ The separate checkout/home prevents changes leaking between tasks but is **not a
 The delivered local product includes the CLI/TUI, two adapters, transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
 
 Adapter/source references: [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
+
+## Shared global configuration and discovery
+
+```sh
+adk --global init --dry-run
+adk --global init
+adk --global list
+adk --global create resource.json --dry-run
+adk search filesystem --source mcp-registry --type mcp
+adk search react --source github --github vercel-labs/agent-skills --type skill
+adk ui --global
+```
+
+Resources created in the global workspace must use `scope: global`. Project resources remain in their own stores. Online discovery is separate from the bundled catalogue in desktop, with explicit sources, errors and a configuration step before installation.

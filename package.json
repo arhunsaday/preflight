@@ -43,8 +43,8 @@
     "desktop:manifest": "node scripts/desktop-artifacts.mjs",
     "desktop:tools:test": "node --test scripts/desktop-artifacts.node-test.mjs",
     "backend:generate": "drizzle-kit generate",
-    "backend:migrate:local": "npx --yes wrangler@4 d1 migrations apply preflight-auth --local",
-    "backend:migrate": "npx --yes wrangler@4 d1 migrations apply preflight-auth --remote",
+    "backend:migrate:local": "wrangler d1 migrations apply preflight-auth --local",
+    "backend:migrate": "wrangler d1 migrations apply preflight-auth --remote",
     "backend:smoke": "node scripts/backend-smoke.mjs"
   },
   "dependencies": {
@@ -88,7 +88,8 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.1",
     "vite": "^7.3.6",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
   },
   "overrides": {
     "esbuild": "^0.28.2"

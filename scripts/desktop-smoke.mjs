@@ -248,7 +248,7 @@ try {
   const publication = JSON.parse(
     await page.locator(".dialog .code").innerText(),
   );
-  assert.equal(publication.code.length, 6);
+  assert.equal(publication.code.length, 16);
   assert.equal(records.size, 1);
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page

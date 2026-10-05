@@ -5,9 +5,20 @@ import {
 } from "./schema.js";
 import { diffResources } from "./diff.js";
 export const alphabet = "23456789abcdefghjkmnpqrstuvwxyz";
+export const isShareCode = (value: string) =>
+  /^(?:[23456789abcdefghjkmnpqrstuvwxyz]{6}|[23456789abcdefghjkmnpqrstuvwxyz]{16})$/i.test(
+    value,
+  );
 export function shareCode() {
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return [...bytes].map((b) => alphabet[b % alphabet.length]).join("");
+  let result = "";
+  const limit = Math.floor(256 / alphabet.length) * alphabet.length;
+  while (result.length < 16) {
+    for (const byte of crypto.getRandomValues(new Uint8Array(32))) {
+      if (byte < limit) result += alphabet[byte % alphabet.length];
+      if (result.length === 16) return result;
+    }
+  }
+  return result;
 }
 export function makeShare(
   resources: Resource[],
@@ -65,8 +76,7 @@ export async function publishShare(
   return response.json();
 }
 export async function fetchShare(base: string, code: string) {
-  if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(code))
-    throw new Error("Invalid share code");
+  if (!isShareCode(code)) throw new Error("Invalid share code");
   const response = await fetch(
     `${serviceUrl(base)}/api/shares/${code.toLowerCase()}`,
     { signal: AbortSignal.timeout(15000) },
