@@ -9,6 +9,12 @@ export function availableResources(snapshot: Snapshot | null) {
     ).values(),
   ];
 }
+/** Drop Electron's IPC wrapper so errors read as the engine wrote them. */
+export const readable = (e: unknown) =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (?:Error: )?/,
+    "",
+  );
 export interface Toast {
   id: number;
   text: string;
@@ -90,7 +96,7 @@ export function useWorkspace() {
     try {
       return await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(readable(e));
       return undefined;
     } finally {
       setBusy("");

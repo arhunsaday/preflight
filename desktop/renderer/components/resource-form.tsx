@@ -3,6 +3,7 @@ import { ResourceSchema, ResourceTypeSchema } from "../../../src/schema";
 import type { Resource } from "../../../src/schema";
 import { buildMcpConfig } from "./mcp-config";
 import { Button, Dialog, Notice } from "./ui";
+import { readable } from "../workspace";
 export function ResourceForm({
   resource,
   type = "skill",
@@ -113,7 +114,7 @@ export function ResourceForm({
             });
             await onSave(parsed);
           } catch (e) {
-            setError(e instanceof Error ? e.message : String(e));
+            setError(readable(e));
           } finally {
             setSaving(false);
           }
@@ -247,7 +248,7 @@ export function ResourceForm({
                         setAdvanced(e.target.checked);
                         setError("");
                       } catch (e) {
-                        setError(e instanceof Error ? e.message : String(e));
+                        setError(readable(e));
                       }
                     }}
                   />
