@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Layers,
   Plug,
@@ -19,13 +19,22 @@ import {
   Check,
   Circle,
   X,
-  Command,
+  Search,
   Rocket,
   LayoutDashboard,
   Map as MapIcon,
+  Package,
+  Globe,
+  Sun,
+  Moon,
+  Monitor,
+  Keyboard,
+  RotateCw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useWorkspace, availableResources } from "./workspace";
+import { useTheme } from "./theme";
+import { initials, isTyping, plural } from "./format";
 import { Overview } from "./views/overview";
 import { Resources } from "./views/resources";
 import {
@@ -40,48 +49,72 @@ import { ContextMap } from "./views/context-map";
 import { Benchmarks } from "./views/benchmarks";
 import { Collaboration, Team, Account } from "./views/collaboration";
 import { Console } from "./views/console";
-import { Button, Badge, Busy, Dialog, Json, Notice } from "./components/ui";
+import { Button, Busy, Dialog, Notice, Toasts } from "./components/ui";
 import { Preview } from "./components/preview";
+import { OutcomeDialog } from "./components/outcome";
+import { CommandPalette, type PaletteEntry } from "./components/palette";
+import type { DesktopCommand } from "../protocol";
 
 const preflightIcon = new URL("../assets/icon.svg", import.meta.url).href;
+const mod = navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl+";
 
 interface NavItem {
   id: string;
   label: string;
   icon: LucideIcon;
   count?: number;
+  alert?: boolean;
+  /** Cmd/Ctrl+digit, mirrored by the native View menu. */
+  key?: string;
 }
+const shortcuts: [string, string[]][] = [
+  ["Go to a view or run an action", [mod, "K"]],
+  ["Refresh the workspace", [mod, "R"]],
+  ["Open a project folder", [mod, "O"]],
+  ["Switch to global configuration", [mod, "⇧", "G"]],
+  ["Jump to a view", [mod, "1 – 8"]],
+  ["Filter the current list", ["/"]],
+  ["Move through a resource list", ["↑", "↓"]],
+  ["Show keyboard shortcuts", ["?"]],
+];
+
 export function App() {
   const w = useWorkspace();
+  const { theme, cycle } = useTheme();
   const [view, setView] = useState("overview"),
     [palette, setPalette] = useState(false),
-    [paletteQuery, setPaletteQuery] = useState("");
+    [help, setHelp] = useState(false);
   const global = w.state?.workspace === "global";
   const active = !global
     ? w.state?.projects.find((p) => p.id === w.state?.activeProjectId)
     : undefined;
   const resources = availableResources(w.snapshot);
+  const errors =
+    w.snapshot?.findings.filter((f) => f.severity === "error").length ?? 0;
   const groups: { label: string; items: NavItem[] }[] = [
     {
       label: "Configuration",
       items: [
-        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "overview", label: "Overview", icon: LayoutDashboard, key: "1" },
         {
           id: "skills",
           label: "Skills",
           icon: Layers,
+          key: "2",
           count: resources.filter((r) => r.type === "skill").length,
         },
         {
           id: "mcp",
           label: "MCP servers",
           icon: Plug,
+          key: "3",
           count: resources.filter((r) => r.type === "mcp").length,
         },
         {
           id: "resources",
           label: "All resources",
           icon: Blocks,
+          key: "4",
           count: resources.length,
         },
         {
@@ -90,35 +123,48 @@ export function App() {
           icon: ArrowDownToLine,
           count: w.snapshot?.detected.length ?? 0,
         },
-
+      ],
+    },
+    {
+      label: "Discover",
+      items: [
+        {
+          id: "catalogue",
+          label: "Discover resources",
+          icon: Compass,
+          key: "5",
+        },
+        { id: "loadouts", label: "Loadouts", icon: Package },
+      ],
+    },
+    {
+      label: "Health",
+      items: [
+        {
+          id: "doctor",
+          label: "Doctor",
+          icon: ShieldCheck,
+          key: "6",
+          count: errors,
+          alert: errors > 0,
+        },
+        { id: "context", label: "Context map", icon: MapIcon, key: "7" },
+        { id: "usage", label: "Usage", icon: ActivityIcon },
+        { id: "benchmarks", label: "Benchmarks", icon: FlaskConical },
+      ],
+    },
+    {
+      label: "Manage",
+      items: [
+        { id: "profiles", label: "Profiles", icon: Settings2 },
         {
           id: "projects",
           label: "Projects",
           icon: FolderOpen,
           count: w.state?.projects.length ?? 0,
         },
-      ],
-    },
-    {
-      label: "Discover",
-      items: [{ id: "catalogue", label: "Discover resources", icon: Compass }],
-    },
-    {
-      label: "Improve",
-      items: [
-        { id: "loadouts", label: "Loadouts", icon: Layers },
-        { id: "context", label: "Context map", icon: MapIcon },
-        { id: "benchmarks", label: "Benchmarks", icon: FlaskConical },
-        {
-          id: "doctor",
-          label: "Doctor",
-          icon: ShieldCheck,
-          count:
-            w.snapshot?.findings.filter((f) => f.severity === "error").length ??
-            0,
-        },
-        { id: "usage", label: "Usage", icon: ActivityIcon },
-        { id: "profiles", label: "Profiles", icon: Settings2 },
+        { id: "activity", label: "Activity", icon: History },
+        { id: "console", label: "Command console", icon: Terminal, key: "8" },
       ],
     },
     {
@@ -126,37 +172,73 @@ export function App() {
       items: [
         { id: "collaboration", label: "Sharing", icon: Share2 },
         { id: "team", label: "Team", icon: Users },
-        { id: "account", label: "Account", icon: CircleUserRound },
-      ],
-    },
-    {
-      label: "Tools",
-      items: [
-        { id: "activity", label: "Activity", icon: History },
-        { id: "console", label: "Command console", icon: Terminal },
       ],
     },
   ];
-  const current = groups.flatMap((g) => g.items).find((i) => i.id === view)!;
+  const items = [
+    ...groups.flatMap((g) => g.items),
+    { id: "account", label: "Account", icon: CircleUserRound } as NavItem,
+  ];
+  const current = items.find((i) => i.id === view) ?? items[0]!;
+  function navigate(id: string) {
+    setView(id);
+    setPalette(false);
+    w.setOutcome(undefined);
+  }
+  const refresh = () => void w.task("Refreshing…", () => w.reload());
+  // The native menu and in-page key handlers can both see one key press.
+  const last = useRef({ command: "", at: 0 });
+  const command = (value: DesktopCommand) => {
+    const now = Date.now();
+    if (last.current.command === value && now - last.current.at < 400) return;
+    last.current = { command: value, at: now };
+    if (value === "palette") setPalette(true);
+    else if (value === "refresh") refresh();
+    else if (value === "open-project") void w.chooseProject();
+    else if (value === "global") void w.switchGlobal();
+    else if (value === "shortcuts") setHelp(true);
+    else if (value.startsWith("navigate:")) navigate(value.slice(9));
+  };
+  const commandRef = useRef(command);
+  commandRef.current = command;
+  useEffect(
+    () => window.adk.onCommand((value) => commandRef.current(value)),
+    [],
+  );
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault();
-        setPalette((v) => !v);
+      const meta = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      const bound: Record<string, DesktopCommand> = {
+        k: "palette",
+        r: "refresh",
+        o: "open-project",
+        "/": "shortcuts",
+      };
+      if (meta && !event.altKey) {
+        const target =
+          event.shiftKey && key === "g"
+            ? "global"
+            : event.shiftKey
+              ? undefined
+              : (bound[key] ??
+                (items.find((i) => i.key === key)
+                  ? (`navigate:${items.find((i) => i.key === key)!.id}` as DesktopCommand)
+                  : undefined));
+        if (target) {
+          event.preventDefault();
+          commandRef.current(target);
+        }
+        return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key === "r") {
+      if (event.key === "?" && !isTyping(event.target) && !palette) {
         event.preventDefault();
-        void w.task("Refreshing…", () => w.reload());
+        setHelp(true);
       }
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
   });
-  function navigate(id: string) {
-    setView(id);
-    setPalette(false);
-    w.setResult(undefined);
-  }
   const resourceMode =
     view === "catalogue"
       ? "catalogue"
@@ -164,18 +246,120 @@ export function App() {
         ? "detected"
         : "installed";
   const resourceKey = `${view}:${global ? "global" : (active?.id ?? "none")}`;
+  const ThemeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
+  const account = w.state?.account;
+  const paletteEntries: PaletteEntry[] = [
+    ...items.map((item) => ({
+      id: `view-${item.id}`,
+      label: item.label,
+      group: "Go to",
+      icon: item.icon,
+      ...(item.key ? { hint: `${mod}${item.key}` } : {}),
+      run: () => navigate(item.id),
+    })),
+    {
+      id: "refresh",
+      label: "Refresh workspace",
+      group: "Actions",
+      icon: RotateCw,
+      hint: `${mod}R`,
+      run: refresh,
+    },
+    {
+      id: "open-project",
+      label: "Open project folder…",
+      group: "Actions",
+      icon: FolderOpen,
+      hint: `${mod}O`,
+      run: () => void w.chooseProject(),
+    },
+    ...(w.snapshot?.initialized
+      ? [
+          {
+            id: "sync",
+            label: "Sync configuration to agent files",
+            group: "Actions",
+            icon: RefreshCw,
+            keywords: "apply reconcile",
+            run: () => void w.run(["sync"]),
+          },
+          {
+            id: "rollback",
+            label: "Preview rollback of the last change",
+            group: "Actions",
+            icon: History,
+            keywords: "undo revert",
+            run: () => void w.run(["rollback"]),
+          },
+        ]
+      : w.snapshot
+        ? [
+            {
+              id: "init",
+              label: global
+                ? "Initialize global configuration"
+                : "Initialize this project",
+              group: "Actions",
+              icon: Rocket,
+              keywords: "setup create",
+              run: () => void w.run(["init"]),
+            },
+          ]
+        : []),
+    {
+      id: "theme",
+      label: `Theme: ${theme} (switch)`,
+      group: "Actions",
+      icon: ThemeIcon,
+      keywords: "dark light appearance mode",
+      run: cycle,
+    },
+    {
+      id: "shortcuts",
+      label: "Keyboard shortcuts",
+      group: "Actions",
+      icon: Keyboard,
+      hint: "?",
+      run: () => setHelp(true),
+    },
+    ...(global
+      ? []
+      : [
+          {
+            id: "workspace-global",
+            label: "Global configuration",
+            group: "Workspaces",
+            icon: Globe,
+            hint: `${mod}⇧G`,
+            run: () => void w.switchGlobal(),
+          },
+        ]),
+    ...(w.state?.projects ?? [])
+      .filter((p) => global || p.id !== active?.id)
+      .map((p) => ({
+        id: `workspace-${p.id}`,
+        label: p.name,
+        group: "Workspaces",
+        icon: FolderOpen,
+        keywords: p.root,
+        run: () => void w.switchProject(p.id),
+      })),
+  ];
+  const configurationError = w.snapshot?.errors.some((e) =>
+    e.startsWith("Configuration:"),
+  );
   return (
     <div className={`app-shell ${w.busy ? "is-busy" : ""}`}>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">
-            <img src={preflightIcon} alt="" width={31} height={31} />
+            <img src={preflightIcon} alt="" width={30} height={30} />
           </span>
           <strong>Preflight</strong>
           <span className="version">0.1</span>
         </div>
         <div className="workspace-selector">
-          <span className="nav-label">Editing configuration for</span>
+          <span className="nav-label">Workspace</span>
           <select
             aria-label="Configuration workspace"
             disabled={!!w.busy}
@@ -187,43 +371,52 @@ export function App() {
             }}
           >
             <option value="global">Global · all projects</option>
-            {w.state?.projects.map((p) => (
-              <option value={p.id} key={p.id}>
-                {p.name} · project
-              </option>
-            ))}
+            {!!w.state?.projects.length && (
+              <optgroup label="Projects">
+                {w.state.projects.map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <small>
+            {global ? <Globe size={12} /> : <Layers size={12} />}
             {global
-              ? "Shared across all your projects"
-              : (w.snapshot?.config?.activeProfile ?? "Project configuration")}
+              ? "Shared by every project"
+              : w.snapshot?.config
+                ? `Profile · ${w.snapshot.config.activeProfile}`
+                : "Not initialized"}
           </small>
         </div>
         <nav aria-label="Main navigation">
           {groups.map((group) => (
             <div className="nav-group" key={group.label}>
               <span className="nav-label">{group.label}</span>
-              {group.items
-                .filter((item) => item.id !== "account")
-                .map((item) => (
-                  <button
-                    key={item.id}
-                    disabled={!!w.busy}
-                    className={`nav-item ${view === item.id ? "active" : ""}`}
-                    onClick={() => navigate(item.id)}
-                    aria-current={view === item.id ? "page" : undefined}
-                  >
-                    <item.icon size={17} />
-                    <span>{item.label}</span>
-                    {item.count !== undefined && (
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  disabled={!!w.busy}
+                  className={`nav-item ${view === item.id ? "active" : ""}`}
+                  onClick={() => navigate(item.id)}
+                  aria-current={view === item.id ? "page" : undefined}
+                  title={
+                    item.key ? `${item.label} (${mod}${item.key})` : undefined
+                  }
+                >
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                  {item.count !== undefined &&
+                    (item.count > 0 || item.id !== "doctor") && (
                       <span
-                        className={`nav-count ${item.id === "doctor" && item.count ? "alert" : ""}`}
+                        className={`nav-count ${item.alert ? "alert" : ""}`}
                       >
                         {item.count}
                       </span>
                     )}
-                  </button>
-                ))}
+                </button>
+              ))}
             </div>
           ))}
         </nav>
@@ -235,32 +428,54 @@ export function App() {
             disabled={!!w.busy}
             onClick={() => navigate("account")}
           >
-            <CircleUserRound size={22} />
+            <span className="account-avatar" aria-hidden="true">
+              {account?.connected && account.user ? (
+                initials(account.user.name)
+              ) : (
+                <CircleUserRound size={17} />
+              )}
+            </span>
             <span>
-              <strong>Account</strong>
+              <strong>
+                {account?.connected
+                  ? (account.user?.name ?? account.ownerId)
+                  : "Account"}
+              </strong>
               <small>
-                {w.state?.account.connected
-                  ? (w.state.account.user?.name ?? "Service connected")
+                {account?.connected
+                  ? (account.user?.email ?? "Share service connected")
                   : "Sign in to collaborate"}
               </small>
             </span>
+            <span
+              className={`status-dot ${account?.connected ? "online" : ""}`}
+              aria-hidden="true"
+            />
           </button>
-          <button className="command-shortcut" onClick={() => setPalette(true)}>
-            <Command size={15} />
-            <span>Quick navigation</span>
-            <kbd>⌘ K</kbd>
-          </button>
-          <div className="local-status">
-            <span className="status-dot" />
-            <span>Local workspace</span>
-            <Badge>Offline ready</Badge>
+          <div className="sidebar-utilities">
+            <button
+              className="command-shortcut"
+              onClick={() => setPalette(true)}
+            >
+              <Search size={14} />
+              <span>Quick navigation</span>
+              <kbd>{mod}K</kbd>
+            </button>
+            <button
+              className="theme-toggle"
+              onClick={cycle}
+              aria-label={`Theme: ${theme}. Switch theme`}
+              title={`Theme: ${theme}`}
+            >
+              <ThemeIcon size={15} />
+            </button>
           </div>
         </div>
       </aside>
       <main className="main">
         <header className="toolbar">
           <div className="toolbar-title">
-            <current.icon size={20} />
+            <current.icon size={19} />
             <h1>{current.label}</h1>
             <span className="toolbar-project">
               {global ? "Global" : active?.name}
@@ -272,19 +487,21 @@ export function App() {
             ) : (
               <span className="saved-state">
                 <Check size={13} />
-                Ready
+                Up to date
               </span>
             )}
             <Button
               variant="ghost"
               aria-label="Refresh workspace"
+              title={`Refresh (${mod}R)`}
               disabled={!!w.busy}
-              onClick={() => void w.task("Refreshing…", () => w.reload())}
+              onClick={refresh}
             >
               <RefreshCw size={16} />
             </Button>
             <Button
               aria-label="Open project folder"
+              title={`Open project (${mod}O)`}
               disabled={!!w.busy}
               onClick={() => void w.chooseProject()}
             >
@@ -301,12 +518,6 @@ export function App() {
             </button>
           </div>
         )}
-        {w.message && (
-          <div className="success-banner" role="status">
-            <Check size={15} />
-            {w.message}
-          </div>
-        )}
         {w.snapshot?.errors.map((error, i) => (
           <div className="snapshot-error" key={i}>
             <Notice>{error}</Notice>
@@ -317,14 +528,14 @@ export function App() {
             <Rocket size={20} />
             <div>
               <strong>
-                {w.snapshot.errors.some((e) => e.startsWith("Configuration:"))
+                {configurationError
                   ? "Configuration needs attention"
                   : global
                     ? "Set up your global configuration"
                     : "Set up this project"}
               </strong>
               <span>
-                {w.snapshot.errors.some((e) => e.startsWith("Configuration:"))
+                {configurationError
                   ? "Fix the configuration error before making changes."
                   : global
                     ? "Create your shared configuration at ~/.adk/global. Existing agent files are preserved."
@@ -362,6 +573,7 @@ export function App() {
               key={resourceKey}
               workspace={w}
               mode={resourceMode}
+              navigate={navigate}
               {...(view === "skills"
                 ? { type: "skill" as const }
                 : view === "mcp"
@@ -381,7 +593,7 @@ export function App() {
           ) : view === "benchmarks" ? (
             <Benchmarks workspace={w} />
           ) : view === "activity" ? (
-            <Activity workspace={w} />
+            <Activity key={resourceKey} workspace={w} />
           ) : view === "collaboration" ? (
             <Collaboration workspace={w} />
           ) : (
@@ -390,12 +602,14 @@ export function App() {
         </div>
         <footer className="statusbar">
           <span>
-            <Circle size={9} fill="currentColor" />
+            <Circle size={8} fill="currentColor" />
             {global
               ? "Editing global configuration · all projects"
               : `Editing project configuration · ${active?.name ?? ""}`}
           </span>
-          <span>{w.snapshot?.resources.length ?? 0} managed resources</span>
+          <span>
+            {plural(w.snapshot?.resources.length ?? 0, "managed resource")}
+          </span>
           <button onClick={() => navigate("console")}>
             <Terminal size={12} />
             CLI parity
@@ -405,84 +619,34 @@ export function App() {
       <Preview
         prepared={w.prepared}
         busy={!!w.busy}
+        home={w.snapshot?.home}
         onClose={() => w.setPrepared(null)}
         onConfirm={() => void w.confirm()}
       />
-      <Dialog
-        open={w.result !== undefined && !w.prepared}
-        onClose={() => w.setResult(undefined)}
-        title="Operation result"
-        description="The result returned by the shared ADK command engine."
-        wide
-      >
-        <div className="dialog-body">
-          {typeof w.result === "object" &&
-            w.result !== null &&
-            "url" in w.result &&
-            typeof w.result.url === "string" &&
-            /^https?:\/\//.test(w.result.url) && (
-              <div className="form-section">
-                <h3>Your share link</h3>
-                <p>{w.result.url}</p>
-                <div className="button-row">
-                  <Button
-                    onClick={() =>
-                      void window.adk.copyText(
-                        (w.result as { url: string }).url,
-                      )
-                    }
-                  >
-                    Copy link
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      void window.adk.openExternal(
-                        (w.result as { url: string }).url,
-                      )
-                    }
-                  >
-                    Open share
-                  </Button>
-                </div>
-              </div>
-            )}
-          <Json value={w.result} />
-        </div>
-        <div className="dialog-footer">
-          <Button onClick={() => w.setResult(undefined)}>Done</Button>
-        </div>
-      </Dialog>
-      <Dialog
+      <OutcomeDialog workspace={w} />
+      <CommandPalette
         open={palette}
         onClose={() => setPalette(false)}
-        title="Go to…"
-        description="Navigate your workspace with the keyboard."
+        entries={paletteEntries}
+      />
+      <Dialog
+        open={help}
+        onClose={() => setHelp(false)}
+        title="Keyboard shortcuts"
+        description="Every shortcut is also available from the menu bar."
       >
-        <div className="dialog-body palette-body">
-          <input
-            autoFocus
-            aria-label="Find a view"
-            value={paletteQuery}
-            onChange={(e) => setPaletteQuery(e.target.value)}
-            placeholder="Skills, benchmarks, doctor…"
-          />
-          {groups
-            .flatMap((g) => g.items)
-            .filter((i) =>
-              i.label.toLowerCase().includes(paletteQuery.toLowerCase()),
-            )
-            .map((i) => (
-              <button
-                className="palette-item"
-                key={i.id}
-                onClick={() => navigate(i.id)}
-              >
-                <i.icon size={18} />
-                {i.label}
-              </button>
-            ))}
+        <div className="dialog-body shortcut-list">
+          {shortcuts.map(([label, keys]) => [
+            <span key={`${label}-label`}>{label}</span>,
+            <span key={`${label}-keys`}>
+              {keys.map((k) => (
+                <kbd key={k}>{k}</kbd>
+              ))}
+            </span>,
+          ])}
         </div>
       </Dialog>
+      <Toasts toasts={w.toasts} dismiss={w.dismiss} />
     </div>
   );
 }

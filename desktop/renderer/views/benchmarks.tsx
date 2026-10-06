@@ -105,7 +105,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              pattern="[A-Za-z0-9_-]+"
+              pattern="[A-Za-z0-9_\-]+"
             />
           </label>
           <label>

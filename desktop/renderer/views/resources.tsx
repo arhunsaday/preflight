@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search,
   Plus,
@@ -17,23 +17,46 @@ import {
   Trash2,
   Pencil,
   Power,
+  Compass,
+  SearchX,
+  ArrowDownToLine,
+  X,
 } from "lucide-react";
 import type { Resource, ResourceType } from "../../../src/schema";
 import { ResourceSchema, ResourceTypeSchema } from "../../../src/schema";
 import type { Workspace } from "../workspace";
-import { Button, Badge, Empty, Json, Notice } from "../components/ui";
+import {
+  Button,
+  Badge,
+  Empty,
+  Highlight,
+  Json,
+  Menu,
+  Notice,
+} from "../components/ui";
+import { isTyping, plural, tildify } from "../format";
 import { ResourceForm } from "../components/resource-form";
 const iconFor = (type: string) =>
   type === "skill" ? Layers : type === "mcp" ? Plug : Terminal;
+/** First free "<id>-copy", "<id>-copy-2", … so Duplicate never collides. */
+const copyId = (id: string, taken: Set<string>) => {
+  let candidate = `${id}-copy`;
+  for (let n = 2; taken.has(candidate); n++) candidate = `${id}-copy-${n}`;
+  return candidate;
+};
 export function Resources({
   workspace: w,
   type,
   mode = "installed",
+  navigate,
 }: {
   workspace: Workspace;
   type?: ResourceType;
   mode?: "installed" | "catalogue" | "detected";
+  navigate?: (view: string) => void;
 }) {
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const global = w.state?.workspace === "global";
   const [kind, setKind] = useState(type ?? "all");
   const [source, setSource] = useState("mcp-registry");
@@ -73,7 +96,7 @@ export function Resources({
             (scope === "all" || r.scope === scope) &&
             (harness === "all" ||
               r.harnesses.includes(harness as "cursor" | "claude-code")) &&
-            `${r.name} ${r.description} ${r.tags.join(" ")}`
+            `${r.name} ${r.id} ${r.description} ${r.tags.join(" ")}`
               .toLowerCase()
               .includes(query.toLowerCase()),
         )
@@ -136,6 +159,44 @@ export function Resources({
     }
   };
   const perform = (args: string[]) => void w.run(args);
+  // "/" focuses the filter; arrow keys move through the list from anywhere
+  // outside a text field.
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (document.querySelector(".dialog")) return;
+      if (event.key === "/" && !isTyping(event.target)) {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+      if (
+        (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+        (!isTyping(event.target) || event.target === searchRef.current) &&
+        items.length
+      ) {
+        event.preventDefault();
+        const index = items.findIndex((r) => r.id === resource?.id);
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        const next =
+          items[Math.max(0, Math.min(items.length - 1, index + step))]!;
+        select(next);
+        listRef.current
+          ?.querySelector(`[data-id="${CSS.escape(next.id)}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+      }
+      if (event.key === "Escape" && event.target === searchRef.current)
+        setQuery("");
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  });
+  const newResource = () => {
+    setAdding(false);
+    w.setError("");
+    setForm("new");
+  };
   return (
     <>
       {mode === "catalogue" && (
@@ -175,6 +236,7 @@ export function Resources({
         <div className="search-field">
           <Search size={16} />
           <input
+            ref={searchRef}
             aria-label="Search resources"
             placeholder={
               mode === "catalogue"
@@ -192,7 +254,21 @@ export function Resources({
                 void searchOnline();
             }}
           />
-          <kbd>⌘ K</kbd>
+          {query ? (
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
+            >
+              <X size={14} />
+            </button>
+          ) : (
+            <kbd title="Press / to search">/</kbd>
+          )}
         </div>
         <select
           aria-label="Filter scope"
@@ -212,18 +288,12 @@ export function Resources({
           <option value="claude-code">Claude Code</option>
           <option value="cursor">Cursor</option>
         </select>
-        <Button
-          variant="primary"
-          disabled={!!w.busy}
-          onClick={() => {
-            setAdding(false);
-            w.setError("");
-            setForm("new");
-          }}
-        >
-          <Plus size={15} />
-          New resource
-        </Button>
+        {mode === "installed" && (
+          <Button variant="primary" disabled={!!w.busy} onClick={newResource}>
+            <Plus size={15} />
+            New resource
+          </Button>
+        )}
       </div>
       {mode === "catalogue" && channel === "online" ? (
         <div className="discovery-sources">
@@ -324,8 +394,11 @@ export function Resources({
         <section className="resource-list" aria-label="Resources">
           <div className="list-heading">
             <span>
-              {items.length} {type ?? "resource"}
-              {items.length === 1 ? "" : "s"}
+              {plural(
+                items.length,
+                type === "mcp" ? "MCP server" : (type ?? "resource"),
+              )}
+              {items.length !== base.length && ` of ${base.length}`}
             </span>
             <select
               aria-label="Sort resources"
@@ -336,12 +409,14 @@ export function Resources({
               <option value="updated">Recently updated</option>
             </select>
           </div>
-          <div className="list-scroll">
+          <div className="list-scroll" ref={listRef}>
             {items.map((r) => {
               const RowIcon = iconFor(r.type);
               return (
                 <button
                   key={r.id}
+                  data-id={r.id}
+                  aria-current={resource?.id === r.id ? "true" : undefined}
                   className={`resource-row ${resource?.id === r.id ? "selected" : ""}`}
                   onClick={() => select(r)}
                 >
@@ -350,7 +425,9 @@ export function Resources({
                   </div>
                   <div className="resource-row-body">
                     <div className="resource-row-title">
-                      <strong>{r.name}</strong>
+                      <strong>
+                        <Highlight text={r.name} query={query} />
+                      </strong>
                       {!r.enabled && <Badge>Disabled</Badge>}
                     </div>
                     <p>
@@ -380,26 +457,60 @@ export function Resources({
             })}
             {!items.length && (
               <Empty
-                title={query ? "No matches" : "No resources yet"}
+                icon={
+                  query || base.length
+                    ? SearchX
+                    : mode === "detected"
+                      ? ArrowDownToLine
+                      : type === "mcp"
+                        ? Plug
+                        : Layers
+                }
+                title={
+                  query || base.length
+                    ? "No matches"
+                    : mode === "detected"
+                      ? "Nothing to adopt"
+                      : type === "mcp"
+                        ? "No MCP servers yet"
+                        : type === "skill"
+                          ? "No skills yet"
+                          : "No resources yet"
+                }
                 description={
-                  query
+                  query || base.length
                     ? "Try another search or clear your filters."
                     : mode === "detected"
-                      ? "No unmanaged resources were detected in this project or harness home."
-                      : "Create a resource or add one from the catalogue."
+                      ? "Every resource your agents can see is already managed here."
+                      : "Browse the catalogue to add a vetted resource, or write your own."
                 }
                 action={
-                  !query && mode === "installed" ? (
+                  query || base.length ? (
                     <Button
                       onClick={() => {
-                        setAdding(false);
-                        w.setError("");
-                        setForm("new");
+                        setQuery("");
+                        setScope("all");
+                        setHarness("all");
                       }}
                     >
-                      <Plus size={15} />
-                      Create resource
+                      Clear filters
                     </Button>
+                  ) : mode === "installed" ? (
+                    <div className="button-row">
+                      {navigate && (
+                        <Button
+                          variant="primary"
+                          onClick={() => navigate("catalogue")}
+                        >
+                          <Compass size={15} />
+                          Browse catalogue
+                        </Button>
+                      )}
+                      <Button onClick={newResource}>
+                        <Plus size={15} />
+                        Create resource
+                      </Button>
+                    </div>
                   ) : undefined
                 }
               />
@@ -525,75 +636,88 @@ export function Resources({
                       <ShieldCheck size={15} />
                       Verify
                     </Button>
-                    <div className="action-menu">
-                      <Button
-                        aria-label="More resource actions"
-                        onClick={(e) => {
-                          const menu = e.currentTarget
-                            .nextElementSibling as HTMLDivElement;
-                          menu.hidden = !menu.hidden;
-                        }}
-                      >
-                        <MoreHorizontal size={17} />
-                      </Button>
-                      <div className="dropdown" hidden>
-                        <button
-                          disabled={global}
-                          onClick={() =>
-                            perform([
-                              "move",
-                              resource.id,
-                              resource.scope === "project"
-                                ? "global"
-                                : "project",
-                            ])
-                          }
-                        >
-                          <ArrowUpRight size={15} />
-                          Move to{" "}
-                          {resource.scope === "project" ? "global" : "project"}
-                        </button>
-                        <button
-                          onClick={() =>
-                            perform([
-                              "update-json",
-                              resource.id,
-                              JSON.stringify({ enabled: !resource.enabled }),
-                            ])
-                          }
-                        >
-                          <Power size={15} />
-                          {resource.enabled ? "Disable" : "Enable"}
-                        </button>
-                        <button
-                          onClick={() =>
-                            perform([
-                              "fork",
-                              resource.id,
-                              `${resource.id}-copy`,
-                            ])
-                          }
-                        >
-                          <Copy size={15} />
-                          Duplicate
-                        </button>
-                        <button
-                          onClick={() =>
-                            perform(["install", resource.id, "--execute"])
-                          }
-                        >
-                          <Download size={15} />
-                          Run installer
-                        </button>
-                        <button
-                          className="danger-text"
-                          onClick={() => perform(["delete", resource.id])}
-                        >
-                          <Trash2 size={15} />
-                          Delete resource
-                        </button>
-                      </div>
-                    </div>
+                    <Menu
+                      label="More resource actions"
+                      trigger={<MoreHorizontal size={17} />}
+                    >
+                      {(close) => {
+                        const act = (args: string[]) => {
+                          close();
+                          perform(args);
+                        };
+                        return (
+                          <>
+                            {!global && (
+                              <button
+                                role="menuitem"
+                                onClick={() =>
+                                  act([
+                                    "move",
+                                    resource.id,
+                                    resource.scope === "project"
+                                      ? "global"
+                                      : "project",
+                                  ])
+                                }
+                              >
+                                <ArrowUpRight size={15} />
+                                Move to{" "}
+                                {resource.scope === "project"
+                                  ? "global"
+                                  : "project"}
+                              </button>
+                            )}
+                            <button
+                              role="menuitem"
+                              onClick={() =>
+                                act([
+                                  "update-json",
+                                  resource.id,
+                                  JSON.stringify({ enabled: !resource.enabled }),
+                                ])
+                              }
+                            >
+                              <Power size={15} />
+                              {resource.enabled ? "Disable" : "Enable"}
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() =>
+                                act([
+                                  "fork",
+                                  resource.id,
+                                  copyId(
+                                    resource.id,
+                                    new Set(base.map((r) => r.id)),
+                                  ),
+                                ])
+                              }
+                            >
+                              <Copy size={15} />
+                              Duplicate
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() =>
+                                act(["install", resource.id, "--execute"])
+                              }
+                            >
+                              <Download size={15} />
+                              Run installer
+                            </button>
+                            <hr />
+                            <button
+                              role="menuitem"
+                              className="danger-text"
+                              onClick={() => act(["delete", resource.id])}
+                            >
+                              <Trash2 size={15} />
+                              Delete resource
+                            </button>
+                          </>
+                        );
+                      }}
+                    </Menu>
                   </>
                 )}
               </div>
@@ -658,7 +782,7 @@ export function Resources({
                         <span>Usage observed</span>
                         <strong>
                           {w.snapshot?.usage?.sessions
-                            ? `${usage} invocations`
+                            ? plural(usage, "invocation")
                             : "Unknown"}
                         </strong>
                         <small>
@@ -674,10 +798,16 @@ export function Resources({
                             ? "This project"
                             : "All projects"}
                         </strong>
-                        <small>
+                        <small
+                          title={
+                            resource.scope === "project"
+                              ? w.snapshot?.root
+                              : w.snapshot?.home
+                          }
+                        >
                           {resource.scope === "project"
-                            ? w.snapshot?.root
-                            : w.snapshot?.home}
+                            ? tildify(w.snapshot?.root, w.snapshot?.home)
+                            : "Home folder (~)"}
                         </small>
                       </div>
                       <div>
@@ -696,7 +826,11 @@ export function Resources({
                     </div>
                     <div className="detail-section">
                       <h3>Source</h3>
-                      <p className="source-value">{resource.source}</p>
+                      <p className="source-value">
+                        {resource.source.startsWith("file://")
+                          ? `file://${tildify(resource.source.slice(7), w.snapshot?.home)}`
+                          : resource.source}
+                      </p>
                       <small>{resource.id}</small>
                     </div>
                     {resource.tags.length > 0 && (
@@ -729,7 +863,10 @@ export function Resources({
                       )}
                     </div>
                     {w.snapshot?.findings
-                      .filter((f) => f.resourceId === resource.id)
+                      .filter(
+                        (f) =>
+                          f.resourceId === resource.id && f.severity !== "info",
+                      )
                       .map((f, i) => (
                         <Notice key={i}>{f.message}</Notice>
                       ))}

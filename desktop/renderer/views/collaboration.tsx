@@ -13,9 +13,14 @@ import {
   Plus,
   Trash2,
   Link2,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  FileJson,
 } from "lucide-react";
 import type { Workspace } from "../workspace";
-import { Badge, Button, Notice, Json } from "../components/ui";
+import { Badge, Button, Notice } from "../components/ui";
+import { initials, plural, relativeTime } from "../format";
 const HostedShare = z.object({
   code: z.string(),
   url: z.string().url(),
@@ -30,8 +35,20 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
   const [code, setCode] = useState(""),
     [scope, setScope] = useState("all"),
     [visibility, setVisibility] = useState("unlisted"),
-    [loadout, setLoadout] = useState(""),
-    [share, setShare] = useState<unknown>(null);
+    [loadout, setLoadout] = useState("");
+  const session = w.state?.account.authentication === "session";
+  const loadHosted = () =>
+    w.task("Loading your shares…", async () => {
+      const response = z
+        .object({ shares: z.array(HostedShare) })
+        .parse(await window.adk.cloud({ action: "shares" }));
+      setHosted(response.shares);
+      setHostedLoaded(true);
+    });
+  useEffect(() => {
+    if (session) void loadHosted();
+    // Load once when the view opens with a browser session.
+  }, [session]);
   const options = [
     ...(scope === "all" ? [] : ["--scope", scope]),
     ...(loadout ? ["--loadout", loadout] : []),
@@ -47,48 +64,69 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
             applying them.
           </p>
         </div>
-        <Share2 size={25} />
       </div>
-      {w.state?.account.authentication === "session" && (
+      {session && (
         <section className="form-section">
-          <h3>Your hosted shares</h3>
-          <Button
-            disabled={!!w.busy}
-            onClick={() =>
-              void w.task("Loading your shares…", async () => {
-                const response = z
-                  .object({ shares: z.array(HostedShare) })
-                  .parse(await window.adk.cloud({ action: "shares" }));
-                setHosted(response.shares);
-                setHostedLoaded(true);
-              })
-            }
-          >
-            Refresh my shares
-          </Button>
+          <div className="section-intro">
+            <div>
+              <h3>Your hosted shares</h3>
+              <p>
+                {hostedLoaded
+                  ? plural(hosted.length, "active link")
+                  : "Links you published from this account."}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              disabled={!!w.busy}
+              onClick={() => void loadHosted()}
+            >
+              <RefreshCw size={14} />
+              Refresh my shares
+            </Button>
+          </div>
           {hostedLoaded && !hosted.length && (
             <p className="hint">No hosted shares yet. Publish a setup below.</p>
           )}
           {hosted.map((item) => (
-            <div className="connection-state" key={item.code}>
+            <div className="connection-state share-item" key={item.code}>
+              <Share2 size={20} />
               <div>
-                <h3>{item.code}</h3>
+                <h3>
+                  <code>{item.code}</code>
+                </h3>
                 <p>
-                  {item.resourceCount} resources · {item.visibility}
-                  {item.expiresAt ? ` · expires ${item.expiresAt}` : ""}
+                  {plural(item.resourceCount, "resource")} · {item.visibility} ·
+                  created {relativeTime(item.createdAt)}
+                  {item.expiresAt
+                    ? ` · expires ${relativeTime(item.expiresAt)}`
+                    : ""}
                 </p>
               </div>
-              <Button onClick={() => void window.adk.copyText(item.url)}>
+              <Button
+                aria-label={`Copy link ${item.code}`}
+                onClick={() =>
+                  void window.adk
+                    .copyText(item.url)
+                    .then(() => w.notify("Link copied"))
+                }
+              >
+                <Copy size={14} />
                 Copy link
               </Button>
-              <Button onClick={() => void window.adk.openExternal(item.url)}>
-                Open
+              <Button
+                variant="ghost"
+                aria-label={`Open ${item.code}`}
+                onClick={() => void window.adk.openExternal(item.url)}
+              >
+                <ExternalLink size={14} />
               </Button>
               <Button
+                variant="danger"
                 disabled={!!w.busy}
                 onClick={() => void w.run(["revoke", item.code])}
               >
-                Preview revocation
+                Revoke…
               </Button>
             </div>
           ))}
@@ -139,7 +177,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
             <Button
               variant="primary"
               disabled={!!w.busy || !w.state?.account.connected}
-              onClick={async () => setShare(await w.run(["share", ...options]))}
+              onClick={() => void w.run(["share", ...options])}
             >
               <Upload size={15} />
               Preview publication
@@ -151,7 +189,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
                 if (file) await w.run(["share", ...options, "--out", file]);
               }}
             >
-              <Download size={15} />
+              <FileJson size={15} />
               Export JSON
             </Button>
           </div>
@@ -161,7 +199,6 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
               exports work offline.
             </p>
           )}
-          {share !== null && <Json value={share} />}
         </div>
         <div className="form-section">
           <h3>Import a shared setup</h3>
@@ -196,6 +233,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
                   if (path) setCode(path);
                 }}
               >
+                <Download size={15} />
                 Choose file
               </Button>
             </div>
@@ -272,7 +310,6 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
             revoke hosted shares.
           </p>
         </div>
-        <KeyRound size={25} />
       </div>
       {account?.connected ? (
         <div className="connection-state">
@@ -315,17 +352,37 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
           </p>
           {loginError && <Notice>{loginError}</Notice>}
           {device ? (
-            <div>
-              <h3>Confirm code: {device.userCode}</h3>
-              <p>Waiting for browser approval…</p>
-              <Button
-                onClick={() =>
-                  void window.adk.openExternal(device.verificationUri)
-                }
-              >
-                Open sign-in page
-              </Button>
-              <Button onClick={() => setDevice(null)}>Cancel</Button>
+            <div className="device-code">
+              <h3>
+                Confirm code: <code>{device.userCode}</code>
+              </h3>
+              <p className="muted">
+                Your browser opened the sign-in page. Check that it shows this
+                code, then approve. Waiting for approval…
+              </p>
+              <div className="button-row">
+                <Button
+                  onClick={() =>
+                    void window.adk
+                      .copyText(device.userCode)
+                      .then(() => w.notify("Code copied"))
+                  }
+                >
+                  <Copy size={14} />
+                  Copy code
+                </Button>
+                <Button
+                  onClick={() =>
+                    void window.adk.openExternal(device.verificationUri)
+                  }
+                >
+                  <ExternalLink size={14} />
+                  Open sign-in page
+                </Button>
+                <Button variant="ghost" onClick={() => setDevice(null)}>
+                  Cancel
+                </Button>
+              </div>
             </div>
           ) : (
             <Button
@@ -459,9 +516,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
             {team?.members.map((member, i) => (
               <tr key={`${member.email}-${i}`}>
                 <td>
-                  <span className="avatar">
-                    {member.name.slice(0, 1).toUpperCase()}
-                  </span>
+                  <span className="avatar">{initials(member.name)}</span>
                   {member.name}
                 </td>
                 <td>{member.email}</td>

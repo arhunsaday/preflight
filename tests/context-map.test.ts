@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { ResourceSchema } from "../src/schema.js";
 import { buildContextReport, layoutTreemap } from "../src/context-map.js";
+import { analyze } from "../src/analysis.js";
 const resource = (id: string, values = {}) =>
   ResourceSchema.parse({
     id,
@@ -113,4 +114,15 @@ it("preserves a known empty body and rejects unusable treemap dimensions", () =>
   ).toMatchObject({ estimatedTokens: 0, unknownCount: 0 });
   expect(layoutTreemap([{ id: "bad", value: NaN }], 100, 100)).toEqual([]);
   expect(layoutTreemap([{ id: "a", value: 1 }], Infinity, 100)).toEqual([]);
+});
+it("gives the doctor the same skill estimate as the context map", () => {
+  const r = resource("skill:a", {
+    name: "Test",
+    description: "abcdefgh",
+    content: "x".repeat(400),
+  });
+  const finding = analyze([r]).find((f) => f.code === "context-estimate");
+  expect(finding?.message).toContain(
+    `Approximately ${buildContextReport([r]).estimatedTokens} tokens`,
+  );
 });

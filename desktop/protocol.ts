@@ -54,6 +54,24 @@ export interface Prepared {
   receipt?: string;
   note?: string;
 }
+/** Commands the native application menu sends to the renderer. */
+export const desktopViews = [
+  "overview",
+  "skills",
+  "mcp",
+  "resources",
+  "catalogue",
+  "doctor",
+  "context",
+  "console",
+] as const;
+export type DesktopCommand =
+  | "palette"
+  | "refresh"
+  | "open-project"
+  | "global"
+  | "shortcuts"
+  | `navigate:${(typeof desktopViews)[number]}`;
 export interface DesktopApi {
   state(): Promise<DesktopState>;
   chooseProject(): Promise<DesktopState>;
@@ -82,6 +100,7 @@ export interface DesktopApi {
   openExternal(url: string): Promise<void>;
   chooseFile(): Promise<string | null>;
   exportFile(): Promise<string | null>;
+  onCommand(listener: (command: DesktopCommand) => void): () => void;
 }
 declare global {
   interface Window {

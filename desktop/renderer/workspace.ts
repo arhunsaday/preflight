@@ -1,17 +1,57 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { DesktopState, Snapshot, Prepared } from "../protocol";
 export function availableResources(snapshot: Snapshot | null) {
-  return [...new Map([...(snapshot?.inherited ?? []), ...(snapshot?.resources ?? [])].map((resource) => [resource.id, resource] as const)).values()];
+  return [
+    ...new Map(
+      [...(snapshot?.inherited ?? []), ...(snapshot?.resources ?? [])].map(
+        (resource) => [resource.id, resource] as const,
+      ),
+    ).values(),
+  ];
 }
+export interface Toast {
+  id: number;
+  text: string;
+}
+/** What the result dialog shows: the value and the command that produced it. */
+export interface Outcome {
+  args: string[];
+  value: unknown;
+  applied: boolean;
+}
+const describe = (args: string[]) => {
+  const [command = "", sub = ""] = args;
+  const names: Record<string, string> = {
+    init: "Configuration initialized",
+    sync: "Configuration synced",
+    "create-json": "Resource created",
+    "update-json": "Resource updated",
+    delete: "Resource deleted",
+    adopt: "Resource adopted",
+    move: "Resource moved",
+    fork: "Resource duplicated",
+    install: "Installer finished",
+    retrofit: "AGENTS.md generated",
+    rollback: "Last change rolled back",
+    recover: "Interrupted operation recovered",
+    apply: "Shared setup imported",
+    share: "Setup shared",
+    revoke: "Share revoked",
+    profiles: sub === "switch" ? "Profile switched" : "Profile created",
+    loadouts: "Loadout installed",
+  };
+  return names[command] ?? "Operation completed";
+};
 export function useWorkspace() {
   const [state, setState] = useState<DesktopState | null>(null),
     [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
-    [message, setMessage] = useState(""),
+    [toasts, setToasts] = useState<Toast[]>([]),
     [prepared, setPrepared] = useState<Prepared | null>(null),
-    [result, setResult] = useState<unknown>(undefined);
+    [outcome, setOutcome] = useState<Outcome | undefined>(undefined);
   const refreshing = useRef<Promise<void> | null>(null);
+  const toastId = useRef(0);
   const reload = useCallback(async () => {
     if (refreshing.current) return refreshing.current;
     const pending = (async () => {
@@ -32,9 +72,20 @@ export function useWorkspace() {
       .catch((e) => setError(String(e)))
       .finally(() => setBusy(""));
   }, [reload]);
+  const dismiss = useCallback(
+    (id: number) => setToasts((all) => all.filter((t) => t.id !== id)),
+    [],
+  );
+  const notify = useCallback(
+    (text: string) => {
+      const id = ++toastId.current;
+      setToasts((all) => [...all.slice(-2), { id, text }]);
+      setTimeout(() => dismiss(id), 4500);
+    },
+    [dismiss],
+  );
   const task = async <T>(label: string, fn: () => Promise<T>) => {
     setError("");
-    setMessage("");
     setBusy(label);
     try {
       return await fn();
@@ -45,34 +96,39 @@ export function useWorkspace() {
       setBusy("");
     }
   };
-  const run = async (args: string[], display = true) =>
+  /** Prepare a command: writes open the review dialog, reads return a value. */
+  const prepare = async (args: string[], display = true) =>
     task("Preparing operation…", async () => {
       const response = await window.adk.prepare(args);
       if (response.kind === "preview") setPrepared(response);
-      else if (display) setResult(response.value);
-      return response.value;
+      else if (display)
+        setOutcome({ args, value: response.value, applied: false });
+      return response;
     });
+  const run = async (args: string[], display = true) =>
+    (await prepare(args, display))?.value;
   const confirm = () =>
     task("Applying changes…", async () => {
       if (!prepared?.receipt) return;
+      const args = prepared.args;
       const value = await window.adk.confirm(prepared.receipt);
       setPrepared(null);
-      setResult(value);
-      setMessage("Operation completed");
+      setOutcome({ args, value, applied: true });
+      notify(describe(args));
       await reload();
     });
   const switchProject = (id: string) =>
     task("Opening project…", async () => {
       await window.adk.selectProject(id);
       setPrepared(null);
-      setResult(undefined);
+      setOutcome(undefined);
       await reload();
     });
   const switchGlobal = () =>
     task("Opening global configuration…", async () => {
       await window.adk.selectGlobal();
       setPrepared(null);
-      setResult(undefined);
+      setOutcome(undefined);
       await reload();
     });
   const chooseProject = () =>
@@ -86,17 +142,21 @@ export function useWorkspace() {
     snapshot,
     busy,
     error,
-    message,
+    toasts,
     prepared,
-    result,
+    outcome,
     setState,
     setError,
     setPrepared,
-    setResult,
+    setOutcome,
     reload,
+    prepare,
     run,
     confirm,
     task,
+    notify,
+    dismiss,
+    describe,
     switchProject,
     switchGlobal,
     chooseProject,

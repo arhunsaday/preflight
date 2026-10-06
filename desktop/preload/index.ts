@@ -20,5 +20,15 @@ const api: DesktopApi = {
   openExternal: (url) => ipcRenderer.invoke("adk:openExternal", url),
   chooseFile: () => ipcRenderer.invoke("adk:chooseFile"),
   exportFile: () => ipcRenderer.invoke("adk:exportFile"),
+  onCommand: (listener) => {
+    const handler = (_event: unknown, command: unknown) => {
+      if (typeof command === "string")
+        listener(command as Parameters<typeof listener>[0]);
+    };
+    ipcRenderer.on("adk:command", handler);
+    return () => {
+      ipcRenderer.removeListener("adk:command", handler);
+    };
+  },
 };
 contextBridge.exposeInMainWorld("adk", api);

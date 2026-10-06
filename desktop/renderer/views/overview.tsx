@@ -6,8 +6,15 @@ import {
   Compass,
   ArrowRight,
   ShieldCheck,
+  ShieldAlert,
+  ShieldX,
+  CheckCircle2,
+  Circle,
+  Rocket,
+  ArrowDownToLine,
 } from "lucide-react";
 import { availableResources, type Workspace } from "../workspace";
+import { plural, tildify } from "../format";
 import { Badge, Button, Notice } from "../components/ui";
 export function Overview({
   workspace: w,
@@ -17,7 +24,15 @@ export function Overview({
   navigate: (view: string) => void;
 }) {
   const global = w.state?.workspace === "global";
-  const resources = availableResources(w.snapshot);
+  const snapshot = w.snapshot;
+  const home = snapshot?.home;
+  const resources = availableResources(snapshot);
+  const own = snapshot?.resources.length ?? 0;
+  const inherited = snapshot?.inherited.length ?? 0;
+  const errors =
+    snapshot?.findings.filter((f) => f.severity === "error").length ?? 0;
+  const warnings =
+    snapshot?.findings.filter((f) => f.severity === "warning").length ?? 0;
   const cards = [
     {
       title: "Skills",
@@ -37,10 +52,54 @@ export function Overview({
       title: "Detected",
       icon: FolderOpen,
       view: "detected",
-      count: w.snapshot?.detected.length ?? 0,
+      count: snapshot?.detected.length ?? 0,
       text: "Existing resources available to adopt",
     },
   ];
+  const steps = [
+    {
+      label: global
+        ? "Initialize your global configuration"
+        : "Initialize this project",
+      done: !!snapshot?.initialized,
+      action: (
+        <Button variant="primary" onClick={() => void w.run(["init"])}>
+          <Rocket size={13} />
+          Initialize
+        </Button>
+      ),
+    },
+    {
+      label: snapshot?.detected.length
+        ? `Adopt resources you already have (${snapshot.detected.length} detected)`
+        : "Add your first skill or MCP server",
+      done: own > 0,
+      action: snapshot?.detected.length ? (
+        <Button onClick={() => navigate("detected")}>
+          <ArrowDownToLine size={13} />
+          Review
+        </Button>
+      ) : (
+        <Button onClick={() => navigate("catalogue")}>
+          <Compass size={13} />
+          Browse
+        </Button>
+      ),
+    },
+    {
+      label: "Resolve blocking doctor findings",
+      done: errors === 0,
+      action: (
+        <Button onClick={() => navigate("doctor")}>
+          <ShieldCheck size={13} />
+          Open doctor
+        </Button>
+      ),
+    },
+  ];
+  const remaining = steps.filter((s) => !s.done).length;
+  const next = steps.findIndex((s) => !s.done);
+  const HealthIcon = errors ? ShieldX : warnings ? ShieldAlert : ShieldCheck;
   return (
     <div className="page-scroll overview-page">
       <div className="section-intro">
@@ -65,7 +124,7 @@ export function Overview({
       <div className="briefing-layout">
         <section className="workspace-briefing">
           <div className="briefing-top">
-            <Globe size={25} />
+            {global ? <Globe size={18} /> : <FolderOpen size={18} />}
             <span>
               {global
                 ? "Defaults that travel with you"
@@ -79,18 +138,21 @@ export function Overview({
           </h3>
           <p>
             {global
-              ? "Build your baseline here. Project workspaces can add the tools they need while keeping your global setup available."
+              ? "Build your baseline here. Project workspaces add the tools they need while keeping this setup available."
               : "Your global setup stays connected. Add project resources here and review exactly what changes before applying them."}
           </p>
           <div className="scope-route">
             <span>
-              <Globe size={17} />
+              <Globe size={16} />
               Global configuration
+              {!global && <b>{inherited}</b>}
+              {global && <b>{own}</b>}
             </span>
             <div aria-hidden="true" className="scope-route-line" />
             <span>
-              <FolderOpen size={17} />
+              <FolderOpen size={16} />
               {global ? "Your projects" : "This project"}
+              {global ? <b>{w.state?.projects.length ?? 0}</b> : <b>{own}</b>}
             </span>
           </div>
           <div className="briefing-actions">
@@ -112,7 +174,7 @@ export function Overview({
               onClick={() => navigate(card.view)}
             >
               <span className="inventory-icon">
-                <card.icon size={21} />
+                <card.icon size={19} />
               </span>
               <span>
                 <strong>{card.title}</strong>
@@ -122,46 +184,101 @@ export function Overview({
               <ArrowRight size={15} />
             </button>
           ))}
-          <p className="hint">
-            Includes global resources inherited by this workspace.
-          </p>
+          {!global && (
+            <p className="hint">
+              Includes global resources inherited by this workspace.
+            </p>
+          )}
         </section>
       </div>
-      <section className="workspace-location path-register">
-        <div>
+      {remaining > 0 && snapshot && (
+        <section className="workspace-location">
+          <h3>Get started</h3>
+          <p>
+            {plural(remaining, "step")} left to a working{" "}
+            {global ? "global" : "project"} setup.
+          </p>
+          <ol className="checklist">
+            {steps.map((step, i) => (
+              <li className={step.done ? "done" : ""} key={step.label}>
+                {step.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                <span>{step.label}</span>
+                {!step.done && i === next && step.action}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      <div className="overview-grid">
+        <section className="workspace-location path-register">
           <h3>{global ? "Global configuration" : "Project configuration"}</h3>
-          <p>Your configuration file and agent destinations</p>
-        </div>
-        <dl>
-          <div>
-            <dt>Configuration</dt>
-            <dd>
-              <code>{w.snapshot?.root}/adk.config.json</code>
-            </dd>
+          <p>Your configuration file and agent destinations.</p>
+          <dl>
+            <div>
+              <dt>Configuration</dt>
+              <dd>
+                <code title={`${snapshot?.root}/adk.config.json`}>
+                  {tildify(`${snapshot?.root}/adk.config.json`, home)}
+                </code>
+              </dd>
+            </div>
+            <div>
+              <dt>Agent files</dt>
+              <dd>
+                {[".claude", ".cursor"].map((folder) => (
+                  <code key={folder}>
+                    {tildify(
+                      `${global ? snapshot?.home : snapshot?.root}/${folder}`,
+                      home,
+                    )}
+                  </code>
+                ))}
+              </dd>
+            </div>
+          </dl>
+          <p className="hint">
+            Every preview shows the exact paths before writing. Existing
+            installations are adopted explicitly.
+          </p>
+        </section>
+        <section className="workspace-location">
+          <h3>Configuration health</h3>
+          <div
+            className={`health-line ${errors ? "error" : warnings ? "warn" : ""}`}
+          >
+            <HealthIcon size={26} />
+            <div>
+              <strong>
+                {errors
+                  ? `${plural(errors, "blocking finding")}`
+                  : warnings
+                    ? "No blocking findings"
+                    : "Everything looks healthy"}
+              </strong>
+              <span>
+                {plural(errors, "error")} · {plural(warnings, "warning")}
+              </span>
+            </div>
           </div>
-          <div>
-            <dt>Agent files</dt>
-            <dd>
-              <code>
-                {global ? w.snapshot?.home : w.snapshot?.root}/.claude ·{" "}
-                {global ? w.snapshot?.home : w.snapshot?.root}/.cursor
-              </code>
-            </dd>
+          <div className="button-row">
+            <Button onClick={() => navigate("doctor")}>
+              <ShieldCheck size={15} />
+              Open doctor
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("context")}>
+              View context map
+            </Button>
           </div>
-        </dl>
-        <p className="hint">
-          Every preview shows the exact paths before writing. Existing
-          installations are adopted explicitly.
-        </p>
-      </section>
+        </section>
+      </div>
       {!global && (
         <section className="workspace-location">
           <div className="section-intro">
             <div>
               <h3>Inherited global configuration</h3>
               <p>
-                {w.snapshot?.inherited.length ?? 0} resources managed globally.
-                Edit them in Global configuration.
+                {plural(inherited, "resource")} managed globally. Edit them in
+                Global configuration.
               </p>
             </div>
             <Button onClick={() => void w.switchGlobal()}>
@@ -169,7 +286,7 @@ export function Overview({
               Manage global
             </Button>
           </div>
-          {w.snapshot?.resources.some((r) => r.scope === "global") && (
+          {snapshot?.resources.some((r) => r.scope === "global") && (
             <Notice>
               This project also manages global resources from an earlier
               configuration. They remain here; nothing has been migrated or
@@ -178,25 +295,6 @@ export function Overview({
           )}
         </section>
       )}
-      <section className="workspace-location">
-        <div className="section-intro">
-          <div>
-            <h3>Configuration health</h3>
-            <p>
-              {w.snapshot?.findings.filter((f) => f.severity === "error")
-                .length ?? 0}{" "}
-              blocking findings ·{" "}
-              {w.snapshot?.findings.filter((f) => f.severity === "warning")
-                .length ?? 0}{" "}
-              warnings
-            </p>
-          </div>
-          <Button onClick={() => navigate("doctor")}>
-            <ShieldCheck size={15} />
-            Open doctor
-          </Button>
-        </div>
-      </section>
     </div>
   );
 }

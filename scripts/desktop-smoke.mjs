@@ -165,7 +165,7 @@ try {
   await page.getByRole("heading", { name: "ponytail", exact: true }).waitFor();
   await page.screenshot({ path: join(temporary, "skills.png") });
   await page.getByRole("button", { name: "More resource actions" }).click();
-  await page.getByRole("button", { name: "Move to global" }).click();
+  await page.getByRole("menuitem", { name: "Move to global" }).click();
   await page
     .getByRole("button", { name: "Apply changes", exact: true })
     .click();
@@ -221,7 +221,8 @@ try {
     .click();
   await page.getByRole("textbox", { name: "ADK command" }).fill("list");
   await page.getByRole("button", { name: "Run", exact: true }).click();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  // Read-only console output stays inline instead of opening a dialog.
+  await page.locator(".console-entry").first().waitFor();
   await page.getByRole("button", { name: "Benchmarks", exact: true }).click();
   await page.getByRole("heading", { name: "No benchmark runs yet" }).waitFor();
   await page.getByRole("button", { name: "Team", exact: true }).click();
@@ -266,7 +267,7 @@ try {
     .click();
   await page.getByRole("heading", { name: "Operation result" }).waitFor();
   const publication = JSON.parse(
-    await page.locator(".dialog .code").innerText(),
+    (await page.locator(".dialog .code").textContent()) ?? "",
   );
   assert.equal(publication.code.length, 16);
   assert.equal(records.size, 1);
@@ -374,7 +375,7 @@ try {
   await page.screenshot({ path: join(temporary, "global-mcp.png") });
   await page
     .getByRole("combobox", { name: "Configuration workspace" })
-    .selectOption({ label: "project · project" });
+    .selectOption({ label: "project" });
   await page
     .getByRole("button", { name: "Edit in global configuration", exact: true })
     .waitFor();
@@ -717,7 +718,14 @@ try {
   throw error;
 } finally {
   releasePendingAccount?.();
-  await app.close();
+  // A failure can leave an engine running; the app then refuses to close and
+  // would hang the smoke instead of reporting the error.
+  await Promise.race([
+    app.close(),
+    new Promise((resolve) => setTimeout(resolve, 10000)).then(() =>
+      app.process().kill("SIGKILL"),
+    ),
+  ]);
   await new Promise((resolve) => server.close(resolve));
   standardDatabase?.close();
 }

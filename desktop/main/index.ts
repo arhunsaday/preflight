@@ -6,7 +6,9 @@ import {
   shell,
   safeStorage,
   clipboard,
+  nativeTheme,
 } from "electron";
+import { installMenu } from "./menu.js";
 import { cloudRequest, CloudOperation } from "../../src/cloud-client.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -108,7 +110,7 @@ async function createWindow() {
     minWidth: 840,
     minHeight: 620,
     title: "Preflight",
-    backgroundColor: "#ffffff",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0e181e" : "#f2f5f4",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
       preload: join(directory, "../preload/index.cjs"),
@@ -329,6 +331,10 @@ async function boot() {
       filters: [{ name: "JSON configuration", extensions: ["json"] }],
     });
     return selected.filePath ?? null;
+  });
+  installMenu((command) => {
+    if (window && !window.isDestroyed())
+      window.webContents.send("adk:command", command);
   });
   await createWindow();
 }

@@ -27,6 +27,8 @@ export default defineConfig({
     plugins: [react()],
     build: {
       outDir: resolve("desktop-out/renderer"),
+      // The CSP has no font-src data:, so every asset must ship as a file.
+      assetsInlineLimit: 0,
       rollupOptions: { input: resolve("desktop/renderer/index.html") },
     },
   },
