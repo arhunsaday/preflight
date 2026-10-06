@@ -22,7 +22,6 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
             revision.
           </p>
         </div>
-        <Badge tone="blue">Local A/B</Badge>
       </div>
       <Notice>
         Runs execute your chosen agent and verification commands in isolated

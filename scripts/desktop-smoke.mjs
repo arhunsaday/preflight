@@ -484,7 +484,9 @@ try {
     .getByRole("button", { name: "Discover resources", exact: true })
     .click();
   await page.getByRole("textbox", { name: "Search resources" }).fill("");
-  await page.locator("nav").evaluate((el) => (el.scrollTop = 0));
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .evaluate((el) => (el.scrollTop = 0));
   await page.screenshot({ path: join(temporary, "catalogue.png") });
   await page.setViewportSize({ width: 900, height: 700 });
   await page.screenshot({ path: join(temporary, "compact.png") });

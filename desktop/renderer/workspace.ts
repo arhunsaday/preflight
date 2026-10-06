@@ -85,7 +85,7 @@ export function useWorkspace() {
   const notify = useCallback(
     (text: string) => {
       const id = ++toastId.current;
-      setToasts((all) => [...all.slice(-2), { id, text }]);
+      setToasts((all) => [...all.slice(-1), { id, text }]);
       setTimeout(() => dismiss(id), 4500);
     },
     [dismiss],

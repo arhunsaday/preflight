@@ -1,10 +1,8 @@
 import {
   Globe,
-  FolderOpen,
   Layers,
   Plug,
   Compass,
-  ArrowRight,
   ShieldCheck,
   ShieldAlert,
   ShieldX,
@@ -12,10 +10,23 @@ import {
   Circle,
   Rocket,
   ArrowDownToLine,
+  ArrowUpRight,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { buildContextReport, contextResources } from "../../../src/context-map";
 import { availableResources, type Workspace } from "../workspace";
 import { plural, tildify } from "../format";
-import { Badge, Button, Notice } from "../components/ui";
+import { Button, Notice } from "../components/ui";
+
+interface Stat {
+  title: string;
+  icon: LucideIcon;
+  view: string;
+  value: string;
+  note: string;
+  tone?: "error";
+}
+
 export function Overview({
   workspace: w,
   navigate,
@@ -29,31 +40,48 @@ export function Overview({
   const resources = availableResources(snapshot);
   const own = snapshot?.resources.length ?? 0;
   const inherited = snapshot?.inherited.length ?? 0;
+  const detected = snapshot?.detected.length ?? 0;
   const errors =
     snapshot?.findings.filter((f) => f.severity === "error").length ?? 0;
   const warnings =
     snapshot?.findings.filter((f) => f.severity === "warning").length ?? 0;
-  const cards = [
+  const skills = resources.filter((r) => r.type === "skill").length;
+  const servers = resources.filter((r) => r.type === "mcp").length;
+  const context = buildContextReport(
+    contextResources(
+      snapshot?.detected ?? [],
+      snapshot?.inherited ?? [],
+      snapshot?.resources ?? [],
+    ),
+  ).estimatedTokens;
+  const stats: Stat[] = [
     {
       title: "Skills",
       icon: Layers,
       view: "skills",
-      count: resources.filter((r) => r.type === "skill").length,
-      text: "Instructions your agents can use",
+      value: String(skills),
+      note: global ? "Available everywhere" : "Including inherited",
     },
     {
       title: "MCP servers",
       icon: Plug,
       view: "mcp",
-      count: resources.filter((r) => r.type === "mcp").length,
-      text: "Tools and services connected to your agents",
+      value: String(servers),
+      note: "Tools connected to agents",
     },
     {
       title: "Detected",
-      icon: FolderOpen,
+      icon: ArrowDownToLine,
       view: "detected",
-      count: snapshot?.detected.length ?? 0,
-      text: "Existing resources available to adopt",
+      value: String(detected),
+      note: detected ? "Ready to adopt" : "Nothing unmanaged",
+    },
+    {
+      title: "Context",
+      icon: Compass,
+      view: "context",
+      value: `~${context.toLocaleString()}`,
+      note: "Estimated tokens if loaded",
     },
   ];
   const steps = [
@@ -70,138 +98,80 @@ export function Overview({
       ),
     },
     {
-      label: snapshot?.detected.length
-        ? `Adopt resources you already have (${snapshot.detected.length} detected)`
+      label: detected
+        ? `Adopt resources you already have (${detected} detected)`
         : "Add your first skill or MCP server",
       done: own > 0,
-      action: snapshot?.detected.length ? (
-        <Button onClick={() => navigate("detected")}>
-          <ArrowDownToLine size={13} />
-          Review
-        </Button>
+      action: detected ? (
+        <Button onClick={() => navigate("detected")}>Review</Button>
       ) : (
-        <Button onClick={() => navigate("catalogue")}>
-          <Compass size={13} />
-          Browse
-        </Button>
+        <Button onClick={() => navigate("catalogue")}>Browse</Button>
       ),
     },
     {
       label: "Resolve blocking doctor findings",
       done: errors === 0,
-      action: (
-        <Button onClick={() => navigate("doctor")}>
-          <ShieldCheck size={13} />
-          Open doctor
-        </Button>
-      ),
+      action: <Button onClick={() => navigate("doctor")}>Open doctor</Button>,
     },
   ];
-  const remaining = steps.filter((s) => !s.done).length;
+  const completed = steps.filter((s) => s.done).length;
   const next = steps.findIndex((s) => !s.done);
   const HealthIcon = errors ? ShieldX : warnings ? ShieldAlert : ShieldCheck;
   return (
     <div className="page-scroll overview-page">
       <div className="section-intro">
         <div>
-          <Badge tone="blue">{global ? "All projects" : "This project"}</Badge>
           <h2>
             {global
-              ? "Your global AI configuration"
-              : "Your project AI configuration"}
+              ? "Global configuration"
+              : (w.state?.projects.find(
+                  (p) => p.id === w.state?.activeProjectId,
+                )?.name ?? "Project")}
           </h2>
           <p>
             {global
-              ? "Set up skills, MCP servers and defaults once for all your projects. No project needs to be open."
-              : "Keep project-specific tools here. Your global configuration remains available to your agents."}
+              ? "Skills, MCP servers and defaults shared by every project."
+              : "Project tools on top of your global setup. Every change is previewed before it is written."}
           </p>
         </div>
         <Button variant="primary" onClick={() => navigate("catalogue")}>
-          <Compass size={16} />
+          <Compass size={15} />
           Discover resources
         </Button>
       </div>
-      <div className="briefing-layout">
-        <section className="workspace-briefing">
-          <div className="briefing-top">
-            {global ? <Globe size={18} /> : <FolderOpen size={18} />}
-            <span>
-              {global
-                ? "Defaults that travel with you"
-                : "A setup for this project"}
-            </span>
-          </div>
-          <h3>
-            {global
-              ? "One setup. Every project."
-              : "A shared foundation, your own tools."}
-          </h3>
-          <p>
-            {global
-              ? "Build your baseline here. Project workspaces add the tools they need while keeping this setup available."
-              : "Your global setup stays connected. Add project resources here and review exactly what changes before applying them."}
-          </p>
-          <div className="scope-route">
-            <span>
-              <Globe size={16} />
-              Global configuration
-              {!global && <b>{inherited}</b>}
-              {global && <b>{own}</b>}
-            </span>
-            <div aria-hidden="true" className="scope-route-line" />
-            <span>
-              <FolderOpen size={16} />
-              {global ? "Your projects" : "This project"}
-              {global ? <b>{w.state?.projects.length ?? 0}</b> : <b>{own}</b>}
-            </span>
-          </div>
-          <div className="briefing-actions">
-            <Button onClick={() => navigate("resources")}>
-              Manage configuration
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("doctor")}>
-              <ShieldCheck size={15} />
-              Check setup
-            </Button>
-          </div>
-        </section>
-        <section className="setup-inventory" aria-label="Workspace resources">
-          <h3>On board</h3>
-          {cards.map((card) => (
-            <button
-              className="inventory-row"
-              key={card.view}
-              onClick={() => navigate(card.view)}
-            >
-              <span className="inventory-icon">
-                <card.icon size={19} />
-              </span>
-              <span>
-                <strong>{card.title}</strong>
-                <small>{card.text}</small>
-              </span>
-              <b>{card.count}</b>
-              <ArrowRight size={15} />
-            </button>
-          ))}
-          {!global && (
-            <p className="hint">
-              Includes global resources inherited by this workspace.
-            </p>
-          )}
-        </section>
+      <div className="stat-grid">
+        {stats.map((stat) => (
+          <button
+            className={`stat-card ${stat.tone ?? ""}`}
+            key={stat.view}
+            onClick={() => navigate(stat.view)}
+          >
+            <header>
+              {stat.title}
+              <stat.icon />
+            </header>
+            <strong>{stat.value}</strong>
+            <small>{stat.note}</small>
+          </button>
+        ))}
       </div>
-      {remaining > 0 && snapshot && (
+      {completed < steps.length && snapshot && (
         <section className="workspace-location">
-          <h3>Get started</h3>
-          <p>
-            {plural(remaining, "step")} left to a working{" "}
-            {global ? "global" : "project"} setup.
-          </p>
+          <div className="card-heading">
+            <div>
+              <h3>Get started</h3>
+              <p>
+                {completed} of {steps.length} done
+              </p>
+            </div>
+          </div>
+          <div className="progress" aria-hidden="true">
+            <i style={{ width: `${(completed / steps.length) * 100}%` }} />
+          </div>
           <ol className="checklist">
             {steps.map((step, i) => (
               <li className={step.done ? "done" : ""} key={step.label}>
-                {step.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                {step.done ? <CheckCircle2 size={17} /> : <Circle size={17} />}
                 <span>{step.label}</span>
                 {!step.done && i === next && step.action}
               </li>
@@ -210,9 +180,36 @@ export function Overview({
         </section>
       )}
       <div className="overview-grid">
+        <section className="workspace-location">
+          <h3>Configuration health</h3>
+          <p>Wiring, permissions, conflicts and drift.</p>
+          <div
+            className={`health-line ${errors ? "error" : warnings ? "warn" : ""}`}
+          >
+            <HealthIcon />
+            <div>
+              <strong>
+                {errors
+                  ? plural(errors, "blocking finding")
+                  : warnings
+                    ? "No blocking findings"
+                    : "Everything looks healthy"}
+              </strong>
+              <span>
+                {plural(errors, "error")} · {plural(warnings, "warning")}
+              </span>
+            </div>
+          </div>
+          <div className="button-row">
+            <Button onClick={() => navigate("doctor")}>Open doctor</Button>
+            <Button variant="ghost" onClick={() => navigate("context")}>
+              View context map
+            </Button>
+          </div>
+        </section>
         <section className="workspace-location path-register">
-          <h3>{global ? "Global configuration" : "Project configuration"}</h3>
-          <p>Your configuration file and agent destinations.</p>
+          <h3>Files</h3>
+          <p>Where this configuration lives and what it writes.</p>
           <dl>
             <div>
               <dt>Configuration</dt>
@@ -236,39 +233,6 @@ export function Overview({
               </dd>
             </div>
           </dl>
-          <p className="hint">
-            Every preview shows the exact paths before writing. Existing
-            installations are adopted explicitly.
-          </p>
-        </section>
-        <section className="workspace-location">
-          <h3>Configuration health</h3>
-          <div
-            className={`health-line ${errors ? "error" : warnings ? "warn" : ""}`}
-          >
-            <HealthIcon size={26} />
-            <div>
-              <strong>
-                {errors
-                  ? `${plural(errors, "blocking finding")}`
-                  : warnings
-                    ? "No blocking findings"
-                    : "Everything looks healthy"}
-              </strong>
-              <span>
-                {plural(errors, "error")} · {plural(warnings, "warning")}
-              </span>
-            </div>
-          </div>
-          <div className="button-row">
-            <Button onClick={() => navigate("doctor")}>
-              <ShieldCheck size={15} />
-              Open doctor
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("context")}>
-              View context map
-            </Button>
-          </div>
         </section>
       </div>
       {!global && (
@@ -277,13 +241,14 @@ export function Overview({
             <div>
               <h3>Inherited global configuration</h3>
               <p>
-                {plural(inherited, "resource")} managed globally. Edit them in
-                Global configuration.
+                {plural(inherited, "resource")} managed globally and available
+                in this project.
               </p>
             </div>
             <Button onClick={() => void w.switchGlobal()}>
               <Globe size={15} />
               Manage global
+              <ArrowUpRight size={14} />
             </Button>
           </div>
           {snapshot?.resources.some((r) => r.scope === "global") && (

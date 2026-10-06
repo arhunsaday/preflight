@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Terminal, Play, Trash2 } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
 import type { Workspace } from "../workspace";
 import { commandGroups, tokenize } from "../command-model";
 import { Button, Json, Notice } from "../components/ui";
@@ -58,7 +58,6 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
             commands.
           </p>
         </div>
-        <Terminal size={24} />
       </div>
       <form
         className="console-form"

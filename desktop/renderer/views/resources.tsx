@@ -530,8 +530,9 @@ export function Resources({
                     <Badge>{resource.scope}</Badge>
                     {mode === "installed" && (
                       <Badge
-                        tone={inherited ? "blue" : applied ? "green" : "amber"}
+                        tone={inherited ? "info" : applied ? "green" : "amber"}
                       >
+                        <span className="dot" />
                         {inherited
                           ? "Inherited from global"
                           : applied
@@ -767,13 +768,8 @@ export function Resources({
                         <span>Available in</span>
                         <div className="harness-list">
                           {resource.harnesses.map((h) => (
-                            <Badge
-                              key={h}
-                              tone={h === "claude-code" ? "orange" : "blue"}
-                            >
-                              {h === "claude-code"
-                                ? "✳ Claude Code"
-                                : "⌘ Cursor"}
+                            <Badge key={h}>
+                              {h === "claude-code" ? "Claude Code" : "Cursor"}
                             </Badge>
                           ))}
                         </div>

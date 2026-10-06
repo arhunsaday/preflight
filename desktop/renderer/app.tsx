@@ -16,7 +16,6 @@ import {
   Settings2,
   ArrowDownToLine,
   RefreshCw,
-  Check,
   Circle,
   X,
   Search,
@@ -30,6 +29,8 @@ import {
   Monitor,
   Keyboard,
   RotateCw,
+  ChevronRight,
+  ChevronsUpDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useWorkspace, availableResources } from "./workspace";
@@ -358,8 +359,21 @@ export function App() {
           <strong>Preflight</strong>
           <span className="version">0.1</span>
         </div>
-        <div className="workspace-selector">
-          <span className="nav-label">Workspace</span>
+        <div className="ws-switcher">
+          <span className="ws-avatar" aria-hidden="true">
+            {global ? <Globe size={16} /> : initials(active?.name ?? "?")}
+          </span>
+          <span className="ws-text">
+            <strong>{global ? "Global" : (active?.name ?? "Project")}</strong>
+            <small>
+              {global
+                ? "Shared by every project"
+                : w.snapshot?.config
+                  ? `Profile · ${w.snapshot.config.activeProfile}`
+                  : "Not initialized"}
+            </small>
+          </span>
+          <ChevronsUpDown size={15} />
           <select
             aria-label="Configuration workspace"
             disabled={!!w.busy}
@@ -381,15 +395,12 @@ export function App() {
               </optgroup>
             )}
           </select>
-          <small>
-            {global ? <Globe size={12} /> : <Layers size={12} />}
-            {global
-              ? "Shared by every project"
-              : w.snapshot?.config
-                ? `Profile · ${w.snapshot.config.activeProfile}`
-                : "Not initialized"}
-          </small>
         </div>
+        <button className="sidebar-search" onClick={() => setPalette(true)}>
+          <Search size={14} />
+          <span>Search</span>
+          <kbd>{mod}K</kbd>
+        </button>
         <nav aria-label="Main navigation">
           {groups.map((group) => (
             <div className="nav-group" key={group.label}>
@@ -428,11 +439,14 @@ export function App() {
             disabled={!!w.busy}
             onClick={() => navigate("account")}
           >
-            <span className="account-avatar" aria-hidden="true">
+            <span
+              className={`account-avatar ${account?.connected ? "online" : ""}`}
+              aria-hidden="true"
+            >
               {account?.connected && account.user ? (
                 initials(account.user.name)
               ) : (
-                <CircleUserRound size={17} />
+                <CircleUserRound size={16} />
               )}
             </span>
             <span>
@@ -447,49 +461,36 @@ export function App() {
                   : "Sign in to collaborate"}
               </small>
             </span>
-            <span
-              className={`status-dot ${account?.connected ? "online" : ""}`}
-              aria-hidden="true"
-            />
+            <ChevronRight size={15} />
           </button>
-          <div className="sidebar-utilities">
-            <button
-              className="command-shortcut"
-              onClick={() => setPalette(true)}
-            >
-              <Search size={14} />
-              <span>Quick navigation</span>
-              <kbd>{mod}K</kbd>
-            </button>
-            <button
-              className="theme-toggle"
-              onClick={cycle}
-              aria-label={`Theme: ${theme}. Switch theme`}
-              title={`Theme: ${theme}`}
-            >
-              <ThemeIcon size={15} />
-            </button>
-          </div>
         </div>
       </aside>
       <main className="main">
         <header className="toolbar">
-          <div className="toolbar-title">
-            <current.icon size={19} />
-            <h1>{current.label}</h1>
+          <nav className="breadcrumb" aria-label="Breadcrumb">
             <span className="toolbar-project">
               {global ? "Global" : active?.name}
             </span>
-          </div>
+            <ChevronRight size={14} />
+            <h1>{current.label}</h1>
+          </nav>
           <div className="toolbar-actions">
             {w.busy ? (
               <Busy label={w.busy} />
             ) : (
               <span className="saved-state">
-                <Check size={13} />
+                <i aria-hidden="true" />
                 Up to date
               </span>
             )}
+            <Button
+              variant="ghost"
+              aria-label={`Theme: ${theme}. Switch theme`}
+              title={`Theme: ${theme}`}
+              onClick={cycle}
+            >
+              <ThemeIcon size={16} />
+            </Button>
             <Button
               variant="ghost"
               aria-label="Refresh workspace"
@@ -499,13 +500,14 @@ export function App() {
             >
               <RefreshCw size={16} />
             </Button>
+            <span className="toolbar-divider" aria-hidden="true" />
             <Button
               aria-label="Open project folder"
               title={`Open project (${mod}O)`}
               disabled={!!w.busy}
               onClick={() => void w.chooseProject()}
             >
-              <FolderOpen size={16} />
+              <FolderOpen size={15} />
               <span>Open project</span>
             </Button>
           </div>

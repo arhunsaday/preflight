@@ -55,7 +55,6 @@ export function ContextMap({ workspace: w }: { workspace: Workspace }) {
             not a live session monitor.
           </p>
         </div>
-        <Badge tone="blue">Context map</Badge>
       </div>
       <div className="context-controls">
         <label>

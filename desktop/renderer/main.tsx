@@ -1,7 +1,8 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app";
-import "@fontsource-variable/manrope";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import "./styles.css";
 // Apply a pinned theme before the first paint so the window never flashes.
 try {
