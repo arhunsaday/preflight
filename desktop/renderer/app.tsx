@@ -22,6 +22,7 @@ import {
   Command,
   Rocket,
   LayoutDashboard,
+  Map as MapIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useWorkspace, availableResources } from "./workspace";
@@ -35,6 +36,7 @@ import {
   Loadouts,
   Activity,
 } from "./views/configuration";
+import { ContextMap } from "./views/context-map";
 import { Benchmarks } from "./views/benchmarks";
 import { Collaboration, Team, Account } from "./views/collaboration";
 import { Console } from "./views/console";
@@ -105,6 +107,7 @@ export function App() {
       label: "Improve",
       items: [
         { id: "loadouts", label: "Loadouts", icon: Layers },
+        { id: "context", label: "Context map", icon: MapIcon },
         { id: "benchmarks", label: "Benchmarks", icon: FlaskConical },
         {
           id: "doctor",
@@ -373,6 +376,8 @@ export function App() {
             <Profiles workspace={w} />
           ) : view === "loadouts" ? (
             <Loadouts workspace={w} />
+          ) : view === "context" ? (
+            <ContextMap key={resourceKey} workspace={w} />
           ) : view === "benchmarks" ? (
             <Benchmarks workspace={w} />
           ) : view === "activity" ? (

@@ -1,3 +1,13 @@
+## Mise à jour du 6 octobre 2026 — carte du contexte
+
+Desktop : **Improve → Context map**, treemap par type avec surfaces proportionnelles, zoom par catégorie, inspection, liste triée, recherche et filtres agent/global/projet. Deux scénarios : catalogue des skills ou instructions complètes si chargées. Calcul partagé `src/context-map.ts`, `ceil(characters / 4)` par contribution, aucune prétention de mesure de session réelle. MCP et autres contributions runtime inconnues affichées séparément ; aucun serveur démarré. Ressources désactivées exclues du total, profil projet prioritaire à ID égal. Les résultats du catalogue de découverte ne font pas partie de l'inventaire.
+
+CLI : `adk context [--mode potential|catalogue] [--agent claude-code|cursor] [--scope global|project]`, compatible `--global` et profil absent. Rapport JSON sans configuration ni credentials. Correction des doublons globaux détectés via les vrais targets d'adapters : `AdkService.unmanaged(inherited)` utilisé par le CLI et le snapshot desktop.
+
+Validation locale : `npm run check` (131 tests, lint/typecheck et build), `npm run desktop:check`, `npm run desktop:smoke` (carte, détail MCP, zoom, liste/filtres et viewport compact en plus des scénarios existants), et `npm --prefix docs run build` passent. Captures inspectées dans `/private/var/folders/d8/q7brvp314z343wfb046350yh0000gn/T/preflight-smoke-RHpHfi`. Doc : `docs/docs/context-map.md`.
+
+Limite explicite : ni schémas MCP ni réponses d'outils ni historique/session native ne sont capturés. Une extension de mesure runtime pourrait les intégrer ultérieurement ; les coûts inconnus ne sont pas transformés en zéros ni en surfaces fictives.
+
 ## Mise à jour du 5 octobre 2026 — équipes et identité visuelle
 
 La CI complète du commit équipes/UI `720af1a` est verte (https://github.com/arhunsaday/preflight/actions/runs/37344158861), comme celle du socle `2d85366` : backend Cloudflare, Node 22/24, docs, packages et parcours Electron macOS/Windows/Linux. Wrangler est désormais verrouillé dans package-lock ; le smoke tue son groupe de processus, ce qui résout le blocage Linux. Les liens nouveaux ont 16 caractères aléatoires, les anciens restent compatibles.

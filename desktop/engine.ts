@@ -48,10 +48,24 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     },
     null,
   );
+  const inherited = context.globalOnly
+    ? []
+    : await safe(
+        "Global configuration",
+        () =>
+          new ConfigStore(join(context.home, ".adk", "global"))
+            .resources()
+            .catch((e) => {
+              if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+              throw e;
+            }),
+        [],
+      );
   const [detected, findings, usage, loadouts, benches] = await Promise.all([
     safe(
       "Detected resources",
-      async () => (await service.unmanaged()).map((entry) => entry.resource),
+      async () =>
+        (await service.unmanaged(inherited)).map((entry) => entry.resource),
       [],
     ),
     safe("Doctor", () => service.doctor(), []),
@@ -104,19 +118,6 @@ export async function snapshot(context: Context): Promise<Snapshot> {
       [],
     ),
   ]);
-  const inherited = context.globalOnly
-    ? []
-    : await safe(
-        "Global configuration",
-        () =>
-          new ConfigStore(join(context.home, ".adk", "global"))
-            .resources()
-            .catch((e) => {
-              if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
-              throw e;
-            }),
-        [],
-      );
   return {
     root: context.root,
     home: context.home,

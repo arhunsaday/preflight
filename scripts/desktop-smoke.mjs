@@ -1,6 +1,12 @@
 import { localD1 } from "./local-d1.mjs";
 import { _electron as electron } from "@playwright/test";
-import { mkdtemp, mkdir, readFile, realpath } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  realpath,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -377,6 +383,82 @@ try {
     .getByRole("heading", { name: "Inherited global configuration" })
     .waitFor();
   await page.screenshot({ path: join(temporary, "overview.png") });
+  const contextConfigPath = join(project, "adk.config.json");
+  const contextConfigBefore = await readFile(contextConfigPath, "utf8");
+  const contextConfig = JSON.parse(contextConfigBefore);
+  contextConfig.profiles[contextConfig.activeProfile].resources.push(
+    ...[
+      ["skill", "Code review", 8000],
+      ["prompt", "Project instructions", 4000],
+      ["subagent", "Research agent", 2400],
+      ["command", "Release checklist", 800],
+    ].map(([type, name, characters]) => ({
+      id: `${type}:context-smoke`,
+      type,
+      name,
+      description: "Context map smoke fixture",
+      source: "local:smoke",
+      scope: "project",
+      harnesses: ["claude-code"],
+      enabled: true,
+      config: {},
+      tags: [],
+      content: "x".repeat(characters),
+    })),
+  );
+  await writeFile(contextConfigPath, JSON.stringify(contextConfig));
+  await page
+    .getByRole("button", { name: "Refresh workspace", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Context map", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "See the weight of your setup" })
+    .waitFor();
+  await page
+    .getByRole("button", { name: "global-server", exact: false })
+    .click();
+  await page
+    .getByText("Tool schemas and responses are not available", { exact: false })
+    .waitFor();
+  await page
+    .locator(".context-page")
+    .evaluate((element) => (element.scrollTop = 0));
+  await page.screenshot({ path: join(temporary, "context-map.png") });
+  await page
+    .locator(".context-group-title")
+    .filter({ hasText: "Skills" })
+    .click();
+  assert.equal(await page.locator(".context-tree-group").count(), 1);
+  await page
+    .getByRole("button", { name: "All resources", exact: true })
+    .click();
+  assert.equal(await page.locator(".context-tree-group").count(), 4);
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page
+    .getByRole("columnheader", { name: "Estimated tokens", exact: true })
+    .waitFor();
+  await page
+    .getByRole("combobox", { name: "Scenario", exact: true })
+    .selectOption("catalogue");
+  await page
+    .getByRole("combobox", { name: "Scope", exact: true })
+    .selectOption("project");
+  await page
+    .getByRole("button", { name: "Reset context filters", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Map", exact: true }).click();
+  await page.setViewportSize({ width: 900, height: 700 });
+  if (
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
+  )
+    throw new Error("Context map overflows at compact width");
+  await page.screenshot({ path: join(temporary, "context-compact.png") });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await writeFile(contextConfigPath, contextConfigBefore);
+  await page
+    .getByRole("button", { name: "Refresh workspace", exact: true })
+    .click();
+
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("button", { name: "Discover resources", exact: true })

@@ -77,6 +77,8 @@ export const commandGroups = [
       "doctor",
       "doctor --connect",
       "usage",
+      "context --mode potential",
+      "context --mode catalogue --agent claude-code",
       "prune",
       "bench scaffold --repo <path> --revision <sha>",
       "bench run --config current --tasks <path> --name <name>",

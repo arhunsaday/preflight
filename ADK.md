@@ -251,3 +251,7 @@ adk ui --global
 ```
 
 Resources created in the global workspace must use `scope: global`. Project resources remain in their own stores. Online discovery is separate from the bundled catalogue in desktop, with explicit sources, errors and a configuration step before installation.
+
+### Context map
+
+The desktop **Improve → Context map** shows a proportional treemap of available instructions, with category zoom, resource details, agent/scope filters and a sorted list. `adk context [--mode potential|catalogue] [--agent claude-code|cursor] [--scope global|project]` produces the same local character estimates. Unknown MCP/runtime contributions remain explicit; this does not measure a live conversation. See [context map](docs/docs/context-map.md).

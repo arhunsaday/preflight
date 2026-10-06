@@ -2356,3 +2356,329 @@ details > summary {
 .account-chip small {
   overflow-wrap: anywhere;
 }
+
+/* Context atlas: proportional areas, explicit unknowns, a quiet inspection rail. */
+.context-controls {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.context-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #506577;
+}
+.context-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-top: 1px solid #ced9dc;
+  padding-top: 16px;
+}
+.context-summary strong {
+  font-size: 30px;
+  color: #172f3f;
+  margin-right: 8px;
+}
+.context-summary span,
+.context-method {
+  color: #506577;
+  font-size: 12px;
+}
+.context-summary div span {
+  display: block;
+}
+.context-method {
+  max-width: 100ch;
+  line-height: 1.6;
+  margin: 12px 0 20px;
+}
+.context-map-toolbar,
+.context-map-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.context-map-toolbar {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.context-disabled {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-right: 8px;
+}
+.context-disabled input {
+  width: auto;
+}
+.context-explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  border: 1px solid #ced9dc;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.context-main {
+  min-width: 0;
+  padding: 12px;
+  background: #e3eaeb;
+}
+.context-tree {
+  position: relative;
+  height: 480px;
+  width: 100%;
+  background: #172f3f;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.context-tree-group {
+  position: absolute;
+  border: 2px solid #e3eaeb;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.context-color-skill {
+  background: #245e68;
+}
+.context-color-prompt {
+  background: #654939;
+}
+.context-color-subagent {
+  background: #44556f;
+}
+.context-color-command {
+  background: #3f6050;
+}
+.context-group-title {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  height: 24px;
+  text-align: left;
+  background: transparent;
+  color: white;
+  padding: 2px 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.context-group-title span {
+  opacity: 0.8;
+}
+.context-tile {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0;
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: left;
+  padding: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.context-tile:hover {
+  background: rgba(255, 255, 255, 0.17);
+}
+.context-tile.selected,
+.context-tile:focus-visible {
+  outline: 3px solid #f7c875;
+  outline-offset: -3px;
+  z-index: 2;
+}
+.context-tile strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+.context-tile span,
+.context-tile small {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.context-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.context-legend button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  background: transparent;
+  font-size: 12px;
+  color: #172f3f;
+}
+.context-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.context-detail {
+  min-width: 0;
+  padding: 20px;
+  background: #f8fbfa;
+  border-left: 1px solid #ced9dc;
+}
+.context-detail h3 {
+  margin: 12px 0 6px;
+  overflow-wrap: anywhere;
+}
+.context-detail code {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.context-detail p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #506577;
+}
+.context-detail-total {
+  margin: 22px 0 12px;
+  font-size: 32px;
+  font-weight: 600;
+  color: #176b68;
+}
+.context-detail-total span {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #506577;
+}
+.context-detail dl {
+  display: grid;
+  grid-template-columns: 1fr;
+  font-size: 12px;
+  gap: 4px;
+  padding-top: 14px;
+  border-top: 1px solid #ced9dc;
+}
+.context-detail dt {
+  color: #506577;
+  margin-top: 8px;
+}
+.context-detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.context-detail h4 {
+  font-size: 13px;
+  margin-top: 24px;
+}
+.context-unknown {
+  margin-top: 20px;
+}
+.context-unknown h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.context-unknown p {
+  color: #506577;
+  font-size: 12px;
+}
+.context-unknown > button {
+  width: 100%;
+  display: flex;
+  text-align: left;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  margin-top: 4px;
+  background: #f8fbfa;
+  color: #172f3f;
+}
+.context-unknown button span {
+  color: #506577;
+  font-size: 12px;
+}
+.context-unknown button .badge {
+  margin-left: auto;
+}
+.context-table {
+  overflow: auto;
+  background: #f8fbfa;
+}
+.context-table table {
+  width: 100%;
+  font-size: 12px;
+}
+.context-table td button {
+  text-align: left;
+  background: transparent;
+  color: #172f3f;
+}
+.context-table td small {
+  display: block;
+  color: #506577;
+}
+.context-map-toolbar button[aria-pressed="true"],
+.context-table button[aria-pressed="true"],
+.context-unknown button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px #176b68;
+}
+@media (max-width: 1100px) {
+  .context-explorer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .context-detail {
+    border-left: 0;
+    border-top: 1px solid #ced9dc;
+  }
+  .context-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .context-tree {
+    height: 420px;
+  }
+}
+@media (max-width: 650px) {
+  .context-controls {
+    grid-template-columns: 1fr;
+  }
+  .context-summary {
+    flex-direction: column;
+  }
+  .context-map-toolbar > div {
+    flex-wrap: wrap;
+  }
+}
+
+.context-tile small {
+  color: #fff;
+  opacity: 0.85;
+}
+.context-unknown > button {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.context-map-toolbar .context-disabled {
+  flex-direction: row;
+}
+.context-disabled > input {
+  width: 14px;
+  height: 14px;
+}
+.context-legend button {
+  border: 0;
+  border-radius: 4px;
+}
+.context-group-title {
+  border: 0;
+}

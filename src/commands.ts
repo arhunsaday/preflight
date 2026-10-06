@@ -1,8 +1,10 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { readFile, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { verifyResource } from "./verify.js";
+import { ConfigStore } from "./state.js";
+import { buildContextReport, contextResources } from "./context-map.js";
 import { AdkService } from "./service.js";
 import { type Context } from "./adapters.js";
 import {
@@ -362,6 +364,36 @@ export async function execute(
       return { plan, output, detected: await service().detect() };
     },
   ).option("--execute", "run the package manager");
+  command(
+    "context",
+    "Estimate available instruction context; MCP runtime contributions remain unknown",
+    async (options) => {
+      const read = async (store: ConfigStore) =>
+        store.resources().catch((error) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw error;
+        });
+      const owned = await read(service().store);
+      const inherited = ctx().globalOnly
+        ? []
+        : await read(new ConfigStore(join(ctx().home, ".adk", "global")));
+      const detected = (await service().unmanaged(inherited))
+        .map((entry) => entry.resource)
+        .filter((r) => !ctx().globalOnly || r.scope === "global");
+      return buildContextReport(contextResources(detected, inherited, owned), {
+        mode: options.mode,
+        ...(options.agent ? { harness: options.agent } : {}),
+        ...(options.scope ? { scope: options.scope } : {}),
+      });
+    },
+  )
+    .addOption(
+      new Option("--mode <scenario>")
+        .choices(["potential", "catalogue"])
+        .default("potential"),
+    )
+    .addOption(new Option("--agent <agent>").choices(["claude-code", "cursor"]))
+    .addOption(new Option("--scope <scope>").choices(["global", "project"]));
   command(
     "usage",
     "Measure observed skill and MCP invocation counts",

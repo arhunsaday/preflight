@@ -254,8 +254,11 @@ export class AdkService {
     };
   }
   /** Detected resources the active profile does not manage. */
-  async unmanaged() {
-    const desired = await this.list().catch(() => [] as Resource[]);
+  async unmanaged(inherited: Resource[] = []) {
+    const desired = [
+      ...inherited,
+      ...(await this.list().catch(() => [] as Resource[])),
+    ];
     const adapters = createAdapters(this.context);
     const claimed = new Set<string>();
     for (const resource of desired)
