@@ -3538,3 +3538,112 @@ mark {
     transition: none !important;
   }
 }
+
+/* Duotone accents: resource identity is colourful; the shell and actions stay neutral. */
+:root {
+  --tone-lift: 0%;
+}
+:root[data-theme="dark"] {
+  --tone-lift: 36%;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tone-lift: 36%;
+  }
+}
+[data-tone="blue"] {
+  --tone-ink: #3265ad;
+}
+[data-tone="teal"] {
+  --tone-ink: #237c82;
+}
+[data-tone="violet"] {
+  --tone-ink: #7356b4;
+}
+[data-tone="amber"] {
+  --tone-ink: #946420;
+}
+[data-tone="green"] {
+  --tone-ink: #347552;
+}
+[data-tone="rose"] {
+  --tone-ink: #a34e71;
+}
+.semantic-icon,
+.semantic-badge,
+.resource-row .resource-glyph[data-tone],
+.detail-glyph[data-tone] {
+  color: color-mix(in srgb, var(--tone-ink), var(--text) var(--tone-lift));
+}
+.resource-row .resource-glyph[data-tone],
+.detail-glyph[data-tone] {
+  background: color-mix(in srgb, var(--tone-ink) 9%, var(--surface));
+  border-color: color-mix(in srgb, var(--tone-ink) 13%, var(--surface));
+  box-shadow: none;
+}
+.resource-glyph[data-tone] svg {
+  width: 20px;
+  height: 20px;
+}
+.detail-glyph[data-tone] svg {
+  width: 27px;
+  height: 27px;
+}
+.semantic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  min-height: 21px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone-ink) 10%, var(--surface));
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 19px;
+  white-space: nowrap;
+}
+.harness-badge.compact {
+  padding: 0 5px;
+  min-height: 19px;
+  font-size: 10.5px;
+  line-height: 17px;
+}
+.row-meta .row-harnesses {
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.row-meta .harness-badge,
+.metadata-grid .harness-badge {
+  color: color-mix(in srgb, var(--tone-ink), var(--text) var(--tone-lift));
+}
+.metadata-grid .harness-badge > span {
+  color: inherit;
+  font-size: inherit;
+}
+.nav-item .nav-count:not(.alert) {
+  background: var(--surface-3);
+  color: var(--text-2);
+  border-radius: 999px;
+  min-width: 22px;
+  padding: 1px 6px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 17px;
+}
+.badge {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.badge.info,
+.badge.green,
+.badge.amber,
+.badge.orange,
+.badge.red {
+  border-color: transparent;
+}
+
+.metadata-grid .harness-badge > span {
+  display: inline;
+  margin-bottom: 0;
+}

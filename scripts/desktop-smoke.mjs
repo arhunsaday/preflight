@@ -163,7 +163,33 @@ try {
   );
   await page.getByRole("button", { name: /^Skills/ }).click();
   await page.getByRole("heading", { name: "ponytail", exact: true }).waitFor();
+  await page
+    .getByRole("button", { name: "Theme: system. Switch theme", exact: true })
+    .click();
+  await page.locator('html[data-theme="light"]').waitFor();
+  assert.ok(
+    (await page.locator('.nav-semantic-icon [opacity="0.2"]').count()) > 0,
+    "Navigation uses real duotone layers",
+  );
+  assert.ok((await page.locator(".resource-glyph .semantic-icon").count()) > 0);
+  assert.ok((await page.locator(".row-harnesses .harness-badge").count()) > 0);
   await page.screenshot({ path: join(temporary, "skills.png") });
+  await page.screenshot({
+    path: join(temporary, "duotone-light.png"),
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Theme: light. Switch theme", exact: true })
+    .click();
+  await page.locator('html[data-theme="dark"]').waitFor();
+  await page.screenshot({
+    path: join(temporary, "duotone-dark.png"),
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Theme: dark. Switch theme", exact: true })
+    .click();
+
   await page.getByRole("button", { name: "More resource actions" }).click();
   await page.getByRole("menuitem", { name: "Move to global" }).click();
   await page

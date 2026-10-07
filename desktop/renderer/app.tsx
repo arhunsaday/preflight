@@ -51,6 +51,7 @@ import { Benchmarks } from "./views/benchmarks";
 import { Collaboration, Team, Account } from "./views/collaboration";
 import { Console } from "./views/console";
 import { Button, Busy, Dialog, Notice, Toasts } from "./components/ui";
+import { NavigationIcon } from "./components/semantic-icons";
 import { Preview } from "./components/preview";
 import { OutcomeDialog } from "./components/outcome";
 import { CommandPalette, type PaletteEntry } from "./components/palette";
@@ -436,7 +437,7 @@ export function App() {
                     item.key ? `${item.label} (${mod}${item.key})` : undefined
                   }
                 >
-                  <item.icon size={16} />
+                  <NavigationIcon id={item.id} fallback={item.icon} />
                   <span>{item.label}</span>
                   {item.count !== undefined &&
                     (item.count > 0 || item.id !== "doctor") && (

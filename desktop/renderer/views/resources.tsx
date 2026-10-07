@@ -4,7 +4,6 @@ import {
   Plus,
   Layers,
   Plug,
-  Terminal,
   ArrowUpRight,
   Copy,
   Globe,
@@ -35,9 +34,13 @@ import {
   Notice,
 } from "../components/ui";
 import { isTyping, plural, tildify } from "../format";
+import {
+  ResourceIcon,
+  ResourceBadge,
+  HarnessBadge,
+  resourceAppearance,
+} from "../components/semantic-icons";
 import { ResourceForm } from "../components/resource-form";
-const iconFor = (type: string) =>
-  type === "skill" ? Layers : type === "mcp" ? Plug : Terminal;
 /** First free "<id>-copy", "<id>-copy-2", … so Duplicate never collides. */
 const copyId = (id: string, taken: Set<string>) => {
   let candidate = `${id}-copy`;
@@ -113,7 +116,6 @@ export function Resources({
     mode === "installed" &&
     !!resource &&
     !w.snapshot?.resources.some((r) => r.id === resource.id);
-  const Icon = iconFor(resource?.type ?? type ?? "skill");
   const usage = resource
     ? Object.entries(w.snapshot?.usage?.invocations ?? {}).reduce(
         (total, [key, count]) =>
@@ -411,7 +413,6 @@ export function Resources({
           </div>
           <div className="list-scroll" ref={listRef}>
             {items.map((r) => {
-              const RowIcon = iconFor(r.type);
               return (
                 <button
                   key={r.id}
@@ -420,8 +421,11 @@ export function Resources({
                   className={`resource-row ${resource?.id === r.id ? "selected" : ""}`}
                   onClick={() => select(r)}
                 >
-                  <div className={`resource-glyph ${r.type}`}>
-                    <RowIcon size={19} />
+                  <div
+                    className={`resource-glyph ${r.type}`}
+                    data-tone={resourceAppearance[r.type].tone}
+                  >
+                    <ResourceIcon type={r.type} size={20} />
                   </div>
                   <div className="resource-row-body">
                     <div className="resource-row-title">
@@ -443,12 +447,10 @@ export function Resources({
                         )}{" "}
                         {r.scope === "project" ? "Project" : "Global"}
                       </span>
-                      <span>
-                        {r.harnesses
-                          .map((h) =>
-                            h === "claude-code" ? "Claude" : "Cursor",
-                          )
-                          .join(", ")}
+                      <span className="row-harnesses">
+                        {r.harnesses.map((h) => (
+                          <HarnessBadge key={h} harness={h} compact />
+                        ))}
                       </span>
                     </div>
                   </div>
@@ -521,12 +523,15 @@ export function Resources({
           {resource ? (
             <>
               <div className="detail-header">
-                <div className={`detail-glyph ${resource.type}`}>
-                  <Icon size={27} />
+                <div
+                  className={`detail-glyph ${resource.type}`}
+                  data-tone={resourceAppearance[resource.type].tone}
+                >
+                  <ResourceIcon type={resource.type} size={27} />
                 </div>
                 <div className="detail-heading">
                   <div className="detail-badges">
-                    <Badge tone="blue">{resource.type}</Badge>
+                    <ResourceBadge type={resource.type} />
                     <Badge>{resource.scope}</Badge>
                     {mode === "installed" && (
                       <Badge
@@ -674,7 +679,9 @@ export function Resources({
                                 act([
                                   "update-json",
                                   resource.id,
-                                  JSON.stringify({ enabled: !resource.enabled }),
+                                  JSON.stringify({
+                                    enabled: !resource.enabled,
+                                  }),
                                 ])
                               }
                             >
@@ -768,9 +775,7 @@ export function Resources({
                         <span>Available in</span>
                         <div className="harness-list">
                           {resource.harnesses.map((h) => (
-                            <Badge key={h}>
-                              {h === "claude-code" ? "Claude Code" : "Cursor"}
-                            </Badge>
+                            <HarnessBadge key={h} harness={h} />
                           ))}
                         </div>
                       </div>
