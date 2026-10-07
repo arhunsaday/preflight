@@ -399,18 +399,15 @@ legend {
   letter-spacing: -0.2px;
 }
 .brand-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
 }
-.brand-mark img {
-  display: block;
-  width: 31px;
-  height: 31px;
-  max-width: none;
+.brand-mark rect {
+  fill: var(--primary);
+}
+.brand-mark g {
+  stroke: var(--on-primary);
 }
 .version {
   font-size: 11px;

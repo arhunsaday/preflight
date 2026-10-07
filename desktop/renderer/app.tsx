@@ -56,7 +56,29 @@ import { OutcomeDialog } from "./components/outcome";
 import { CommandPalette, type PaletteEntry } from "./components/palette";
 import type { DesktopCommand } from "../protocol";
 
-const preflightIcon = new URL("../assets/icon.svg", import.meta.url).href;
+/** The app icon's plane, redrawn for 28px: cropped tight, heavier stroke, theme ink. */
+function BrandMark() {
+  return (
+    <svg
+      className="brand-mark"
+      viewBox="100 100 824 824"
+      width={28}
+      height={28}
+      aria-hidden="true"
+    >
+      <rect x="100" y="100" width="824" height="824" rx="210" />
+      <g
+        fill="none"
+        strokeWidth="64"
+        transform="translate(512 512) scale(0.84) translate(-512 -512)"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M742,274 L670,474 L714,654 L656,712 L556,514 L444,626 L452,706 L406,752 L350,646 L244,590 L290,544 L370,552 L482,440 L284,340 L342,282 L522,326 L722,254 Z" />
+      </g>
+    </svg>
+  );
+}
 const mod = navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl+";
 
 interface NavItem {
@@ -353,9 +375,7 @@ export function App() {
     <div className={`app-shell ${w.busy ? "is-busy" : ""}`}>
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">
-            <img src={preflightIcon} alt="" width={30} height={30} />
-          </span>
+          <BrandMark />
           <strong>Preflight</strong>
           <span className="version">0.1</span>
         </div>
