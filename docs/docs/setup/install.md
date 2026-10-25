@@ -5,8 +5,8 @@ sidebar_position: 1
 # Install
 
 ```bash
-git clone https://github.com/arhunsaday/ai-dev-kit ~/Repos/ai-dev-kit
-cd ~/Repos/ai-dev-kit
+git clone https://github.com/arhunsaday/preflight ~/Repos/preflight
+cd ~/Repos/preflight
 ./bootstrap.sh
 ```
 
@@ -32,7 +32,7 @@ The script never destroys anything:
 | --- | --- |
 | Destination is free | link it |
 | Destination is a real file | warn, leave it, exit 1 |
-| `--force` | move it to `~/.claude/backups/ai-dev-kit-<timestamp>/`, then link |
+| `--force` | move it to `~/.claude/backups/preflight-<timestamp>/`, then link |
 | Destination links somewhere else | leave it alone |
 | Kit file is empty or `.gitkeep` | skip — scaffolding must not shadow real config |
 | You already have `settings.json` | **never** overwritten, not even with `--force` |

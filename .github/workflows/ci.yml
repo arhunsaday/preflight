@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  adk:
+  preflight:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,7 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - name: Worker bundle is browser compatible
-        run: npx esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=/tmp/adk-worker.js
+        run: npx esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=/tmp/preflight-worker.js
       - name: CLI starts from the built package
         run: node dist/cli.js --help
       - run: npm pack --dry-run

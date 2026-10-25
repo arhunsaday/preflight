@@ -88,7 +88,7 @@ export async function applyFiles(
   }
   if (options.dryRun || !files.length)
     return { files, dryRun: !!options.dryRun };
-  const dir = join(root, ".adk");
+  const dir = join(root, ".preflight");
   await safePath(dir);
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const mutex = join(dir, "write.lock");
@@ -106,7 +106,7 @@ export async function applyFiles(
   try {
     if ((await pendingTransactions(root)).length)
       throw new Error(
-        "Interrupted transaction found; run adk recover before writing",
+        "Interrupted transaction found; run preflight recover before writing",
       );
     for (const file of files)
       if ((await readText(file.path)) !== file.before)
@@ -145,10 +145,10 @@ export async function applyFiles(
   return { id: journal.id, files, dryRun: false };
 }
 export async function rollback(root: string, dryRun = false) {
-  const id = (await readText(join(root, ".adk", "latest")))?.trim();
+  const id = (await readText(join(root, ".preflight", "latest")))?.trim();
   if (!id || !/^[a-f0-9-]+$/.test(id))
     throw new Error("No transaction to roll back");
-  const path = join(root, ".adk", "transactions", `${id}.json`);
+  const path = join(root, ".preflight", "transactions", `${id}.json`);
   const journal = Journal.parse(JSON.parse((await readText(path))!));
   if (journal.status !== "complete")
     throw new Error("Transaction is not complete");
@@ -167,7 +167,7 @@ export const jsonText = (value: unknown) =>
   JSON.stringify(value, null, 2) + "\n";
 
 async function pendingTransactions(root: string) {
-  const directory = join(root, ".adk", "transactions");
+  const directory = join(root, ".preflight", "transactions");
   let names: string[];
   try {
     names = await readdir(directory);
@@ -196,7 +196,7 @@ export async function recover(root: string, dryRun = false) {
     }
   if (dryRun)
     return { files: changes, transactions: pending.map((p) => p.journal.id) };
-  const dir = join(root, ".adk");
+  const dir = join(root, ".preflight");
   await safePath(dir);
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const mutex = join(dir, "write.lock");

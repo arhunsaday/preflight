@@ -2,7 +2,7 @@
 name: lgtm-observability
 description: Query and operate the Grafana LGTM stack — Prometheus/Mimir metrics, Loki logs, Tempo traces, and Alloy collectors. PromQL and LogQL patterns, correlating the three signals, and instrumenting a service so it is diagnosable. Use when investigating an incident, writing a dashboard or alert rule, configuring Alloy, or when a service has no useful telemetry.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: medium
 writes_files: true

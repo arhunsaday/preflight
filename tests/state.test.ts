@@ -21,7 +21,7 @@ const skill = (overrides: Partial<Resource> = {}): Resource => ({
 
 describe("ConfigStore", () => {
   it("supports create, update, scope move, and delete without losing the previous file", async () => {
-    const root = await mkdtemp(join(tmpdir(), "adk-state-"));
+    const root = await mkdtemp(join(tmpdir(), "preflight-state-"));
     const store = new ConfigStore(root);
     await store.init();
     await store.create(skill());
@@ -32,16 +32,16 @@ describe("ConfigStore", () => {
     await store.remove("skill:tdd");
     await expect(store.get("skill:tdd")).rejects.toThrow(/not found/i);
     expect(
-      JSON.parse(await readFile(join(root, "adk.config.json.bak"), "utf8")),
+      JSON.parse(await readFile(join(root, "preflight.config.json.bak"), "utf8")),
     ).toBeTruthy();
   });
 
   it("never overwrites an invalid config", async () => {
-    const root = await mkdtemp(join(tmpdir(), "adk-invalid-"));
-    await writeFile(join(root, "adk.config.json"), "{bad json");
+    const root = await mkdtemp(join(tmpdir(), "preflight-invalid-"));
+    await writeFile(join(root, "preflight.config.json"), "{bad json");
     const store = new ConfigStore(root);
     await expect(store.init()).rejects.toThrow();
-    expect(await readFile(join(root, "adk.config.json"), "utf8")).toBe(
+    expect(await readFile(join(root, "preflight.config.json"), "utf8")).toBe(
       "{bad json",
     );
   });

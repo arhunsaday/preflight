@@ -8,12 +8,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it, expect } from "vitest";
-import { AdkService } from "../src/service.js";
+import { PreflightService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
 import { installationPlan } from "../src/operations.js";
 async function setup() {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-plugin-"));
-  return new AdkService({ root, home: join(root, "home") });
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-plugin-"));
+  return new PreflightService({ root, home: join(root, "home") });
 }
 const plugin = () =>
   ResourceSchema.parse({

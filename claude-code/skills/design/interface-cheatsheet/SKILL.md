@@ -2,7 +2,7 @@
 name: interface-cheatsheet
 description: Concrete, checkable interface rules for building or reviewing UI — border radius, optical alignment, animation, typography, color tokens, accessibility, layout and microcopy. Use when writing frontend components, reviewing a UI diff, fixing something that "looks off" but you cannot name why, or setting up a design system's tokens.
 source:
-  upstream: hand-authored in ai-dev-kit, rules from https://interfaces.dev/cheat-sheet
+  upstream: hand-authored in preflight, rules from https://interfaces.dev/cheat-sheet
   imported: 2026-09-20
 risk_level: low
 writes_files: false

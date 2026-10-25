@@ -3,7 +3,7 @@ import { resolveEnvironment, verifyResource } from "../src/verify.js";
 import { ResourceSchema } from "../src/schema.js";
 it("requires referenced environment variables before connecting", () => {
   expect(() =>
-    resolveEnvironment({ env: { TOKEN: "${MISSING_ADK_TEST_TOKEN}" } }),
+    resolveEnvironment({ env: { TOKEN: "${MISSING_PREFLIGHT_TEST_TOKEN}" } }),
   ).toThrow(/MISSING/);
   expect(
     resolveEnvironment(
@@ -32,7 +32,7 @@ it("reports an MCP server the doctor could not reach, only when asked", async ()
   const { mkdtemp, realpath } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-connect-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-connect-"));
   const context = { root, home: join(root, "home") };
   await execute(["init"], context);
   await execute(
@@ -47,7 +47,7 @@ it("reports an MCP server the doctor could not reach, only when asked", async ()
         harnesses: ["claude-code"],
         config: {
           url: "https://example.com/mcp",
-          headers: { Authorization: "Bearer ${ADK_TEST_ABSENT_TOKEN}" },
+          headers: { Authorization: "Bearer ${PREFLIGHT_TEST_ABSENT_TOKEN}" },
         },
       }),
     ],

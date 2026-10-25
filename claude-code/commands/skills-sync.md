@@ -7,7 +7,7 @@ Update every skill this machine gets from someone else, then tell me what moved.
 
 Third-party skills are managed by the `skills` CLI and recorded in
 `skills-lock.json`. They are **never** edited in place — an edit is silently
-reverted by the next update. Skills I own live in `ai-dev-kit/claude-code/skills/`
+reverted by the next update. Skills I own live in `preflight/claude-code/skills/`
 and are not touched by this command.
 
 ## Steps

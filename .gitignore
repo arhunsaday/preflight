@@ -14,7 +14,7 @@ PAPERCUTS.md
 __pycache__/
 .idea/
 
-# ADK TypeScript package
+# Preflight TypeScript package
 node_modules/
 dist/
 coverage/
@@ -28,9 +28,9 @@ coverage/
 *.pem
 *.key
 
-# Local ADK state and Worker secrets
-.adk/
-adk.lock.json
+# Local Preflight state and Worker secrets
+.preflight/
+preflight.lock.json
 .dev.vars
 .wrangler/
 *.tgz

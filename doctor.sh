@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# ai-dev-kit doctor — what is installed, what is wired, what is missing.
+# preflight doctor — what is installed, what is wired, what is missing.
 #
 #   ./doctor.sh              full report
 #   ./doctor.sh --quiet      only problems (exit 1 if any)
@@ -143,7 +143,7 @@ PY
 			continue
 		}
 		case "$(readlink "$l" 2>/dev/null)" in
-		*ai-dev-kit*) mine=$((mine + 1)) ;;
+		*preflight*) mine=$((mine + 1)) ;;
 		*agents/skills*) theirs=$((theirs + 1)) ;;
 		esac
 	done
@@ -291,7 +291,7 @@ check_gaps() {
 }
 
 # ── Run ──────────────────────────────────────────────────────────────────────
-[ "$QUIET" -eq 1 ] || printf '%sai-dev-kit doctor%s  %s%s%s\n' "$B" "$O" "$D" "$KIT_ROOT" "$O"
+[ "$QUIET" -eq 1 ] || printf '%spreflight doctor%s  %s%s%s\n' "$B" "$O" "$D" "$KIT_ROOT" "$O"
 
 if [ "$ONLY" = "skills" ]; then
 	check_skills

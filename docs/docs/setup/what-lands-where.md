@@ -5,7 +5,7 @@ sidebar_position: 2
 # What lands where
 
 ```
-ai-dev-kit/                          ~/.claude/
+preflight/                          ~/.claude/
 ├── claude-code/
 │   ├── CLAUDE.md          ────────→ CLAUDE.md          (global instructions)
 │   ├── settings.json      ──✗──────  settings.json      (never overwritten — merge by hand)
@@ -40,7 +40,7 @@ statusline, merge these blocks into `~/.claude/settings.json` yourself:
 - `permissions.deny` → `.env`, `*.pem`, `*.key`, `credentials.json`
 
 ```bash
-diff ~/.claude/settings.json ~/Repos/ai-dev-kit/claude-code/settings.json
+diff ~/.claude/settings.json ~/Repos/preflight/claude-code/settings.json
 ```
 
 The `permissions.deny` block is worth merging first — it is the one that stops

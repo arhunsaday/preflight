@@ -39,7 +39,7 @@ it("runs a bounded subprocess and reports failure", async () => {
   ).toBe(7);
 });
 it("detects stack from manifests without running repo code", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-retrofit-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-retrofit-"));
   await writeFile(
     join(root, "package.json"),
     JSON.stringify({
@@ -90,7 +90,7 @@ it("benchmarks a pinned local repository in isolated checkouts", async () => {
   const { mkdir } = await import("node:fs/promises");
   const { runBench } = await import("../src/bench.js");
   const { defaultConfig } = await import("../src/schema.js");
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-bench-test-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-bench-test-"));
   const repo = join(root, "repo");
   await mkdir(repo);
   await runCommand({ command: "git", args: ["init"] }, repo);
@@ -128,7 +128,7 @@ it("benchmarks a pinned local repository in isolated checkouts", async () => {
             command: process.execPath,
             args: [
               "-e",
-              'require("fs").writeFileSync(process.env.ADK_METRICS,JSON.stringify({tokens:5,interventions:0}))',
+              'require("fs").writeFileSync(process.env.PREFLIGHT_METRICS,JSON.stringify({tokens:5,interventions:0}))',
             ],
           },
           verify: {
@@ -142,7 +142,7 @@ it("benchmarks a pinned local repository in isolated checkouts", async () => {
       ],
     }),
   );
-  const config = join(root, "adk.config.json");
+  const config = join(root, "preflight.config.json");
   await writeFile(config, JSON.stringify(defaultConfig()));
   const result = await runBench(root, "test", config, tasks);
   expect(result).toMatchObject({ results: [{ passed: true, tokens: 5 }] });

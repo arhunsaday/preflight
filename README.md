@@ -1,13 +1,14 @@
-# AI Dev Kit
+# Preflight
 
+Preflight (formerly the AI Dev Kit, or ADK) keeps an AI development setup versioned and checked: skills, hooks, slash commands, subagents, MCP configuration and project templates, plus a CLI and TUI to search, inspect, scope, share and verify them.
 
-**ADK CLI + TUI:** the TypeScript implementation is now available. See [ADK.md](ADK.md) for setup, commands, adapter support, sharing, benchmarks and current limitations, and [ACCEPTANCE.md](ACCEPTANCE.md) for what the plan asked for against what the repository does.
-My AI development setup, versioned: skills, hooks, slash commands, subagents,
+**Preflight CLI + TUI:** the TypeScript implementation is now available. See [PREFLIGHT.md](PREFLIGHT.md) for setup, commands, adapter support, sharing, benchmarks and current limitations, and [ACCEPTANCE.md](ACCEPTANCE.md) for what the plan asked for against what the repository does.
+The kit side is my own setup: skills, hooks, slash commands, subagents,
 MCP configuration, project templates, and the documentation around them.
 
 ```bash
-git clone https://github.com/arhunsaday/ai-dev-kit ~/Repos/ai-dev-kit
-cd ~/Repos/ai-dev-kit && ./bootstrap.sh
+git clone https://github.com/arhunsaday/preflight ~/Repos/preflight
+cd ~/Repos/preflight && ./bootstrap.sh
 ```
 
 Full documentation: at [https://ai.arhun.fr](https://ai.arhun.fr).
@@ -29,7 +30,7 @@ is the mistake the split prevents.
 ## Layout
 
 ```
-ai-dev-kit/
+preflight/
 ├── bootstrap.sh                 install / --project / --unlink / --dry-run
 ├── claude-code/                 → symlinked into ~/.claude/
 │   ├── CLAUDE.md                global instructions (every session, every project)

@@ -28,7 +28,7 @@ it("turns a pinned npm package into runnable stdio configuration", () => {
     }),
   ).toEqual({
     command: "npx",
-    args: ["-y", "@example/mcp@1.2.3", "--root=${ADK_ROOT}"],
+    args: ["-y", "@example/mcp@1.2.3", "--root=${PREFLIGHT_ROOT}"],
     env: { TOKEN: "${TOKEN}", MODE: "read" },
   });
 });
@@ -53,7 +53,7 @@ it("preserves SSE transport and secret header references", () => {
   ).toEqual({
     type: "sse",
     url: "https://example.com/sse",
-    headers: { Authorization: "Bearer ${ADK_TOKEN}" },
+    headers: { Authorization: "Bearer ${PREFLIGHT_TOKEN}" },
   });
 });
 it("pins Python packages and does not invent unsupported launchers", () => {

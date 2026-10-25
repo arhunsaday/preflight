@@ -2,7 +2,7 @@
 name: abrege-frere
 description: Réponses ultra-concises en français, sans préambule ni remplissage. À utiliser quand l'utilisateur dit "abrège", "abrège frère", "sois bref", "va droit au but", "mode concis", ou invoque /abrege-frere. Ne PAS activer de soi-même — c'est un mode explicite.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: low
 writes_files: false

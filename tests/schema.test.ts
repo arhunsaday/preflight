@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AdkConfigSchema, SharePayloadSchema } from "../src/schema.js";
+import { PreflightConfigSchema, SharePayloadSchema } from "../src/schema.js";
 
 describe("configuration schema", () => {
   it("accepts every supported resource type with stable identity and source", () => {
@@ -14,7 +14,7 @@ describe("configuration schema", () => {
       "statusline",
       "command",
     ];
-    const config = AdkConfigSchema.parse({
+    const config = PreflightConfigSchema.parse({
       version: 1,
       activeProfile: "default",
       profiles: {

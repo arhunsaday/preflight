@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { SharePayloadSchema, AdkConfigSchema } from "./schema.js";
+import { SharePayloadSchema, PreflightConfigSchema } from "./schema.js";
 import { shareCode, requiredEnv, previewShare } from "./sharing.js";
 interface Bindings {
   SHARES: {
@@ -101,20 +101,20 @@ app.get("/s/:code", async (c) => {
   if (!found) return c.text("Share not found or expired", 404);
   const { payload } = found;
   return c.html(
-    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="robots" content="noindex"><title>ADK share ${escape(code)}</title><style>body{max-width:850px;margin:3rem auto;padding:0 1rem;font:16px system-ui;background:#faf9f6;color:#252923}article{border-top:1px solid #ccc;padding:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eeede7;padding:1rem}textarea{width:100%;height:12rem}button{padding:.6rem 1rem}</style><h1>Inspect this setup</h1><p>Code: <strong>${escape(code)}</strong> · ${escape(payload.visibility)} · Owner: ${escape(payload.ownerId)}</p><p>Required environment variables: ${escape(requiredEnv(payload).join(", ") || "none")}</p>${payload.resources.map((r) => `<article><h2>${escape(r.name)}</h2><p>${escape(r.type)} · ${escape(r.scope)} · ${escape(r.source)}</p><pre>${escape(JSON.stringify(r, null, 2))}</pre></article>`).join("")}<h2>Compare with your setup</h2><p>Run <code>adk apply ${escape(code)} --dry-run</code> for a local comparison. Or paste a secret-free adk.config.json below; it is sent to this service for comparison.</p><form action="/s/${escape(code)}/preview" method="post"><textarea name="config" aria-label="Secret-free ADK config" required></textarea><button>Preview diff</button></form></html>`,
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="robots" content="noindex"><title>Preflight share ${escape(code)}</title><style>body{max-width:850px;margin:3rem auto;padding:0 1rem;font:16px system-ui;background:#faf9f6;color:#252923}article{border-top:1px solid #ccc;padding:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eeede7;padding:1rem}textarea{width:100%;height:12rem}button{padding:.6rem 1rem}</style><h1>Inspect this setup</h1><p>Code: <strong>${escape(code)}</strong> · ${escape(payload.visibility)} · Owner: ${escape(payload.ownerId)}</p><p>Required environment variables: ${escape(requiredEnv(payload).join(", ") || "none")}</p>${payload.resources.map((r) => `<article><h2>${escape(r.name)}</h2><p>${escape(r.type)} · ${escape(r.scope)} · ${escape(r.source)}</p><pre>${escape(JSON.stringify(r, null, 2))}</pre></article>`).join("")}<h2>Compare with your setup</h2><p>Run <code>preflight apply ${escape(code)} --dry-run</code> for a local comparison. Or paste a secret-free preflight.config.json below; it is sent to this service for comparison.</p><form action="/s/${escape(code)}/preview" method="post"><textarea name="config" aria-label="Secret-free Preflight config" required></textarea><button>Preview diff</button></form></html>`,
   );
 });
 app.post("/s/:code/preview", async (c) => {
   const found = await lookup(c.env, c.req.param("code"));
   if (!found) return c.text("Not found", 404);
   const form = await c.req.parseBody();
-  const config = AdkConfigSchema.parse(JSON.parse(String(form.config)));
+  const config = PreflightConfigSchema.parse(JSON.parse(String(form.config)));
   const diff = previewShare(
     found.payload,
     config.profiles[config.activeProfile]!.resources,
   );
   return c.html(
-    `<html lang="en"><meta charset="utf-8"><title>ADK diff</title><h1>Preview only</h1><pre>${escape(JSON.stringify(diff, null, 2))}</pre></html>`,
+    `<html lang="en"><meta charset="utf-8"><title>Preflight diff</title><h1>Preview only</h1><pre>${escape(JSON.stringify(diff, null, 2))}</pre></html>`,
   );
 });
 export default app;

@@ -1,11 +1,11 @@
 import { join } from "node:path";
 import { ConfigStore, diffResources } from "./state.js";
 import {
-  AdkLockSchema,
-  AdkConfigSchema,
+  PreflightLockSchema,
+  PreflightConfigSchema,
   ResourceSchema,
   defaultConfig,
-  type AdkConfig,
+  type PreflightConfig,
   type HarnessId,
   type Resource,
 } from "./schema.js";
@@ -25,12 +25,12 @@ import {
   type FileChange,
 } from "./transaction.js";
 import { analyze, analyzeSettings, type Finding } from "./analysis.js";
-const Lock = AdkLockSchema;
+const Lock = PreflightLockSchema;
 export type Policy = (
   desired: Resource[],
   previous: Resource[],
 ) => Promise<void>;
-export class AdkService {
+export class PreflightService {
   readonly store: ConfigStore;
   constructor(
     readonly context: Context,
@@ -40,7 +40,7 @@ export class AdkService {
   }
   async init(dryRun = false) {
     const before = await readText(this.store.configPath);
-    if (before !== null) return AdkConfigSchema.parse(JSON.parse(before));
+    if (before !== null) return PreflightConfigSchema.parse(JSON.parse(before));
     const config = defaultConfig();
     await applyFiles(
       this.context.root,
@@ -107,24 +107,24 @@ export class AdkService {
     return findings;
   }
   async change(
-    mutate: (config: AdkConfig) => void,
+    mutate: (config: PreflightConfig) => void,
     dryRun = false,
     source?: string,
   ) {
     const before = await readText(this.store.configPath);
-    if (before === null) throw new Error("Run adk init first");
-    const config = AdkConfigSchema.parse(JSON.parse(before));
+    if (before === null) throw new Error("Run preflight init first");
+    const config = PreflightConfigSchema.parse(JSON.parse(before));
     mutate(config);
-    const valid = AdkConfigSchema.parse(config);
+    const valid = PreflightConfigSchema.parse(config);
     return this.apply(valid, before, dryRun, source);
   }
   async apply(
-    config: AdkConfig,
+    config: PreflightConfig,
     before: string | null,
     dryRun = false,
     source?: string,
   ) {
-    config = AdkConfigSchema.parse(config);
+    config = PreflightConfigSchema.parse(config);
     const desired = config.profiles[config.activeProfile]!.resources;
     const lockBefore = await readText(this.store.lockPath);
     const lock = lockBefore ? Lock.parse(JSON.parse(lockBefore)) : undefined;
@@ -145,7 +145,7 @@ export class AdkService {
         await adapter.read();
         const planned = await adapter.plan(desired, previous);
         const owned = new Set(lock?.files.map((f) => f.path) ?? []);
-        // Adoption is the one way a file ADK did not create becomes managed:
+        // Adoption is the one way a file Preflight did not create becomes managed:
         // the resource names the harness and the path it was found in, and
         // the change is previewed like any other.
         for (const resource of desired)
@@ -311,7 +311,7 @@ export class AdkService {
       : undefined;
     if (fileBacked && !safeRelative(relative))
       throw new Error(`Cannot adopt a resource outside ${harness}: ${path}`);
-    // A linked file belongs to whatever installed it; ADK refuses writes
+    // A linked file belongs to whatever installed it; Preflight refuses writes
     // through symlinks, so it must not claim ownership of one either.
     const link = fileBacked ? await linkedComponent(path) : null;
     if (link)
@@ -410,7 +410,7 @@ export class AdkService {
   }
   async audit() {
     return (
-      (await readText(join(this.context.root, ".adk", "audit.jsonl"))) ?? ""
+      (await readText(join(this.context.root, ".preflight", "audit.jsonl"))) ?? ""
     )
       .split("\n")
       .filter(Boolean)

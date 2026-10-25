@@ -2,7 +2,7 @@
 name: rag-pgvector
 description: Build and debug retrieval-augmented generation on PostgreSQL + pgvector — chunking, embeddings, index choice (ivfflat vs hnsw), hybrid search, reranking, and measuring retrieval separately from generation. Use when building a RAG pipeline, when answers are wrong and retrieval is suspect, or when choosing a vector index.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: medium
 writes_files: true

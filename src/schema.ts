@@ -59,7 +59,7 @@ export const ProfileSchema = z
   .strict();
 export type Profile = z.infer<typeof ProfileSchema>;
 
-export const AdkConfigSchema = z
+export const PreflightConfigSchema = z
   .object({
     version: z.literal(1),
     activeProfile: z.string().min(1).default("default"),
@@ -88,7 +88,7 @@ export const AdkConfigSchema = z
       });
     }
   });
-export type AdkConfig = z.infer<typeof AdkConfigSchema>;
+export type PreflightConfig = z.infer<typeof PreflightConfigSchema>;
 
 export const LockEntrySchema = z
   .object({
@@ -101,7 +101,7 @@ export const LockEntrySchema = z
   })
   .strict();
 
-export const AdkLockSchema = z
+export const PreflightLockSchema = z
   .object({
     version: z.literal(1),
     profile: z.string(),
@@ -111,7 +111,7 @@ export const AdkLockSchema = z
     ),
   })
   .strict();
-export type AdkLock = z.infer<typeof AdkLockSchema>;
+export type PreflightLock = z.infer<typeof PreflightLockSchema>;
 
 const secretKey =
   /(?:secret|token|password|passwd|api[_-]?key|private[_-]?key|credential|authorization|cookie)/i;
@@ -174,7 +174,7 @@ export const SharePayloadSchema = z
   });
 export type SharePayload = z.infer<typeof SharePayloadSchema>;
 
-export const defaultConfig = (): AdkConfig => ({
+export const defaultConfig = (): PreflightConfig => ({
   version: 1,
   activeProfile: "default",
   profiles: {

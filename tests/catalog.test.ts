@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { expect, it } from "vitest";
 import { localCatalog, searchSources } from "../src/catalog.js";
 it("includes supporting files in local skill inspection", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-catalog-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-catalog-"));
   await mkdir(join(root, "skills", "demo", "scripts"), { recursive: true });
   await writeFile(
     join(root, "skills", "demo", "SKILL.md"),

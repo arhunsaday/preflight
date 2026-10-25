@@ -1,10 +1,10 @@
 import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
-  AdkConfigSchema,
+  PreflightConfigSchema,
   ResourceSchema,
   defaultConfig,
-  type AdkConfig,
+  type PreflightConfig,
   type Resource,
   type Scope,
 } from "./schema.js";
@@ -18,12 +18,12 @@ export class ConfigStore {
   readonly auditPath: string;
 
   constructor(readonly root: string) {
-    this.configPath = join(root, "adk.config.json");
-    this.lockPath = join(root, "adk.lock.json");
-    this.auditPath = join(root, ".adk", "audit.jsonl");
+    this.configPath = join(root, "preflight.config.json");
+    this.lockPath = join(root, "preflight.lock.json");
+    this.auditPath = join(root, ".preflight", "audit.jsonl");
   }
 
-  async init(): Promise<AdkConfig> {
+  async init(): Promise<PreflightConfig> {
     await mkdir(this.root, { recursive: true });
     try {
       return await this.read();
@@ -35,14 +35,14 @@ export class ConfigStore {
     }
   }
 
-  async read(): Promise<AdkConfig> {
-    return AdkConfigSchema.parse(
+  async read(): Promise<PreflightConfig> {
+    return PreflightConfigSchema.parse(
       JSON.parse(await readFile(this.configPath, "utf8")),
     );
   }
 
-  async write(config: AdkConfig, backup = true): Promise<void> {
-    const validated = AdkConfigSchema.parse(config);
+  async write(config: PreflightConfig, backup = true): Promise<void> {
+    const validated = PreflightConfigSchema.parse(config);
     await mkdir(dirname(this.configPath), { recursive: true });
     if (backup) {
       try {

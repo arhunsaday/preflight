@@ -55,7 +55,7 @@ npx -y skills@latest init <name>              # scaffold a new one
 ```
 
 Browse at [skills.sh](https://www.skills.sh/). Full recommendations in
-[`skills/THIRD-PARTY.md`](https://github.com/arhunsaday/ai-dev-kit/blob/main/skills/THIRD-PARTY.md).
+[`skills/THIRD-PARTY.md`](https://github.com/arhunsaday/preflight/blob/main/skills/THIRD-PARTY.md).
 
 ## Writing one that actually fires
 

@@ -7,10 +7,10 @@ sidebar_position: 3
 Use the official shadcn starter, then apply the kit's configuration overlay:
 
 ```bash
-~/Repos/ai-dev-kit/bootstrap.sh --list-presets
-~/Repos/ai-dev-kit/bootstrap.sh new next-shadcn ../my-app
-~/Repos/ai-dev-kit/bootstrap.sh new vite-shadcn ../my-spa --dry-run
-~/Repos/ai-dev-kit/bootstrap.sh new shadcn-monorepo ../my-workspace
+~/Repos/preflight/bootstrap.sh --list-presets
+~/Repos/preflight/bootstrap.sh new next-shadcn ../my-app
+~/Repos/preflight/bootstrap.sh new vite-shadcn ../my-spa --dry-run
+~/Repos/preflight/bootstrap.sh new shadcn-monorepo ../my-workspace
 ```
 
 Also available: `vite-monorepo` and `tanstack-start`. These delegate to the
@@ -21,7 +21,7 @@ default. Upstream owns application source and may ask additional questions.
 For an existing project:
 
 ```bash
-~/Repos/ai-dev-kit/bootstrap.sh --project .
+~/Repos/preflight/bootstrap.sh --project .
 ```
 
 Copies the agent drop-in into the repo. It **copies** rather than links, because

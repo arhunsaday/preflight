@@ -5,17 +5,17 @@ import { mkdir, mkdtemp, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { App } from "../src/ui/index.js";
-import { AdkService } from "../src/service.js";
+import { PreflightService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
 
 // The plan calls a 500-row list the predictable performance trap in Ink, so
 // the viewport stays bounded and a burst of keystrokes collapses into one
 // render rather than one frame per key.
 it("keeps a 500 resource profile bounded and responsive", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-scale-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-scale-"));
   const context = { root, home: join(root, "home") };
   await mkdir(context.home);
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   const config = await service.init();
   config.profiles.default!.resources.push(
     ...Array.from({ length: 500 }, (_, i) =>

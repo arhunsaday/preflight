@@ -139,7 +139,7 @@ class FileAdapter implements HarnessAdapter {
       throw new Error(`${this.id} does not support ${resource.type}`);
     const base = this.base(resource.scope);
     const name = slug(resource.id);
-    // An adopted resource keeps the file it was found in; ADK manages it where
+    // An adopted resource keeps the file it was found in; Preflight manages it where
     // it already lives rather than moving the user's layout.
     const adopted = adoptedIn(resource, this.id);
     switch (resource.type) {
@@ -217,7 +217,7 @@ class FileAdapter implements HarnessAdapter {
       }
       return file;
     };
-    // A hook or status line can carry its own script; ADK writes it next to
+    // A hook or status line can carry its own script; Preflight writes it next to
     // the settings that point at it, and removes it again on rollback.
     const materialize = async (resource: Resource, removing: boolean) => {
       if (!removing && !resource.content)

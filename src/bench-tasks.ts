@@ -84,7 +84,7 @@ export function fixedTaskSet(repo: string, revision: string, agent = "claude") {
         command: agent,
         args: [
           "-p",
-          `Implement this task in adk-bench-solution.mjs at the repository root. Use named ESM exports, no dependencies. ${exercise.prompt} Do not modify other existing project files.`,
+          `Implement this task in preflight-bench-solution.mjs at the repository root. Use named ESM exports, no dependencies. ${exercise.prompt} Do not modify other existing project files.`,
           "--output-format",
           "json",
         ],
@@ -94,7 +94,7 @@ export function fixedTaskSet(repo: string, revision: string, agent = "claude") {
         args: [
           "--input-type=module",
           "-e",
-          `import assert from 'node:assert/strict';const m=await import('./adk-bench-solution.mjs');${exercise.check}`,
+          `import assert from 'node:assert/strict';const m=await import('./preflight-bench-solution.mjs');${exercise.check}`,
         ],
       },
       timeoutMs: 120000,

@@ -2,7 +2,7 @@
 
 **Ce document répond à une seule question : qu'est-ce que le plan promet, et qu'est-ce que le dépôt fait réellement ?** Chaque ligne porte sa preuve — un test nommé, un fichier, ou une mesure prise sur cette machine. Un critère sans preuve vérifiable est marqué comme non vérifié, pas comme livré.
 
-Établi le 24 septembre 2026 sur `codex/implement-adk-tui`, à `3bbbbc2`. `npm run check` : 81 tests dans 16 fichiers. Suite Python : 33 tests. `scripts/kit.py check` : 0 problème. CI verte sur Node 22 et 24.
+Établi le 24 septembre 2026 sur `codex/implement-preflight-tui`, à `3bbbbc2`. `npm run check` : 81 tests dans 16 fichiers. Suite Python : 33 tests. `scripts/kit.py check` : 0 problème. CI verte sur Node 22 et 24.
 
 Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé · **✘** absent.
 
@@ -31,7 +31,7 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | Doctor : usage, coût de contexte, conflits, posture de sécurité, pruning | ✔ | `src/analysis.ts` : `secret`, `broad-permissions`, `trigger-conflict`, `context-estimate`, `mcp-unwired`, `hook-unwired`, `no-hooks`, plus `settings.json` utilisateur et projet. Tests *reports read denial bypass risks and secrets from harness settings*, *counts observed invocations without inventing usage from plain mentions*. |
 | Liens de partage, codes courts, aperçu avant application | ✔ | Codes à six caractères sans glyphes ambigus, page d'inspection listant chaque ressource et les variables requises, formulaire de comparaison. Tests *publishes inspectable shares, enforces ownership and revocation*, *shares only validated resources and previews changes*. |
 | Loadouts rôle × stack, expliqués | ✔ | `loadouts list/show --explain/install` ; chaque item porte son `why`. Tests *resolves layered loadouts and rejects cycles*, *names the upstream installer for a loadout skill the catalogue lacks*. |
-| Retrofit d'un dépôt existant | ✔ | `retrofit` génère `AGENTS.md` et `.adk/commands.json` sans exécuter le code du dépôt. Test *detects stack from manifests without running repo code*. |
+| Retrofit d'un dépôt existant | ✔ | `retrofit` génère `AGENTS.md` et `.preflight/commands.json` sans exécuter le code du dépôt. Test *detects stack from manifests without running repo code*. |
 | Benchmark A/B local | ✔ | Dix tâches épinglées, clone et home isolés par tâche, taux de réussite, durée, tokens et interventions. Le runner complet est exercé par *benchmarks a pinned local repository in isolated checkouts* : clone git réel sur révision épinglée, home isolé, configuration appliquée, tâche, fichier de métriques, vérificateur. **Aucun run d'agent réel — donc payant — n'a été lancé.** |
 
 ---
@@ -41,9 +41,9 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | Critère | | Preuve |
 | --- | --- | --- |
 | Un seul schéma Zod pilote tout | ✔ | `src/schema.ts` sert la CLI, le TUI et le Worker. Le formulaire du TUI valide avec `ResourceSchema` ; test *round-trips a resource through the form*. |
-| Pas de base locale | ✔ | `adk.config.json`, `adk.lock.json`, `.adk/` : fichiers simples, diffables. |
+| Pas de base locale | ✔ | `preflight.config.json`, `preflight.lock.json`, `.preflight/` : fichiers simples, diffables. |
 | Un adaptateur défaillant se dégrade sans casser les autres | ✔ | Tests *isolates a broken adapter*, *does not remove a healthy harness when another adapter fails*. |
-| `capabilities` honnête | ✔ | Le détail du TUI marque chaque harnais ✔/✖ pour le type affiché ; `apply` émet un avertissement « catalogued only ». Matrice de support dans `ADK.md`. |
+| `capabilities` honnête | ✔ | Le détail du TUI marque chaque harnais ✔/✖ pour le type affiché ; `apply` émet un avertissement « catalogued only ». Matrice de support dans `PREFLIGHT.md`. |
 | Le TUI n'est jamais le seul chemin | ✔ | Chaque action porte sa commande ; test *exposes every interface action as a real CLI command*. |
 
 ---
@@ -66,8 +66,8 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 | --- | --- | --- |
 | Identifiant stable et URI de source par ressource | ✔ | `id` et `source` obligatoires au schéma. |
 | Service de partage multi-tenant dès la première ligne | ✔ | `ownerId` dans l'enregistrement de recherche et dans la clé de stockage ; publication et révocation vérifient le propriétaire. |
-| `apply` est un pipeline avec un point de politique | ✔ | `AdkService(context, policy)` ; aucune politique par défaut. |
-| Journal d'audit dès le départ | ✔ | `.adk/audit.jsonl` : acteur, partage d'origine, identifiant de transaction, chemins modifiés. |
+| `apply` est un pipeline avec un point de politique | ✔ | `PreflightService(context, policy)` ; aucune politique par défaut. |
+| Journal d'audit dès le départ | ✔ | `.preflight/audit.jsonl` : acteur, partage d'origine, identifiant de transaction, chemins modifiés. |
 
 ---
 
@@ -85,8 +85,8 @@ Légende : **✔** livré et vérifié · **◐** partiel, l'écart est nommé �
 
 | Critère | | Preuve |
 | --- | --- | --- |
-| Dire à voix haute quels harnais sont supportés | ✔ | Matrice de support dans `ADK.md`, par type et par harnais. |
-| Chaque écriture réversible | ◐ | Les écritures ADK le sont. Les installateurs délégués et les opérations Git ne le sont pas, et le disent avant de s'exécuter. |
+| Dire à voix haute quels harnais sont supportés | ✔ | Matrice de support dans `PREFLIGHT.md`, par type et par harnais. |
+| Chaque écriture réversible | ◐ | Les écritures Preflight le sont. Les installateurs délégués et les opérations Git ne le sont pas, et le disent avant de s'exécuter. |
 | Le nombre mesuré est visible | ✔ | Barre d'état et panneau de détail, dès la première ouverture. |
 
 ---

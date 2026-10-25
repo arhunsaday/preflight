@@ -51,7 +51,7 @@ Claude Code hooks run inside the agent loop. Git hooks catch what already got
 written — belt and braces.
 
 ```bash
-cp ~/Repos/ai-dev-kit/templates/shared/agent/git-hooks/pre-commit-secrets.sh .git/hooks/pre-commit
+cp ~/Repos/preflight/templates/shared/agent/git-hooks/pre-commit-secrets.sh .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
