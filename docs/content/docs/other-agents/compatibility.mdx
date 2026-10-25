@@ -1,0 +1,63 @@
+---
+title: "Multi-tool compatibility"
+---
+One canonical contract, thin pointers everywhere else.
+
+## The map
+
+| Tool | File | Native `AGENTS.md`? |
+| --- | --- | --- |
+| **Claude Code** | `CLAUDE.md` | yes |
+| **Codex** (OpenAI) | `AGENTS.md`, `CODEX.md` | **yes — it is the native format** |
+| **Cursor** | `.cursor/rules/*.mdc` | no |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | no |
+| **Gemini CLI** | `GEMINI.md` | no |
+| **Windsurf** | `.windsurfrules` | no |
+| **Zed** | `.rules` | recent versions, yes |
+| **Grok / xAI** | `AGENTS.md` | yes |
+| **Cline / Roo** | `.clinerules` | no |
+| **OpenCode** | `AGENTS.md` | yes |
+| **Aider** | `CONVENTIONS.md` (`--read`) | no |
+
+`AGENTS.md` is the anchor because it is the closest thing to a cross-vendor
+standard — five of these read it directly, and the rest need a two-line pointer.
+Putting conventions anywhere else means translating them N times and watching
+the copies drift.
+
+## Generating the pointers
+
+```bash
+templates/shared/agent/sync-agent-files.sh            # write them all
+templates/shared/agent/sync-agent-files.sh --check    # CI: fail if one drifted
+```
+
+Every pointer is generated from the single `AGENTS.md`, so adding a tool is one
+line in the script rather than another file to keep in step. The `--check` mode
+belongs in CI: a pointer someone edited by hand is exactly the drift this is
+meant to prevent.
+
+## What transfers, and what does not
+
+| Capability | Portability |
+| --- | --- |
+| **MCP servers** | **Excellent.** Cursor, Codex, Copilot, Gemini, Windsurf all support it — different config file, same servers |
+| **Instructions** | Excellent, via the pointer pattern above |
+| **Skills** | Partial. `npx skills` installs to several agent directories at once; Copilot and Cursor have their own shapes |
+| **Subagents** | Poor. Copilot has agents, Cursor has background agents, the shapes differ |
+| **Hooks** | **Worst.** Claude Code and Cursor have them; most others have nothing |
+
+So: put anything that must hold everywhere into `AGENTS.md` and MCP. Reserve
+hooks for the machine where Claude Code is the daily driver — and accept that a
+teammate on Cursor gets the *instruction* but not the *enforcement*.
+
+## Practical advice
+
+- **On a corporate machine**, Copilot is often the only approved tool. Put the
+  effort into `.github/instructions/<area>.instructions.md` with `applyTo:`
+  globs — scoped instruction files are the highest-leverage thing available
+  there.
+- **Keep a second agent installed.** When one loops twice on a bug, a different
+  model frequently breaks it. Codex reads the same `AGENTS.md`, so the switch
+  costs nothing.
+- **Never let a tool-specific file carry a convention of its own.** The moment
+  it does, you have two contracts.

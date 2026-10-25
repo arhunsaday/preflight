@@ -1,0 +1,62 @@
+---
+title: "Coding"
+---
+## The loop that works
+
+```
+read → plan → ONE complete edit → verify → report
+```
+
+The failure mode it prevents is **edit thrashing**: the agent edits a file,
+re-reads, edits again, five times. That happens when it started editing before
+reading the whole file. If you see a third edit to the same file, stop it and
+say: read it fully, plan all the changes, make one edit.
+
+## Rules in `CLAUDE.md` worth knowing by heart
+
+- **Simplest implementation that fully meets the requirement** — not the
+  smallest diff that passes the happy path.
+- **Every changed line traces to the request.** No improving adjacent code, no
+  refactoring what is not broken, match the existing style.
+- **Dead code you noticed: mention it, do not delete it.**
+- **Clean up only the orphans your change created.**
+- **No backward compatibility** inside the repo — change the call sites.
+
+## Verify before "done"
+
+Never mark something complete without proving it. Turn the task into a check:
+
+| Task | Verifiable form |
+| --- | --- |
+| "add validation" | write tests for invalid inputs, then make them pass |
+| "fix the bug" | write a test that reproduces it, then make it pass |
+| "refactor X" | tests green before and after |
+
+Then: full build (not just a type-check), the **whole** surrounding suite (not
+only the new specs), lint exactly as the pre-commit hook runs it.
+
+## What a type-check cannot see
+
+The failures that survive a green CI and appear in production:
+
+- **Boot / DI wiring** — a provider whose transitive dependency does not resolve
+- **Validation that never runs** — a DTO that is decoration because the pipe was
+  never registered
+- **Response shape** — internal columns serialized out
+- **Scope on by-id paths** — scoped from the body instead of the token
+
+The `self-review-before-done` instinct is aimed squarely at these.
+
+## TDD
+
+Write the test, let the agent implement against it. It works well because a
+failing test is an unambiguous success criterion — the agent can loop without
+you.
+
+[nizos/tdd-guard](https://github.com/nizos/tdd-guard) enforces it with hooks:
+implementation is blocked until a failing test exists.
+
+## Formatting and linting
+
+Handled by hooks, not by asking. `format-after-edit.sh` and `lint-after-edit.sh`
+run after every write — see [hooks](/docs/claude-code/hooks).

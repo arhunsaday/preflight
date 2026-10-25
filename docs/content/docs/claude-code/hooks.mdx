@@ -1,0 +1,78 @@
+---
+title: "Hooks"
+---
+Shell commands Claude Code runs at fixed points in its own loop. **The only
+deterministic mechanism** — `CLAUDE.md` asks the model to behave, a hook makes
+it happen whether the model cooperates or not.
+
+## The exit-code contract
+
+| Exit | Effect |
+| --- | --- |
+| `0` | Allow. stdout shown in the transcript, not fed to the model |
+| `2` | **Block.** The call does not run, and **stderr goes back to Claude** |
+| other | Non-blocking warning, logged only |
+
+A blocking hook's stderr is a message *to the model*. Say what was blocked and
+what to do instead — not just "denied".
+
+## What is wired
+
+| Hook | Event | Matcher | Blocks | Does |
+| --- | --- | --- | --- | --- |
+| `block-dangerous.sh` | PreToolUse | `Bash` | ✅ | `rm -rf /`, `git reset --hard`, force-push, `DROP TABLE`, `curl \| sh`, fork bombs |
+| `block-secret-reads.sh` | PreToolUse | `Read\|Grep` | ✅ | Keeps `.env`, `*.pem`, keys **out of the context window** |
+| `protect-files.sh` | PreToolUse | `Edit\|Write` | ✅ | No writes to secrets, lockfiles, `.git/` |
+| `require-tests-for-pr.sh` | PreToolUse | `Bash` | ✅ | No green suite, no `gh pr create` |
+| `log-commands.sh` | PreToolUse | `Bash` | — | Timestamped audit trail in `.claude/command-log.txt` |
+| `format-after-edit.sh` | PostToolUse | `Write\|Edit` | — | prettier / ruff / gofmt / rustfmt / shfmt |
+| `lint-after-edit.sh` | PostToolUse | `Write\|Edit` | — | eslint / ruff / shellcheck, capped at 20 lines |
+| `test-after-edit.sh` | PostToolUse | `Write\|Edit` | — | Runs the suite, last 8 lines. **Off by default** |
+| `notify-sound.sh` | Notification, Stop, SubagentStop | — | — | One sound per event |
+
+## Two rules learned the hard way
+
+**Warn rather than block, unless being wrong is cheap.** A hook that blocks on a
+documentation typo gets disabled within a week, and then protects nothing. Block
+destructive and irreversible things; report everything else.
+
+**Cap every output.** A `PostToolUse` hook dumping 200 lines of test output
+evicts the context needed to act on it. `tail -8`, `head -20`. The model needs
+"3 failed, here they are".
+
+## Why `test-after-edit` is off
+
+On a suite slower than ~10 seconds it fires on **every single edit** and makes
+the session unusable. Enable it per project, in `<repo>/.claude/settings.json`,
+where the suite is fast.
+
+## Sounds
+
+The sound identifies the event, so you can work in another window:
+
+- **Funk** — Claude needs you (permission or a question)
+- **Glass** — the turn finished
+- **Pop** — a subagent finished
+
+macOS only (`afplay`); swap `paplay` on Linux.
+
+## Testing one
+
+Hooks read the tool payload as JSON on stdin:
+
+```bash
+echo '{"tool_input":{"command":"rm -rf /tmp/x"}}' | ~/.claude/hooks/block-dangerous.sh; echo "exit=$?"
+```
+
+Expect `exit=2` plus a message on stderr.
+
+## Git hooks are a different thing
+
+Claude Code hooks run inside the agent loop. **Git** hooks run on commit/push
+and catch what the agent already wrote. Use both — see
+[the devops workflow](/docs/workflows/devops#git-hooks).
+
+## Reference
+
+- [Hooks reference](https://code.claude.com/docs/en/hooks)
+- [Hooks guide](https://code.claude.com/docs/en/hooks-guide)

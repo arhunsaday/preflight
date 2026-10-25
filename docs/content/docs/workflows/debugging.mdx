@@ -1,0 +1,53 @@
+---
+title: "Debugging"
+---
+## The loop before the diagnosis
+
+Most long debugging sessions are long because someone started diagnosing before
+they could reproduce. The `debug-loop` skill exists to force the order:
+
+```
+1. reproduce reliably      ← until this holds, everything after is guessing
+2. shrink the repro
+3. bisect: what changed?
+4. form ONE hypothesis, and the observation that would disprove it
+5. test it
+6. fix, then prove the fix with the repro from step 1
+```
+
+Step 4 is the one agents skip — they generate five plausible causes and fix all
+five. Ask for one hypothesis and its disproof.
+
+## By symptom
+
+| Symptom | Start with |
+| --- | --- |
+| Fails in prod, fine in staging | config and data diff, not code. Env vars, feature flags, dataset shape |
+| Flaky test | shared state, time, ordering, or a real race. Run it 50× before believing a fix |
+| Slow after running a while | memory — `memory-snapshot-perf` |
+| Broke after a deploy | `git bisect`, or diff the deployed artifact, not the branch |
+| Works locally, fails in CI | the environment: node version, timezone, locale, missing service |
+
+## Front-end performance
+
+`memory-snapshot-perf` covers the heap-snapshot method: three snapshots with
+forced GC between, compare B→C, anything growing linearly with repetitions is a
+leak. Detached DOM nodes, listener counts, uncleared timers and observers,
+unbounded module-level caches.
+
+## Production debugging
+
+With the Grafana MCP server connected, the agent can query Loki and Prometheus
+directly — see [observability](/docs/workflows/observability). The discipline:
+
+1. **Read before writing.** Query logs and metrics before touching anything.
+2. **Preserve evidence before remediating** during an incident, when it is safe.
+3. **One change at a time**, with a health gate and a rollback stated first.
+
+The `plan-before-operational-change` instinct enforces this.
+
+## Logging
+
+Every command the agent ran, with a timestamp, in `.claude/command-log.txt` via
+`log-commands.sh`. When something broke three sessions ago, that is where the
+answer is.

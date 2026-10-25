@@ -1,0 +1,78 @@
+---
+title: "Fundamentals"
+---
+The things that change how the tool behaves, in rough order of leverage.
+
+## Which model, when
+
+| Model | Use it for |
+| --- | --- |
+| **Sonnet** | ~80% of work. Implementation from a clear plan, refactors, tests, docs, mechanical changes |
+| **Opus** | When it has to *think*: architecture, a bug nobody has diagnosed, reviewing a change you cannot yet judge, planning under real ambiguity |
+| **Haiku** | Cheap, narrow, high-volume: classification, extraction, a subagent doing one mechanical pass |
+
+The mistake that costs the most is not using Sonnet when Opus was needed — it is
+running Opus over a 150k-token context on work Sonnet would have done, and doing
+it all day.
+
+Set the default in `settings.json` (`"model": "sonnet"`), switch per session, and
+pin per subagent in its frontmatter.
+
+## Context is the budget
+
+Everything else is downstream of this.
+
+- **`/compact` mid-task**, when the goal has not changed but the history is long.
+- **`/clear` when switching tasks.** A fresh context on a new task is cheaper
+  *and* better than a compacted one carrying a dead task's residue.
+- Long sessions cost more even when cached. A session spending most of its life
+  above 150k tokens is a session where most turns pay for context that is not
+  being used.
+- **Write long output to a file, then read the slice you need.** Never dump a
+  200-page extraction or a full test log into the conversation.
+- **[RTK](/docs/tools/rtk)** compresses command output before it reaches you —
+  60–90% on bash, ~99% on test runs. `rtk init -g` installs the rewrite hook.
+- The statusline gauge in this kit shows context use live — watch it.
+
+## The five mechanisms
+
+| Mechanism | What it is | Deterministic? |
+| --- | --- | --- |
+| **`CLAUDE.md`** | Instructions loaded every session | No — the model may not follow |
+| **Skills** | Capability modules, loaded when their description matches | No |
+| **Hooks** | Shell commands run at fixed points in the loop | **Yes** |
+| **Slash commands** | Prompt templates you invoke by name | Yes, you invoke them |
+| **Subagents** | Separate context windows with their own tools and model | Yes, you dispatch them |
+
+The distinction that matters: `CLAUDE.md` and skills **ask**; hooks **enforce**.
+If a rule genuinely must hold, it belongs in a hook.
+
+## Plan first
+
+For anything non-trivial — 3+ steps or an architectural decision — plan before
+building. Ambiguity resolved late costs more than ambiguity resolved early.
+
+`skills:grilling` runs the interview properly — it maps the decision tree and
+asks a whole frontier per round, each question with its recommended answer.
+`skills:writing-plans` then turns the answers into a plan a *different* agent
+can execute.
+
+## Subagents, for context economy
+
+A subagent has its own context window. The point is that the main session
+receives the conclusion, not the forty files that produced it.
+
+Use them for research, exploration and parallel analysis. One task each. In this
+kit: `explorer` (read-only search), `reviewer`, `security`.
+
+House rules: never Fable; never more than 5 at a time.
+
+## Read the official docs
+
+Short by design. These are maintained; this page is not:
+
+- [Best practices](https://code.claude.com/docs/en/best-practices)
+- [Common workflows](https://code.claude.com/docs/en/common-workflows)
+- [Features overview](https://code.claude.com/docs/en/features-overview)
+- [CLI reference](https://code.claude.com/docs/en/cli-reference)
+- [Prompt engineering](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview)

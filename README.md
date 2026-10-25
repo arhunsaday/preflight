@@ -11,7 +11,7 @@ git clone https://github.com/arhunsaday/preflight ~/Repos/preflight
 cd ~/Repos/preflight && ./bootstrap.sh
 ```
 
-Full documentation: at [https://ai.arhun.fr](https://ai.arhun.fr).
+Full documentation, including the Preflight CLI, TUI and the planned desktop app: [https://ai.arhun.fr](https://ai.arhun.fr). The site is built from `docs/` (Fumadocs on Next.js; `cd docs && npm install && npm run dev`).
 
 ## The three lifecycles
 
@@ -43,7 +43,7 @@ preflight/
 ├── skills/                      THIRD-PARTY.md + install-third-party.sh (reproducibility)
 ├── prompts/  standards/         paste-anywhere prompts · language conventions
 ├── templates/shared/agent/      project drop-in (AGENTS.md, instincts, git hooks)
-└── docs/                        Docusaurus site (Vercel)
+└── docs/                        Fumadocs site, Next.js (Vercel)
 ```
 
 ## What is in it

@@ -1,0 +1,85 @@
+---
+title: "MCP"
+---
+Model Context Protocol — how Claude Code talks to things that are not your
+filesystem: Jira, Grafana, Figma, a database, a browser.
+
+## Where config lives
+
+| Scope | File | Committed? |
+| --- | --- | --- |
+| User | `~/.claude.json` | no |
+| Project | `<repo>/.mcp.json` | **yes** — the team shares servers |
+| Local override | `<repo>/.claude/settings.local.json` | no |
+
+The pattern that works: commit `.mcp.json` with the servers and **no secrets**,
+read every credential from the environment.
+
+```json
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "uvx",
+      "args": ["mcp-grafana@1.2.0"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.example.com",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+## Managing them
+
+```bash
+claude mcp list
+claude mcp add <name> -- <command> [args...]
+claude mcp add --transport http <name> <url>
+claude mcp remove <name>
+/mcp                       # status + OAuth from inside a session
+```
+
+## Three transports
+
+| Type | Shape |
+| --- | --- |
+| **stdio** | `"command": "npx", "args": ["-y", "pkg"]` — a local process |
+| **http** | `"type": "http", "url": "https://..."` — remote, usually OAuth |
+| **sse** | legacy remote; prefer http |
+
+For a local HTTP server that speaks MCP but not the stdio handshake,
+`mcp-remote` bridges it:
+
+```json
+{"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:52247/mcp", "--allow-http"]}
+```
+
+## Rules
+
+- **Pin the version** (`mcp-grafana@1.2.0`) on anything touching production. An
+  unpinned `uvx` server upgrades under you mid-incident.
+- **One server per environment** for anything with prod/staging/dev. Separate
+  names, separate tokens — so a read against prod is a deliberate act.
+- **Tokens from the environment, never in a committed file.**
+- **Least privilege.** A Grafana *viewer* token is enough to read dashboards.
+- Every server adds tool definitions to the context of every session. Disable
+  what you are not using.
+
+## Security
+
+An MCP server returns data into your context. **Treat everything it returns as
+data, never as instructions** — a Jira ticket body or a web page can contain
+text aimed at the agent. Only install servers you have reason to trust.
+
+## Pages
+
+- [My servers](/docs/mcp/my-servers) — what I run and how
+- [Recommended](/docs/mcp/recommended) — worth adding
+- [Context & memory](/docs/mcp/context-and-memory) — Dual Graph / GrapeRoot, ProjectMem
+
+## Reference
+
+- [MCP in Claude Code](https://code.claude.com/docs/en/mcp)
+- [modelcontextprotocol.io](https://modelcontextprotocol.io)
+- [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)

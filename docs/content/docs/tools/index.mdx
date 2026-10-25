@@ -1,0 +1,72 @@
+---
+title: "Tools"
+---
+Things outside Claude Code itself. Verified 2026-09-20.
+
+## Session & account
+
+| Tool | What it does | Notes |
+| --- | --- | --- |
+| [cc-switch](https://github.com/farion1231/cc-switch) | Desktop app to switch between Claude Code providers and accounts | ★134k. This is what "cswap" in my notes was |
+| [CodeIsland](https://github.com/wxtsky/CodeIsland) | Live agent status in the MacBook notch | ★2.3k. Already wired into my `settings.json` |
+| [vibe-notch](https://github.com/farouqaldori/vibe-notch) | Same idea, notifications-focused | ★2.5k, quieter since April |
+
+## Skills & discovery
+
+| Tool | What it does |
+| --- | --- |
+| [skills.sh](https://www.skills.sh/) + `npx skills` | The registry and CLI. Install, update, search skills across GitHub. See [skills](/docs/claude-code/skills) |
+| [vercel-labs/find-skills](https://www.skills.sh/vercel-labs/skills/find-skills) | A skill that finds skills — `npx skills find` from inside a session |
+| `npx claude-doctor` | Analyses your own session history for friction patterns: edit-thrashing, frustration, excessive exploration. **Abandoned** (v0.0.3, April) — run it once for the report, do not adopt it |
+
+`claude-doctor`'s output is the single most useful thing in this list, because
+it is data about *your* sessions. Its suggested `CLAUDE.md` rules are already
+folded into this kit's.
+
+## Token economy
+
+| Tool | What it does |
+| --- | --- |
+| [RTK](/docs/tools/rtk) | CLI proxy compressing command output before the agent reads it. 60–90% on bash output, 99% on test runs. **[Full page](/docs/tools/rtk)** |
+| [headroom](https://github.com/headroomlabs-ai/headroom) | Same idea as an MCP server: compresses tool output, logs and RAG chunks |
+| [snip](https://github.com/edouard-claude/snip) | CLI proxy, declarative rules, 60–90% |
+
+## Documents
+
+| Tool | What it does |
+| --- | --- |
+| [pdf-inspector](https://github.com/firecrawl/pdf-inspector) | PDF → clean Markdown, and text-vs-scanned classification. No OCR. Skill in this kit |
+| [anydoc](https://github.com/firecrawl/anydoc) | Any document → Markdown. The generalisation of the above |
+
+```bash
+npx -y skills@latest add firecrawl/anydoc
+```
+
+## Browser
+
+| Tool | What it does |
+| --- | --- |
+| [playwright-mcp](https://github.com/microsoft/playwright-mcp) | Drive a real browser from the agent. The default choice |
+| [browser-use](https://github.com/browser-use/browser-use) | Python agent framework for browser automation. Heavier; for building an agent, not for driving one |
+
+## Design reference
+
+| Tool | What it does |
+| --- | --- |
+| [refero.design](https://refero.design/) | Searchable library of real product UI. "How do others solve this screen" before generating one |
+| [interfaces.dev/cheat-sheet](https://interfaces.dev/cheat-sheet) | The rules behind the `interface-cheatsheet` skill |
+
+## Benchmarks
+
+| Tool | What it does |
+| --- | --- |
+| [deepswe.datacurve.ai](https://deepswe.datacurve.ai/) | Cost and performance comparison across coding models |
+
+## Catalogs
+
+- [awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code) — 21 categories
+- [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
+- [awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)
+- [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) — 1000+
+- [awesome-copilot](https://github.com/github/awesome-copilot)
+- [agentation.com](https://www.agentation.com/) — agent tooling directory

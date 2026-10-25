@@ -1,0 +1,79 @@
+---
+title: "Ecosystem picks"
+---
+What is worth taking from the big catalogs, verified 2026-09-20.
+
+Star counts in this space are noisy — several repos with six-figure counts have
+thin commit histories. Ordered by usefulness to this stack, with the count as
+context rather than as ranking.
+
+## Installed here
+
+| Source | What you got | Why |
+| --- | --- | --- |
+| [obra/superpowers](https://github.com/obra/superpowers) | 15 skills: `test-driven-development`, `systematic-debugging`, `brainstorming`, `writing-plans`, `verification-before-completion`, `using-git-worktrees`, `dispatching-parallel-agents`, `subagent-driven-development`, `receiving-code-review` | The most complete methodology set in the ecosystem. `verification-before-completion` alone — "evidence before assertions, always" — is worth the install |
+| [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | `code-review-and-quality`, `debugging-and-error-recovery`, `security-and-hardening`, `performance-optimization`, `observability-and-instrumentation`, `incremental-implementation`, `deprecation-and-migration`, `spec-driven-development`, `frontend-ui-engineering`, `ci-cd-and-automation`, `git-workflow-and-versioning`, `doubt-driven-development`, `source-driven-development`, `context-engineering` | Production engineering, broad and consistent. The closest thing to a senior-engineer checklist set |
+| [anthropics/skills](https://github.com/anthropics/skills) | `docx`, `pptx`, `xlsx`, `pdf`, `mcp-builder`, `skill-creator`, `canvas-design`, `webapp-testing`, `frontend-design`, `artifacts-builder` | Official. `mcp-builder` and `skill-creator` are the meta-tools — they build the things this kit is made of |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `tdd`, `pr`, `research`, `prototype`, `wizard`, `codebase-design`, `domain-modeling`, `diagnosing-bugs`, `resolving-merge-conflicts`, `setup-pre-commit`, `migrate-to-shoehorn` | TypeScript-shaped and very active. `wizard` is unusual and good: it generates an interactive bash wizard for steps only a human can do |
+| [RobMitt/grill-me-skill](https://github.com/RobMitt/grill-me-skill) | `grill-me`, `grilling` | Relentless interview until shared understanding. `grill-with-docs` leaves ADRs and a glossary behind |
+| [elayadesign/ai-design-skills](https://github.com/elayadesign/ai-design-skills) | `landing-page-design` | Layout, conversion copy, and strict visual rules |
+| [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) | `install-anti-slop` | Oxlint rules that **reject low-evidence code** — the linter equivalent of "prove it" |
+| [s1dashu/ip-as-logo-skill](https://github.com/s1dashu/ip-as-logo-skill) | `ip-as-logo` | Character/logo generation |
+| [LukasNiessen/kubernetes-skill](https://github.com/LukasNiessen/kubernetes-skill) | `kubernetes-skill` | Prevents K8s hallucinations: insecure defaults, resource starvation, privilege sprawl, API drift. EKS/GKE/AKS/OpenShift |
+| [firecrawl/anydoc](https://github.com/firecrawl/anydoc) | `convert-documents-to-markdown` | Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, PDF → Markdown |
+
+```bash
+npx -y skills@latest list        # what is installed, and from where
+npx -y skills@latest update -y   # or /skills-sync
+```
+
+## Worth adding next
+
+| Source | Pick | Why |
+| --- | --- | --- |
+| [wshobson/agents](https://github.com/wshobson/agents) ★40k | Subagent marketplace | The gap in this kit: 3 subagents against dozens there |
+| [BagelHole/DevOps-Security-Agent-Skills](https://github.com/BagelHole/DevOps-Security-Agent-Skills) | 10–15 of 146 | AWS/Azure/GCP, Terraform, Helm, ArgoCD GitOps, CIS benchmarks, incident response, compliance. **Install selectively** — 146 descriptions is a real context tax |
+| a vendored third-party toolkit | ~58 not yet taken | `speckit-*` (12 skills), `openspec-lifecycle`, `compass-*` bootstrap tooling, `agent-teacher`, `project-memory`, `long-running-task`, `work-splitting`, `architecture-advisor`, `gen-docs`, `figma-mcp-frontend` |
+| [nizos/tdd-guard](https://github.com/nizos/tdd-guard) ★2.3k | Hook-enforced TDD | Blocks implementation until a failing test exists — `tdd` as a *hook*, not a suggestion |
+
+## MCP servers
+
+From [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) ★95k:
+
+| Server | Why |
+| --- | --- |
+| [github/github-mcp-server](https://github.com/github/github-mcp-server) | Official. Issues, PRs, Actions, code search |
+| [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | Real browser. The agent runs the test it wrote |
+| [headroomlabs-ai/headroom](https://github.com/headroomlabs-ai/headroom) ★73k | Compresses tool output before it enters context — attacks the >150k problem directly |
+| [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) ★44k | Structural code index |
+| [GLips/Figma-Context-MCP](https://github.com/GLips/Figma-Context-MCP) | Figma layout as data, not screenshots |
+| [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana) | Already in use — see [my servers](/docs/mcp/my-servers) |
+
+## Catalogs themselves
+
+| List | Use it for |
+| --- | --- |
+| [hesreallyhim/awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code) ★54k | 21 categories. The best-curated overall |
+| [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) ★75k | Skills specifically |
+| [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) ★35k | 1000+, breadth over curation |
+| [sickn33/agentic-awesome-skills](https://github.com/sickn33/agentic-awesome-skills) ★47k | Local agent-first control plane |
+| [github/awesome-copilot](https://github.com/github/awesome-copilot) ★37k | Instructions, agents, skills, configs for Copilot |
+| [agentation.com](https://www.agentation.com/) | Agent tooling directory, broader than Claude |
+
+## Skip
+
+| Repo | Why |
+| --- | --- |
+| [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) ★199k | It is **a single `CLAUDE.md`**, no commits since April. Read it for ideas; there is nothing to install |
+| Anything with six figures and three commits | The counts in this ecosystem do not survive scrutiny. Open the commit history before trusting one |
+
+## How to evaluate before installing
+
+A skill is a prompt running with your tool permissions. Read `SKILL.md` first —
+same reflex as reading a shell script before `| bash`.
+
+1. **`allowed-tools`** — does it ask for more than its job needs?
+2. **Network or out-of-project writes** — why?
+3. **Commit history** — real iteration, or one bulk drop?
+4. **Description quality** — a vague description means it fires at random, or
+   never

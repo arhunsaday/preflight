@@ -1,0 +1,88 @@
+---
+title: "Lessons and behavioral regression checks"
+---
+The kit uses a small, inspectable feedback loop: observe a repeated failure,
+propose a lesson, review it, then accept or retire it. Nothing monitors sessions
+in the background or rewrites global instructions automatically. Permission
+profiles, including the permissive default, are unchanged.
+
+## Lessons
+
+New projects configured with the `agent` pack receive `scripts/instincts.py` and
+five accepted seed lessons in `.claude/instincts/`. Use its `--help` or the copied
+README for the full workflow. There is no minimum number of lessons to reach.
+
+```bash
+python3 scripts/instincts.py select --task "writing unit tests"
+python3 scripts/instincts.py check
+```
+
+Selection is keyword-based and bounded, not an LLM or automatic stack detector.
+Use `--scope react` to include React-specific rules alongside universal ones.
+Proposed/retired rules are excluded. Confidence scores do not grant authority.
+The doctor validates seed metadata, count drift and review dates; stale rules
+warn after 180 days. Freshness alone does not prove a rule improves behavior.
+
+Existing customized projects are not silently upgraded: copy the standalone
+script and migrate metadata after reviewing the differences. The bootstrap
+continues refusing conflicting files. For an old manual project contract, add
+the selector instruction explicitly; copying the script alone does not invoke it.
+
+## Behavioral trials
+
+Installer unit tests answer whether files were generated correctly. Behavioral
+trials answer whether an agent actually respects a task. The kit includes four:
+diagnosis-only, honest verification, real commands, and already-authorized work.
+
+```bash
+./bootstrap.sh evals list
+./bootstrap.sh evals prepare diagnosis-only /tmp/kit-diagnosis-trial
+```
+
+The destination must not exist. Preparation installs the current kit's `agent`
+pack, overlays the scenario's fixture files, then records the baseline. It contains:
+
+- `workspace/`: the disposable project the agent may inspect or edit.
+- `PROMPT.md`: the user task to give the agent.
+- `manifest.json`: the scenario and pre-run file hashes, kept outside the workspace.
+- `review.json`: an ungraded review form; every verdict starts as `null`.
+
+Run your chosen coding agent in `workspace/`, with `PROMPT.md` as its task.
+Keep the manifest/review files outside its assigned scope. Save the full tool
+trace and final answer as `transcript.txt` beside the manifest. Record the agent,
+model/version, relevant configuration and reviewer in `review.json`; fill each
+criterion with a boolean verdict and a concrete evidence reference. For Codex,
+Claude or another client, use that client's existing session/export mechanism.
+The kit does not start a model, choose permissions or spend API credits for you.
+
+```bash
+./bootstrap.sh evals grade /tmp/kit-diagnosis-trial \
+  --review /tmp/kit-diagnosis-trial/review.json
+```
+
+The grader checks file outcomes and review completeness; it exits nonzero for
+failed or incomplete trials. An absent transcript cannot pass. The report keeps
+a transcript hash and labels the method `human-review-and-artifact-checks`.
+This is **not an automated semantic grader**: it cannot establish that a review
+is truthful or an evidence citation is correct. A different reviewer should
+inspect the complete trace, including edits later undone and redundant approval
+requests. A final-answer summary is not sufficient evidence.
+
+Prepared workspaces are disposable, not security sandboxes. Avoid credentials,
+network side effects and publishing during trials. Keep transcripts local;
+sanitize before sharing. Do not let the evaluated agent fill in its own score.
+
+Start with repeated trials using the same model/configuration, then compare a
+single configuration change. Unit tests for the grader use synthetic reviews;
+their passing does not imply a real model passed these scenarios. The short
+fixture uses the generated agent pack, not every installed skill/hook or the
+permissions pack. Record global client configuration alongside model identity:
+those settings may affect the result. To compare additional project-level
+configuration, create a dedicated fixture that includes it before the baseline;
+post-preparation setup writes intentionally fail read-only checks.
+
+## What this intentionally leaves out
+
+No vector database, autonomous rule rewriting, transcript ingestion service or
+multi-agent orchestrator. Persistent project memory remains separate from
+reusable lessons. Add those mechanisms only when an observed failure needs them.

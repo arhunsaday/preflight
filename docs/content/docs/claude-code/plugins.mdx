@@ -1,0 +1,49 @@
+---
+title: "Plugins & marketplaces"
+---
+A plugin bundles skills, commands, agents, hooks and MCP servers into one
+installable unit with a manifest. It is how you distribute a setup to a team
+rather than telling six people to copy folders.
+
+## Using them
+
+```
+/plugin marketplace add <owner>/<repo>
+/plugin install <name>@<marketplace>
+/plugin
+```
+
+Installed plugins are listed in `settings.json` under `enabledPlugins`.
+
+## Structure
+
+```
+my-plugin/
+├── manifest.json          # name, version, what it provides
+├── skills/<name>/SKILL.md
+├── commands/*.md
+├── agents/*.md
+├── hooks/
+└── .mcp.json
+```
+
+A good reference skeleton lives in an internal repository at
+`src-tauri/src/infrastructure/plugin-sample/` — manifest, JSON schema, and a
+`files/` tree with `AGENTS.md`, instincts, skills and a devcontainer.
+
+## When to make one
+
+| You want | Use |
+| --- | --- |
+| Your own machines in sync | this kit + `bootstrap.sh` |
+| A team on the same setup | **a plugin + marketplace** |
+| One capability shared publicly | a skill repo + `npx skills add` |
+
+This kit is deliberately *not* a plugin: symlinks give an edit-and-it-is-live
+loop that a versioned plugin cannot. A plugin is the right shape once other
+people consume it and need stable versions.
+
+## Reference
+
+- [Plugins](https://code.claude.com/docs/en/plugins)
+- [Plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces)

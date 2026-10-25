@@ -1,0 +1,100 @@
+---
+title: "DevOps"
+---
+Docker, Kubernetes, Helm, Argo CD, Terraform, OpenShift, GitHub Actions, GitLab
+CI. The rules here are about blast radius, because that is what differs from
+application code: a bad commit is revertible, a bad `kubectl apply` is an
+incident.
+
+## The one rule
+
+**Observe, plan, bound, then mutate.** Before any operational write:
+
+1. Resolve the exact target and your authorization for it
+2. Capture current state
+3. Produce plan / diff / dry-run output
+4. State blast radius, health gate, rollback, and stop condition
+5. Require explicit approval for production or anything destructive
+6. Apply the smallest scope, verify, then expand
+
+That is the `plan-before-operational-change` instinct. Most infrastructure
+failures are target, scope or rollback failures — not syntax failures. **A green
+exit code proves execution, not safety.**
+
+## Safe by default
+
+| Tool | Read-only first | Then |
+| --- | --- | --- |
+| Terraform | `terraform plan` | `apply` with the saved plan file, never a bare `apply` |
+| Kubernetes | `kubectl diff -f` | `apply` — and `--context` explicit, every time |
+| Helm | `helm diff upgrade` | `upgrade --atomic --timeout` |
+| Argo CD | `argocd app diff` | `sync` — or better, let git do it |
+| GitHub Actions | `act` locally | push to a branch, never edit on main |
+
+**`kubectl` context is the classic incident.** Make the agent state the context
+and namespace in the command every time — `kubectl --context staging -n api get pods`
+— rather than relying on whatever the last `use-context` left behind.
+
+## GitOps
+
+With Argo CD, the agent should be editing **manifests in git**, not the cluster.
+A change that does not go through a commit is a change that vanishes on the next
+sync and that nobody can review. If the agent reaches for `kubectl apply` on a
+GitOps-managed namespace, that is a bug in the plan.
+
+## Git hooks
+
+Claude Code hooks run inside the agent loop. Git hooks catch what already got
+written — belt and braces.
+
+```bash
+cp ~/Repos/preflight/templates/shared/agent/git-hooks/pre-commit-secrets.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+Blocks commits containing `sk-ant-`, `sk_live_`, `ghp_`, `AKIA`, Slack tokens,
+SendGrid keys, JWTs, private key blocks — and refuses `.env`, `*.pem`, `*.key`,
+`credentials.json`, `id_rsa` outright.
+
+For a repo-wide, shared version use [pre-commit](https://pre-commit.com) with
+[gitleaks](https://github.com/gitleaks/gitleaks) — `.git/hooks/` is not
+committed, so a local hook protects only you.
+
+## CI/CD
+
+- **The agent reads CI logs, it does not rerun the pipeline to see what happens.**
+  Fetch the failed job's log, diagnose, fix, push once.
+- Pin action versions by SHA, not by tag. A moving tag is remote code execution
+  with extra steps.
+- Secrets come from the CI secret store. If the agent proposes a secret in a
+  workflow file, that is a stop.
+- `gh run view --log-failed` is the fastest path from a red pipeline to the
+  actual error.
+
+## Kubernetes diagnosis
+
+[k8sgpt](https://github.com/k8sgpt-ai/k8sgpt) (★8k) scans a cluster and explains
+failures in plain language — the fastest way to go from "pods are unhealthy" to
+the actual cause:
+
+```bash
+k8sgpt analyze --explain --namespace <ns>
+```
+
+Read-only by default, which is what you want an agent pointed at.
+Pair it with [LukasNiessen/kubernetes-skill](https://github.com/LukasNiessen/kubernetes-skill).
+
+## Containers
+
+- Multi-stage builds; the final stage carries no build toolchain
+- Non-root user, read-only root filesystem where the app allows it
+- Pin base images by digest
+- `docker scout cves` or `trivy image` before anything ships
+- `.dockerignore` mirrors `.gitignore` — `node_modules` in a build context is
+  the most common slow build
+
+## What is missing from this kit
+
+No `terraform-patterns`, `k8s-manifests` or `helm-chart` skills yet. See the
+[gap list](https://github.com/arhunsaday/preflight#readme) in the repo's README — they are the top of the backlog for this
+stack.

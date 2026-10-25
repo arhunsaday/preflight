@@ -1,0 +1,35 @@
+---
+title: "Install"
+description: "Run Preflight from a clone"
+---
+
+<Callout type="warn">
+The package has not been published to npm yet. Run it from a clone.
+</Callout>
+
+Requires Node.js 22 or newer.
+
+```sh
+git clone https://github.com/arhunsaday/preflight ~/Repos/preflight
+cd ~/Repos/preflight
+npm ci
+npm run build
+npm link            # exposes the `preflight` executable
+preflight --help
+```
+
+Then, in a project:
+
+```sh
+preflight detect    # read what the harnesses already hold (read-only)
+preflight doctor    # findings, drift, context cost (read-only)
+preflight init      # create preflight.config.json
+preflight ui        # open the terminal interface
+```
+
+`detect` and `doctor` need no `init`. Use `--root` and `--home` to point at
+another project or an isolated harness home, and `PREFLIGHT_HOME` to change the
+default home.
+
+The shell kit that predates the CLI (`bootstrap.sh`, `doctor.sh`) is still
+there: see [Install the kit](/docs/setup/install).

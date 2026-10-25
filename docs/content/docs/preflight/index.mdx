@@ -1,0 +1,43 @@
+---
+title: "Overview"
+description: "Search, inspect, scope, share and verify AI development setups"
+---
+
+Preflight (formerly the AI Dev Kit, or ADK) manages an AI development setup the
+way a package manager manages dependencies: declared in a file, applied through
+a reversible transaction, and checked before you rely on it. It is a TypeScript
+CLI with an Ink terminal interface, and a desktop app is planned.
+
+## The core loop
+
+```sh
+preflight search test                      # find a resource in the catalogue
+preflight catalog-inspect skill:ponytail   # read what it contains and asks for
+preflight catalog-add skill:ponytail --dry-run
+preflight catalog-add skill:ponytail       # add it to the active profile
+preflight verify skill:ponytail            # check it is wired and healthy
+preflight rollback                         # reverse the latest transaction
+```
+
+Nine resource types are managed: skills, MCP servers, subagents, hooks, slash
+commands, status lines, plugins, prompts and tools. Claude Code and Cursor have
+native adapters; everything else stays inspectable and is flagged as
+catalogued only.
+
+## State
+
+| File | Role |
+| --- | --- |
+| `preflight.config.json` | desired profiles and resources, committed to git |
+| `preflight.lock.json` | what was applied, with managed-file hashes (machine-local) |
+| `.preflight/` | transaction journals and the audit log (keep out of git) |
+
+## Guarantees
+
+- Every write supports `--dry-run` and `rollback`, and interrupted writes are recoverable.
+- Nothing is silently adopted, overwritten or downloaded at startup.
+- Delegated installers (`install --execute`, `git pull`) are printed first and are not reversed by rollback.
+
+Full detail lives in [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md); the product plan is in
+[PLAN.md](https://github.com/arhunsaday/preflight/blob/main/PLAN.md) and what is delivered against it in
+[ACCEPTANCE.md](https://github.com/arhunsaday/preflight/blob/main/ACCEPTANCE.md).
