@@ -2,7 +2,7 @@
 name: pdf-inspector
 description: Convert PDFs to clean Markdown and classify them as text-based vs scanned, without OCR, using the firecrawl/pdf-inspector CLI. Use when a PDF is large (30+ pages), when many PDFs need batch conversion to text/Markdown, when the extracted text must be saved to a file or piped into another tool, or when you need to know whether a PDF actually contains a text layer before attempting extraction. Do NOT use for small PDFs you just need to read or summarize — the native Read tool handles those directly.
 source:
-  upstream: hand-authored in ai-dev-kit, from firecrawl/pdf-inspector docs (that tool is MIT)
+  upstream: hand-authored in preflight, from firecrawl/pdf-inspector docs (that tool is MIT)
   imported: 2026-08-02
 ---
 

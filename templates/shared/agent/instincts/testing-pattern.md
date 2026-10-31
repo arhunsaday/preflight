@@ -3,7 +3,7 @@ id: testing-pattern
 status: accepted
 scope: universal
 last_reviewed: 2026-09-20
-reviewed_by: ai-dev-kit-maintainer-agent
+reviewed_by: preflight-maintainer-agent
 evidence: Existing generic test-boundary guidance; NestJS snippet remains illustrative, not required in other stacks.
 trigger: 'when writing unit tests for a service or other DI-wired class'
 confidence: 0.8

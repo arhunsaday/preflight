@@ -3,14 +3,14 @@ import { readFile, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { verifyResource } from "./verify.js";
-import { AdkService } from "./service.js";
+import { PreflightService } from "./service.js";
 import { type Context } from "./adapters.js";
 import {
   ResourceSchema,
   ResourceTypeSchema,
   ScopeSchema,
   SharePayloadSchema,
-  AdkConfigSchema,
+  PreflightConfigSchema,
   type Resource,
 } from "./schema.js";
 import {
@@ -46,7 +46,7 @@ export async function execute(
   let result: unknown;
   const program = new Command();
   program
-    .name("adk")
+    .name("preflight")
     .description("Inspect, manage, scope, share and verify your AI setup")
     .exitOverride()
     .configureOutput({
@@ -63,7 +63,7 @@ export async function execute(
     root: resolve(program.opts().root),
     home: resolve(program.opts().home),
   });
-  const service = () => new AdkService(ctx());
+  const service = () => new PreflightService(ctx());
   const dry = () => !!program.opts().dryRun;
   const command = (
     name: string,
@@ -83,7 +83,7 @@ export async function execute(
   const catalog = async (path?: string) =>
     path ? localCatalog(resolve(ctx().root, path)) : catalogResources();
   const shareBase = (value?: string) =>
-    value ?? process.env.ADK_SHARE_URL ?? "http://localhost:8787";
+    value ?? process.env.PREFLIGHT_SHARE_URL ?? "http://localhost:8787";
   command("init", "Create a project configuration", async () =>
     service().init(dry()),
   );
@@ -311,9 +311,9 @@ export async function execute(
           resource,
           plan,
           note:
-            "Use --execute to run this external package manager. Package-manager side effects are outside ADK rollback." +
+            "Use --execute to run this external package manager. Package-manager side effects are outside Preflight rollback." +
             (resource.type === "plugin"
-              ? " A plugin whose marketplace declares an install command needs a terminal: that confirmation shows the command to a person, and ADK does not accept it on your behalf."
+              ? " A plugin whose marketplace declares an install command needs a terminal: that confirmation shows the command to a person, and Preflight does not accept it on your behalf."
               : ""),
         };
       const output = await runCommand(plan, ctx().root, 120000, {
@@ -371,7 +371,7 @@ export async function execute(
       if (!resources.length)
         throw new Error("Nothing to share with these options");
       const payload = makeShare(resources, {
-        ownerId: options.owner ?? process.env.ADK_OWNER_ID ?? "local",
+        ownerId: options.owner ?? process.env.PREFLIGHT_OWNER_ID ?? "local",
         visibility: options.public ? "public" : "unlisted",
         ...(options.expires ? { expiresAt: options.expires } : {}),
       });
@@ -384,14 +384,14 @@ export async function execute(
           { actor: process.env.USER ?? "local" },
         );
       }
-      if (!process.env.ADK_SHARE_TOKEN)
+      if (!process.env.PREFLIGHT_SHARE_TOKEN)
         throw new Error(
-          "Set ADK_SHARE_TOKEN for publishing or use --out payload.json",
+          "Set PREFLIGHT_SHARE_TOKEN for publishing or use --out payload.json",
         );
       return publishShare(
         shareBase(options.service),
         payload,
-        process.env.ADK_SHARE_TOKEN,
+        process.env.PREFLIGHT_SHARE_TOKEN,
       );
     },
   )
@@ -420,10 +420,10 @@ export async function execute(
       throw new Error("Invalid code");
     const url = `${serviceUrl(shareBase(options.service))}/api/shares/${code.toLowerCase()}`;
     if (dry()) return { method: "DELETE", url };
-    if (!process.env.ADK_SHARE_TOKEN) throw new Error("Set ADK_SHARE_TOKEN");
+    if (!process.env.PREFLIGHT_SHARE_TOKEN) throw new Error("Set PREFLIGHT_SHARE_TOKEN");
     const response = await fetch(url, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${process.env.ADK_SHARE_TOKEN}` },
+      headers: { Authorization: `Bearer ${process.env.PREFLIGHT_SHARE_TOKEN}` },
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error(`Revoke failed: HTTP ${response.status}`);
@@ -507,7 +507,7 @@ export async function execute(
         ctx().root,
         options.name,
         options.config === "current"
-          ? join(ctx().root, "adk.config.json")
+          ? join(ctx().root, "preflight.config.json")
           : resolve(ctx().root, options.config),
         resolve(ctx().root, options.tasks),
         dry(),
@@ -517,14 +517,14 @@ export async function execute(
     if (!/^[a-z0-9_-]+$/i.test(left) || !/^[a-z0-9_-]+$/i.test(right))
       throw new Error("Invalid benchmark name");
     result = compareRuns(
-      BenchRun.parse(await input(`.adk/bench/${left}.json`)),
-      BenchRun.parse(await input(`.adk/bench/${right}.json`)),
+      BenchRun.parse(await input(`.preflight/bench/${left}.json`)),
+      BenchRun.parse(await input(`.preflight/bench/${right}.json`)),
     );
   });
   command(
     "validate <file>",
     "Validate a desired-state configuration",
-    async (file) => AdkConfigSchema.parse(await input(file)),
+    async (file) => PreflightConfigSchema.parse(await input(file)),
   );
   try {
     await program.parseAsync(args, { from: "user" });

@@ -31,7 +31,7 @@ export async function detectStack(root: string) {
 export async function retrofit(root: string, dryRun = false) {
   const detected = await detectStack(root);
   const contractPath = join(root, "AGENTS.md");
-  const registryPath = join(root, ".adk", "commands.json");
+  const registryPath = join(root, ".preflight", "commands.json");
   const before = await readText(contractPath);
   if (before !== null)
     throw new Error(

@@ -2,7 +2,7 @@
 name: langfuse-observability
 description: Instrument, trace, evaluate and iterate on LLM applications with Langfuse — tracing LangChain/LangGraph runs, building datasets from real traffic, defining evaluators, running experiments before shipping a prompt change. Use when building or debugging an LLM feature, when quality regressed and nobody knows why, or before changing a prompt in production.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: medium
 writes_files: true

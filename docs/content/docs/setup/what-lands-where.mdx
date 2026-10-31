@@ -1,0 +1,57 @@
+---
+title: "What lands where"
+---
+```
+preflight/                          ~/.claude/
+├── claude-code/
+│   ├── CLAUDE.md          ────────→ CLAUDE.md          (global instructions)
+│   ├── settings.json      ──✗──────  settings.json      (never overwritten — merge by hand)
+│   ├── skills/<cat>/<n>/  ────────→ skills/<n>/         (category flattened away)
+│   ├── hooks/*.sh         ────────→ hooks/              (+ chmod +x)
+│   ├── commands/*.md      ────────→ commands/           (slash commands)
+│   ├── agents/*.md        ────────→ agents/             (subagents)
+│   └── statusline/*.sh    ────────→ statusline/
+├── templates/shared/agent/ ──────→  (copied into a project by --project)
+├── skills/THIRD-PARTY.md            (not installed — a manifest of what the CLI manages)
+└── docs/                            (this site)
+```
+
+## Skills: organised here, flat there
+
+Skills live under a category folder in the repo for browsing, but Claude Code
+discovers them **one level deep**. `bootstrap.sh` flattens on install:
+
+```
+claude-code/skills/quality/verify-security/  →  ~/.claude/skills/verify-security/
+```
+
+Consequence: **two skills can never share a name**, whatever folders they sit in.
+
+## settings.json
+
+Bootstrap will not touch an existing one. To adopt the kit's hooks and
+statusline, merge these blocks into `~/.claude/settings.json` yourself:
+
+- `statusLine` → points at `~/.claude/statusline/statusline-gradient.sh`
+- `hooks` → the `PreToolUse` / `PostToolUse` / `Notification` / `Stop` wiring
+- `permissions.deny` → `.env`, `*.pem`, `*.key`, `credentials.json`
+
+```bash
+diff ~/.claude/settings.json ~/Repos/preflight/claude-code/settings.json
+```
+
+The `permissions.deny` block is worth merging first — it is the one that stops
+secrets entering the context window at all, and it costs nothing.
+
+## Scopes
+
+Claude Code reads configuration from three places, most specific winning:
+
+| Scope | Path | Use for |
+| --- | --- | --- |
+| Enterprise | managed policy | org-wide rules |
+| **User** | `~/.claude/` | everything in this kit |
+| **Project** | `<repo>/.claude/` | project skills, project hooks, per-repo permissions |
+
+A slow test suite is the usual reason to put a hook at project scope instead of
+user scope — see [hooks](/docs/claude-code/hooks).

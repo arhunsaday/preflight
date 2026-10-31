@@ -3,7 +3,7 @@ id: commit-convention
 status: accepted
 scope: universal
 last_reviewed: 2026-09-20
-reviewed_by: ai-dev-kit-maintainer-agent
+reviewed_by: preflight-maintainer-agent
 evidence: Existing hand-authored kit convention; rechecked during lifecycle migration, not empirically scored.
 trigger: 'when writing a commit message'
 confidence: 0.85

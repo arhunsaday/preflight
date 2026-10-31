@@ -1,0 +1,49 @@
+---
+title: "Remote control"
+---
+Driving or watching a session from your phone, or from another machine.
+
+## Built in first
+
+Claude Code has native remote control — check `/config` in an interactive
+terminal before installing anything. Sessions started with it can be monitored
+and steered from claude.ai. The desktop app also exposes sessions across
+machines on the same account.
+
+If the built-in covers it, stop here: a third-party tunnel is another thing
+holding your credentials.
+
+## Third-party
+
+| Tool | Shape |
+| --- | --- |
+| [Happy Coder](https://github.com/slopus/happy) | Mobile client + web, end-to-end encrypted, the most established |
+| CloudCLI | Web/mobile PWA for remote session management |
+| [omnara](https://github.com/omnara-ai/omnara) | Mobile dashboard across agents |
+
+"Yepanywhere" did not resolve to a maintained project when I checked — it may be
+a misremembered name. Happy Coder is the closest thing to what it was likely
+describing.
+
+## GitHub Copilot CLI
+
+Has its own remote control: track and steer CLI sessions from github.com or the
+mobile app. Worth knowing if your employer standardises on Copilot — see
+[Copilot](/docs/other-agents/copilot).
+
+## Before you connect anything
+
+A remote-control bridge holds a session that can **read your repos and run
+commands**. Same scrutiny as an SSH tunnel:
+
+- Is the transport end-to-end encrypted, and who holds the keys?
+- Does the vendor's server see your prompts and code?
+- What happens to the session if the app is uninstalled?
+- On a work machine: does your employer's policy allow it at all?
+
+On a corporate machine, assume the answer is no until IT says otherwise.
+
+## The low-tech option
+
+`tmux` + `ssh`. No vendor, no new credentials, works today, and a phone SSH
+client is enough to check on a long run.

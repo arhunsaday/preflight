@@ -1,0 +1,49 @@
+---
+title: "Backend"
+---
+Node.js, Go · PostgreSQL, SQLite, Redis, Supabase · Drizzle · Nginx.
+
+## Skills
+
+In this kit: the `quality/` gates (`verify-security` especially) and
+`delivery/`. Not yet vendored, available upstream in the upstream toolkit:
+
+| Skill | Covers |
+| --- | --- |
+| `nestjs-patterns` | Controllers, services, repositories, DTOs, guards, mappers |
+| `drizzle-postgres-patterns` | Schema, migrations, transactions, seeding, views, type inference |
+| `bullmq-patterns` | Processors, schedulers, job spans, deduplication, delayed jobs |
+| `resilience-observability-patterns` | Circuit breaker, retry, OpenTelemetry |
+| `external-service-patterns` | SFTP, payment gateways, Keycloak, resilient HTTP |
+| `api-contract-sync` | Keeping OpenAPI/Scalar, Bruno and Gherkin in step |
+
+## Database work
+
+**Migrations are the highest-risk thing an agent touches.** Rules:
+
+- Generate the migration, **read it**, then apply. Never generate-and-apply in
+  one step.
+- An agent will happily write a destructive migration because the schema change
+  implies it. Every `DROP COLUMN` needs a human decision about the data.
+- `block-dangerous.sh` blocks `DROP TABLE` / `DROP DATABASE` / `TRUNCATE` in
+  Bash — but not inside a generated migration file. Read those yourself.
+- Test the **down** migration. A migration you cannot reverse is a deploy you
+  cannot roll back.
+
+## Security checklist
+
+The failures that survive a green CI, from the `self-review-before-done`
+instinct:
+
+- **Scope on every by-id path** — from the token, not the body; 404-mask the
+  difference between missing and forbidden
+- **Validation actually registered** — a DTO with no pipe behind it is decoration
+- **No mass assignment** — strip `id`, `userId`, `role`, status from input
+- **Response shape** — no internal columns serialized out
+- **Boot** — a type-check never proves the app starts
+
+## Postgres + pgvector
+
+For RAG work, see [AI](/docs/stack/ai). Operationally: `pgvector` index choice (`ivfflat`
+vs `hnsw`) is a real decision with a real cost, not a default — make the agent
+justify it against your row count and recall target.

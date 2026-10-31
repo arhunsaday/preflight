@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execute } from "../src/commands.js";
 it("scripts the core loop using JSON outputs and dry-run", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-cli-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-cli-"));
   const context = { root, home: join(root, "home") };
   await execute(["init"], context);
   const file = join(root, "prompt.json");
@@ -28,7 +28,7 @@ it("scripts the core loop using JSON outputs and dry-run", async () => {
   });
   await execute(["move", "prompt:hello", "global"], context);
   expect(
-    JSON.parse(await readFile(join(root, "adk.config.json"), "utf8")).profiles
+    JSON.parse(await readFile(join(root, "preflight.config.json"), "utf8")).profiles
       .default.resources[0].scope,
   ).toBe("global");
   await execute(["rollback"], context);

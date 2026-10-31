@@ -82,7 +82,7 @@ it("ranks contiguous and early fuzzy matches first", () => {
 });
 
 it("exposes every interface action as a real CLI command", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-parity-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-parity-"));
   const context = { root, home: root };
   const names = [
     ...new Set(actions.map((action) => action.cli).filter(Boolean)),
@@ -108,7 +108,7 @@ it("offers resource actions only when a resource is selected", () => {
 it("shows the command a confirmed action previews first", () => {
   const move = actions.find((action) => action.id === "move")!;
   expect(commandLine(move, state)).toBe(
-    "adk move skill:example global --dry-run",
+    "preflight move skill:example global --dry-run",
   );
 });
 
@@ -231,7 +231,7 @@ it("summarizes a dry-run transaction into files, changes and warnings", () => {
     dryRun: true,
     warnings: ["cursor: hook is catalogued only"],
     files: [
-      { path: "/tmp/adk.config.json", before: "{}", after: "{\n}" },
+      { path: "/tmp/preflight.config.json", before: "{}", after: "{\n}" },
       { path: "/tmp/new.json", before: null, after: "{}" },
     ],
     diff: [

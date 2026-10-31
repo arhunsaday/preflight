@@ -3,16 +3,16 @@ import { execute, canonicalContext } from "./commands.js";
 import { resolve } from "node:path";
 async function main() {
   if (Number(process.versions.node.split(".")[0]) < 22)
-    throw new Error("ADK requires Node.js 22 or newer");
+    throw new Error("Preflight requires Node.js 22 or newer");
   const args = process.argv.slice(2);
   const context = await canonicalContext(
     process.cwd(),
-    process.env.ADK_HOME ?? homedir(),
+    process.env.PREFLIGHT_HOME ?? homedir(),
   );
   if (args[0] === "ui") {
     if (!process.stdin.isTTY)
       throw new Error(
-        "adk ui requires an interactive terminal; use adk --help for scriptable commands",
+        "preflight ui requires an interactive terminal; use preflight --help for scriptable commands",
       );
     const rootIndex = args.indexOf("--root"),
       homeIndex = args.indexOf("--home");

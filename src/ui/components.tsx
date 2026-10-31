@@ -140,7 +140,7 @@ export function StatusBar({
       <Box flexShrink={1}>
         <Text wrap="truncate">
           <Text bold color={color.accent}>
-            ADK{" "}
+            Preflight{" "}
           </Text>
           <Text dimColor>{glyph.dot} </Text>
           <Text>{truncate(profile, compact ? 16 : 28)}</Text>

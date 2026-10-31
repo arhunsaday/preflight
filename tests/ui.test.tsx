@@ -11,11 +11,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { App, ResourceList } from "../src/ui/index.js";
-import { AdkService } from "../src/service.js";
+import { PreflightService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
 
 async function workspace() {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-ui-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-ui-"));
   const context = { root, home: join(root, "home") };
   await mkdir(context.home);
   return context;
@@ -69,7 +69,7 @@ it("renders a bounded viewport for 500 resources", () => {
 
 it("shows views, the selected resource detail and its harness support", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   await service.init();
   await service.create({
     id: "mcp:example",
@@ -102,7 +102,7 @@ it("shows views, the selected resource detail and its harness support", async ()
 
 it("moves a resource between scopes only after the preview is confirmed", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   await service.init();
   await service.create({
     id: "skill:scoped",
@@ -123,7 +123,7 @@ it("moves a resource between scopes only after the preview is confirmed", async 
     await ui.until("scoped");
     await ui.press("m");
     await ui.until("PREVIEW");
-    expect(ui.frame()).toContain("adk move skill:scoped global");
+    expect(ui.frame()).toContain("preflight move skill:scoped global");
     expect((await service.list())[0]!.scope).toBe("project");
     await ui.press("\u001b");
     await ui.until("Cancelled");
@@ -141,7 +141,7 @@ it("moves a resource between scopes only after the preview is confirmed", async 
 
 it("searches the catalogue and adds the selected result only after preview confirmation", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   await service.init();
   const view = render(<App context={context} />);
   const ui = driver(view);
@@ -167,7 +167,7 @@ it("searches the catalogue and adds the selected result only after preview confi
 
 it("opens the action palette and filters it by typing", async () => {
   const context = await workspace();
-  await new AdkService(context).init();
+  await new PreflightService(context).init();
   const view = render(<App context={context} />);
   const ui = driver(view);
   try {
@@ -186,7 +186,7 @@ it("opens the action palette and filters it by typing", async () => {
 
 it("validates the resource form before previewing a write", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   await service.init();
   const view = render(<App context={context} />);
   const ui = driver(view);
@@ -208,14 +208,14 @@ it("validates the resource form before previewing a write", async () => {
 
 it("shows the keyboard reference with the command each action runs", async () => {
   const context = await workspace();
-  await new AdkService(context).init();
+  await new PreflightService(context).init();
   const view = render(<App context={context} />);
   const ui = driver(view);
   try {
     await ui.until("Browse");
     await ui.press("?");
     await ui.until("KEYBOARD REFERENCE");
-    expect(ui.frame()).toContain("adk move <id> global --dry-run");
+    expect(ui.frame()).toContain("preflight move <id> global --dry-run");
     await ui.press("\u001b");
     await ui.until("Browse");
   } finally {
@@ -229,7 +229,7 @@ it("guides an empty project to its first configuration", async () => {
   const ui = driver(view);
   try {
     await ui.until("No configuration in this project");
-    expect(ui.frame()).toContain("i creates adk.config.json");
+    expect(ui.frame()).toContain("i creates preflight.config.json");
     await ui.press("i");
     await ui.until("PREVIEW");
     await ui.press("\r");
@@ -241,7 +241,7 @@ it("guides an empty project to its first configuration", async () => {
 
 it("keeps the resource id fixed while editing", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   await service.init();
   await service.create({
     id: "prompt:draft",
@@ -271,11 +271,11 @@ it("keeps the resource id fixed while editing", async () => {
   }
 }, 20000);
 
-// A configuration edited outside ADK — pulled from git, or hand-edited — is
+// A configuration edited outside Preflight — pulled from git, or hand-edited — is
 // desired state that has not reached the harness files yet.
 it("marks desired resources as applied once they reach the harness files", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   const config = await service.init();
   config.profiles.default!.resources.push(
     ResourceSchema.parse({
@@ -306,7 +306,7 @@ it("marks desired resources as applied once they reach the harness files", async
 
 it("adopts an installed resource from the detected view", async () => {
   const context = await workspace();
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   await service.init();
   const skill = join(
     context.home,
@@ -316,7 +316,7 @@ it("adopts an installed resource from the detected view", async () => {
     "SKILL.md",
   );
   await mkdir(dirname(skill), { recursive: true });
-  const body = "---\nname: installed-earlier\ndescription: predates ADK\n---\n";
+  const body = "---\nname: installed-earlier\ndescription: predates Preflight\n---\n";
   await writeFile(skill, body);
   const view = render(<App context={context} />);
   const ui = driver(view);

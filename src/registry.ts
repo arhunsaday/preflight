@@ -20,7 +20,7 @@ const Input = z.object({
 });
 type InputValue = z.infer<typeof Input>;
 const envName = (name: string) =>
-  `ADK_${name
+  `PREFLIGHT_${name
     .replace(/^-+/, "")
     .replace(/[^a-z0-9_]/gi, "_")
     .toUpperCase()}`;

@@ -1,0 +1,78 @@
+---
+title: "Observability"
+---
+Grafana, Prometheus, Loki, Tempo, Mimir — the LGTM stack. With the Grafana MCP
+server connected, the agent queries them directly instead of you pasting
+screenshots.
+
+## Setup
+
+Three servers, one per environment, each with its own **Viewer** token — see
+[my servers](/docs/mcp/my-servers#grafana--one-server-per-environment). Separate
+names mean querying production is always a deliberate act.
+
+## The loop
+
+```
+alert / symptom
+   → metrics  (Prometheus/Mimir): WHAT is wrong, and since when
+   → logs     (Loki):             WHY — the error, at that timestamp
+   → traces   (Tempo):            WHERE in the request path
+   → fix
+   → verify on the same dashboard
+```
+
+Metrics before logs. A log query without a time window and a service is a
+fishing expedition that returns a million lines and burns the context.
+
+## Querying well
+
+**PromQL** — always a `rate()` over a counter, never the raw counter:
+
+```text
+sum(rate(http_requests_total{job="api",status=~"5.."}[5m])) by (route)
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))
+```
+
+**LogQL** — filter by label *before* matching text. Labels are indexed, text is
+not:
+
+```text
+{namespace="prod", app="api"} |= "error" | json | status >= 500
+```
+
+`{app="api"} |= "error"` over 7 days will time out. Narrow the window first.
+
+## Rules for an agent
+
+- **Bound every query.** A time range, a service, a namespace. Always.
+- **Read the alert rule before the dashboard** — it says what someone decided
+  mattered, which is usually the fastest path.
+- **Correlate with deploys.** "Since when" answered against the deploy timeline
+  solves a large share of incidents before any log is read.
+- **Do not paste raw log dumps into the context.** Aggregate — count by error
+  type, then drill into one example.
+- **Say what you did not check.** "Metrics and logs reviewed, traces not
+  examined" is a useful report; implying full coverage is not.
+
+## The four signals
+
+Latency, traffic, errors, saturation. If a dashboard does not show all four for
+a service, that is the gap — and it is worth fixing before the next incident
+rather than during it.
+
+## Incidents
+
+1. **Preserve evidence before remediating**, when it is safe
+2. Stabilise — rollback beats a forward fix under pressure
+3. One change at a time, with a stated health gate
+4. Write the timeline *as you go*; reconstructing it afterwards loses the detail
+   that matters for the postmortem
+
+`plan-before-operational-change` adds: during an incident, distinguish
+**documented** controls from **observed and tested** ones.
+
+## Alerting
+
+Alert on symptoms users feel (error rate, latency), not on causes (CPU). A
+cause-based alert fires when nothing is wrong and stays quiet when something is.

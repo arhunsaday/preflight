@@ -9,7 +9,7 @@
 # here — so the first run downloads it through npx.
 set -uo pipefail
 
-PORT="${ADK_SMOKE_PORT:-8799}"
+PORT="${PREFLIGHT_SMOKE_PORT:-8799}"
 BASE="http://127.0.0.1:${PORT}"
 TOKEN="smoke-$RANDOM"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,7 +18,7 @@ failures=0
 
 cd "$ROOT"
 if curl -s -o /dev/null --max-time 2 "$BASE/s/aaaaaa"; then
-  echo "port $PORT already answers; stop that server or set ADK_SMOKE_PORT" >&2
+  echo "port $PORT already answers; stop that server or set PREFLIGHT_SMOKE_PORT" >&2
   exit 1
 fi
 if [ -e .dev.vars ]; then
@@ -34,7 +34,7 @@ cleanup() {
 trap cleanup EXIT
 
 npx --yes wrangler@4 dev --local --port "$PORT" \
-  --inspector-port "${ADK_SMOKE_INSPECTOR:-9899}" > "$LOG" 2>&1 &
+  --inspector-port "${PREFLIGHT_SMOKE_INSPECTOR:-9899}" > "$LOG" 2>&1 &
 PID=$!
 
 for _ in $(seq 1 60); do

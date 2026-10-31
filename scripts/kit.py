@@ -164,7 +164,7 @@ def check():
     if subprocess.call([sys.executable, str(ROOT / 'scripts/loadouts.py'), 'check']):
         errors.append('Loadouts do not resolve; see the report above')
     for directory, dirs, files in os.walk(ROOT):
-        dirs[:] = [d for d in dirs if d not in {'node_modules', '.git', '.docusaurus', 'build', '__pycache__'}]
+        dirs[:] = [d for d in dirs if d not in {'node_modules', '.git', '.next', '.source', 'build', '__pycache__'}]
         for name in files:
             p = Path(directory) / name
             if p.suffix == '.json':

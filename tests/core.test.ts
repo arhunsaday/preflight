@@ -45,7 +45,7 @@ it("rejects secrets buried in arrays", () =>
   ).toThrow(/secret/i));
 for (const id of ["claude-code", "cursor"] as const)
   it(`${id} writes and reads skills, preserves unrelated MCP settings`, async () => {
-    const root = await mkdtemp(join(await realpath(tmpdir()), "adk-adapter-"));
+    const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-adapter-"));
     const home = join(root, "home");
     await mkdir(home);
     const adapter = createAdapters({ root, home }).find((a) => a.id === id)!;
@@ -62,7 +62,7 @@ for (const id of ["claude-code", "cursor"] as const)
     expect((await adapter.read()).resources).toHaveLength(0);
   });
 it("dry run writes nothing and rollback refuses to destroy later edits", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-tx-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-tx-"));
   const path = join(root, "file");
   await applyFiles(root, [{ path, before: null, after: "new" }], {
     actor: "test",
@@ -76,7 +76,7 @@ it("dry run writes nothing and rollback refuses to destroy later edits", async (
   await expect(rollback(root)).rejects.toThrow(/changed/i);
 });
 it("isolates a broken adapter", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-detect-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-detect-"));
   await mkdir(join(root, ".cursor"));
   await writeFile(join(root, ".cursor", "mcp.json"), "{broken");
   const results = await detectAll(
@@ -86,7 +86,7 @@ it("isolates a broken adapter", async () => {
   expect(results.find((r) => r.id === "claude-code")?.error).toBeUndefined();
 });
 it("refuses unresolved skills and installs their supporting files transactionally", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-assets-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-assets-"));
   const adapter = createAdapters({ root, home: join(root, "home") })[0]!;
   const unresolved = { ...sample(), content: undefined };
   await expect(adapter.plan([unresolved], [])).rejects.toThrow(/content/i);
@@ -113,7 +113,7 @@ it("refuses unresolved skills and installs their supporting files transactionall
   ).rejects.toThrow(/path/i);
 });
 it("rolls back earlier files if a later write fails", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-failure-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-failure-"));
   const first = join(root, "first");
   await writeFile(first, "old");
   const blocker = join(root, "blocker");
@@ -131,7 +131,7 @@ it("rolls back earlier files if a later write fails", async () => {
   expect(await readFile(first, "utf8")).toBe("old");
 });
 it("wires bundled hook scripts without executing them and removes them on delete", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-hook-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-hook-"));
   const adapter = createAdapters({ root, home: join(root, "home") })[0]!;
   const hook = {
     ...sample(),
@@ -157,13 +157,13 @@ it("wires bundled hook scripts without executing them and removes them on delete
 });
 it("recovers a pending transaction without overwriting later human edits", async () => {
   const { recover } = await import("../src/transaction.js");
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-recover-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-recover-"));
   const path = join(root, "file");
   await writeFile(path, "half-written");
-  await mkdir(join(root, ".adk", "transactions"), { recursive: true });
+  await mkdir(join(root, ".preflight", "transactions"), { recursive: true });
   const id = "11111111-1111-1111-1111-111111111111";
   await writeFile(
-    join(root, ".adk", "transactions", `${id}.json`),
+    join(root, ".preflight", "transactions", `${id}.json`),
     JSON.stringify({
       id,
       actor: "test",
@@ -177,7 +177,7 @@ it("recovers a pending transaction without overwriting later human edits", async
 });
 
 it("writes a status line script and takes it back on rollback", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-status-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-status-"));
   const home = join(root, "home");
   await mkdir(home);
   const adapter = createAdapters({ root, home }).find(
@@ -213,7 +213,7 @@ it("writes a status line script and takes it back on rollback", async () => {
 });
 
 it("ignores an adopted path that tries to leave the harness directory", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-adopt-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-adopt-"));
   const home = join(root, "home");
   await mkdir(home);
   const adapter = createAdapters({ root, home }).find(

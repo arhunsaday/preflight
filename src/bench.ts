@@ -11,8 +11,8 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { digest } from "./adapters.js";
 import { runCommand } from "./operations.js";
-import { AdkConfigSchema } from "./schema.js";
-import { AdkService } from "./service.js";
+import { PreflightConfigSchema } from "./schema.js";
+import { PreflightService } from "./service.js";
 import { applyFiles, readText, jsonText } from "./transaction.js";
 const Command = z.object({
   command: z.string().min(1),
@@ -91,9 +91,9 @@ export async function runBench(
   const taskText = await readFile(tasksPath, "utf8");
   const set = TaskSet.parse(JSON.parse(taskText));
   const configText = await readFile(configPath, "utf8");
-  const config = AdkConfigSchema.parse(JSON.parse(configText));
+  const config = PreflightConfigSchema.parse(JSON.parse(configText));
   if (dryRun) return { name, tasks: set, configDigest: digest(configText) };
-  const workspace = await realpath(await mkdtemp(join(tmpdir(), "adk-bench-")));
+  const workspace = await realpath(await mkdtemp(join(tmpdir(), "preflight-bench-")));
   const results: BenchResult["results"] = [];
   try {
     for (const task of set.tasks) {
@@ -113,19 +113,19 @@ export async function runBench(
       if (pinned.code) throw new Error(pinned.stderr);
       const home = join(workspace, `home-${results.length}`);
       await mkdir(home);
-      const service = new AdkService({ root: checkout, home });
+      const service = new PreflightService({ root: checkout, home });
       await service.init();
       const applied = await service.change((c) => Object.assign(c, config));
       if (applied.warnings.length)
         throw new Error(
           `Benchmark configuration could not be fully applied: ${applied.warnings.join("; ")}`,
         );
-      const metricsPath = join(checkout, ".adk", "bench-metrics.json");
+      const metricsPath = join(checkout, ".preflight", "bench-metrics.json");
       const env = {
         ...process.env,
         HOME: home,
-        ADK_CONFIG: join(checkout, "adk.config.json"),
-        ADK_METRICS: metricsPath,
+        PREFLIGHT_CONFIG: join(checkout, "preflight.config.json"),
+        PREFLIGHT_METRICS: metricsPath,
       };
       const run = await runCommand(task.run, checkout, task.timeoutMs, env);
       const verification =
@@ -165,7 +165,7 @@ export async function runBench(
     revision: set.revision,
     results,
   };
-  const path = join(root, ".adk", "bench", `${name}.json`);
+  const path = join(root, ".preflight", "bench", `${name}.json`);
   await applyFiles(
     root,
     [{ path, before: await readText(path), after: jsonText(result) }],

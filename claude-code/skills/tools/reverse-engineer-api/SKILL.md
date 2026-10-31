@@ -2,7 +2,7 @@
 name: reverse-engineer-api
 description: Discover how a web app's internal/undocumented API works — endpoints, auth scheme, payload shapes, pagination, rate limits — by observing network traffic and reading client bundles. Use when integrating with a service that has no public API docs, when documenting a legacy internal service, or when asked how some site "actually does" something.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: high
 writes_files: true

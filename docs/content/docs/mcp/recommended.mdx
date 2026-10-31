@@ -1,0 +1,47 @@
+---
+title: "Recommended servers"
+---
+Verified 2026-09-20. Ordered by usefulness to this stack, not by stars.
+
+## Official
+
+| Server | Why |
+| --- | --- |
+| [github/github-mcp-server](https://github.com/github/github-mcp-server) | Issues, PRs, Actions, code search. Official |
+| [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | Drive a real browser — E2E, scraping, visual checks |
+| [googleapis/mcp-toolbox](https://github.com/googleapis/mcp-toolbox) | Databases, official |
+| [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana) | Already in use — see [my servers](/docs/mcp/my-servers) |
+
+## Worth adding for this stack
+
+| Server | Why |
+| --- | --- |
+| [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | Indexes a codebase for fast structural lookup |
+| [headroomlabs-ai/headroom](https://github.com/headroomlabs-ai/headroom) | Compresses tool output before it enters the context. Directly attacks the >150k problem |
+| [GLips/Figma-Context-MCP](https://github.com/GLips/Figma-Context-MCP) | Figma layout to any agent |
+| [PrefectHQ/fastmcp](https://github.com/PrefectHQ/fastmcp) | Build your own server in Python |
+
+## Kubernetes & observability
+
+For the devops half of the stack:
+
+- **[k8sgpt](https://github.com/k8sgpt-ai/k8sgpt)** — diagnoses a cluster and
+  explains failures in plain language. A CLI, not an MCP server; the agent calls
+  it like any other tool.
+- **Prometheus / Loki / Tempo / Mimir** — reachable through the Grafana server
+  above rather than as separate servers. One auth boundary instead of four.
+
+## Install
+
+```bash
+claude mcp add --transport http github https://api.githubcopilot.com/mcp
+claude mcp add playwright -- npx -y @playwright/mcp@latest
+```
+
+Then `/mcp` to check status and authorize.
+
+## Before adding one
+
+Each server injects its tool definitions into **every** session's context.
+Twenty servers is a meaningful tax before you have typed anything. Enable what
+the current work needs; disable the rest.

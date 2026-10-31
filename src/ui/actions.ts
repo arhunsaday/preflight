@@ -59,7 +59,7 @@ export interface Action {
   cli?: string;
   /** Route the write through a dry-run preview before applying. */
   confirm?: boolean;
-  /** Warn that the effect is outside ADK's local rollback. */
+  /** Warn that the effect is outside Preflight's local rollback. */
   external?: boolean;
   /** Open the result pane: the output is the point of running it. */
   show?: boolean;
@@ -481,7 +481,7 @@ export function referenceState(state: ActionState): ActionState {
 }
 
 export function commandLine(action: Action, state: ActionState): string {
-  const fallback = action.cli ? `adk ${action.cli}` : "";
+  const fallback = action.cli ? `preflight ${action.cli}` : "";
   if (!action.build) return fallback;
   let argv: string[];
   try {
@@ -490,7 +490,7 @@ export function commandLine(action: Action, state: ActionState): string {
     return fallback;
   }
   return (
-    "adk " +
+    "preflight " +
     argv
       .map((argument) =>
         argument.length > 48 ? argument.slice(0, 47) + "…" : argument,

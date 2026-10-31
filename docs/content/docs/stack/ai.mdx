@@ -1,0 +1,52 @@
+---
+title: "AI engineering"
+---
+LangGraph, LangChain, LangFuse · RAG, pgvector · OpenAI API, Ollama.
+
+## Observability for LLM apps
+
+[LangFuse](https://langfuse.com) has an MCP integration and a skill — tracing,
+prompt management, datasets, evaluation, experiments. If you are building
+LLM features, this is the equivalent of the Grafana server for the rest of the
+stack: without it you are debugging by vibes.
+
+The loop: trace every call → build a dataset from real traffic → define
+evaluators → run experiments against the dataset when you change a prompt. A
+prompt change with no eval is a deploy with no test.
+
+## RAG
+
+Where agents give bad advice, and what to hold them to:
+
+- **Chunking is not a default.** Chunk size and overlap depend on your documents
+  and your queries. Make it justify the numbers.
+- **`ivfflat` vs `hnsw`** in pgvector is a real trade-off — build time and
+  memory against recall. Make it state the row count it assumed.
+- **Hybrid retrieval (BM25 + vector) beats pure vector** on most real corpora.
+  An agent will reach for pure vector because it is what the tutorials show.
+- **Measure retrieval separately from generation.** Most "the LLM is wrong"
+  reports are retrieval failures.
+- **Re-ranking** usually buys more than a bigger embedding model.
+
+## Agent frameworks
+
+LangGraph for anything with state or cycles; plain API calls for the rest. The
+most common over-engineering in this space is a graph where a function would do
+— exactly what `ponytail` is for.
+
+## Local models
+
+Ollama for anything where data must not leave the machine, and for the cheap
+mechanical passes in a pipeline. Do not expect a 7B local model to do the
+reasoning step; use it for extraction and classification, and route the hard
+call to a real model.
+
+## Cost
+
+[deepswe.datacurve.ai](https://deepswe.datacurve.ai/) compares cost and
+performance across coding models — worth checking before assuming the
+biggest model is the right default.
+
+For your own usage: the statusline in this kit shows live context use, and the
+rule from [fundamentals](/docs/claude-code/fundamentals) applies — Sonnet for ~80%,
+Opus when it must think.

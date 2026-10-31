@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { expect, it } from "vitest";
-import { AdkService } from "../src/service.js";
+import { PreflightService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
 const resource = () =>
   ResourceSchema.parse({
@@ -23,8 +23,8 @@ const resource = () =>
     config: { url: "https://example.com/mcp" },
   });
 async function service() {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-service-"));
-  return new AdkService({ root, home: join(root, "home") });
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-service-"));
+  return new PreflightService({ root, home: join(root, "home") });
 }
 it("previews CRUD, applies scope changes, and restores both state and harness files", async () => {
   const s = await service();
@@ -142,7 +142,7 @@ it("adds and removes a hook while preserving unmanaged hooks in the same event",
     config: {
       event: "PreToolUse",
       matcher: "Bash",
-      hooks: [{ type: "command", command: "echo adk" }],
+      hooks: [{ type: "command", command: "echo preflight" }],
     },
   });
   await s.remove("hook:new");
@@ -177,7 +177,7 @@ it("adopts an installed skill where it lives, without rewriting its file", async
     "already-here",
     "SKILL.md",
   );
-  const body = "---\nname: already-here\ndescription: predates ADK\n---\n\nBody.\n";
+  const body = "---\nname: already-here\ndescription: predates Preflight\n---\n\nBody.\n";
   await mkdir(dirname(skill), { recursive: true });
   await writeFile(skill, body);
 
@@ -195,7 +195,7 @@ it("adopts an installed skill where it lives, without rewriting its file", async
   expect(await readFile(skill, "utf8")).toBe(body);
   expect(await s.unmanaged()).toHaveLength(0);
 
-  const lock = JSON.parse(await readFile(join(s.context.root, "adk.lock.json"), "utf8"));
+  const lock = JSON.parse(await readFile(join(s.context.root, "preflight.lock.json"), "utf8"));
   expect(lock.files.map((f: { path: string }) => f.path)).toContain(skill);
 
   // Managing it keeps writing to the same file rather than a second copy.

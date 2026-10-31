@@ -1,9 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "adk-sharing",
+  "name": "preflight-sharing",
   "main": "src/worker.ts",
   "compatibility_date": "2026-09-01",
   "vars": {"OWNER_ID": "local"},
   "kv_namespaces": [{"binding": "SHARES", "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"}],
-  "r2_buckets": [{"binding": "PAYLOADS", "bucket_name": "adk-shares"}]
+  "r2_buckets": [{"binding": "PAYLOADS", "bucket_name": "preflight-shares"}]
 }

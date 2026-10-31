@@ -1,0 +1,40 @@
+---
+title: "Terminal interface"
+description: "preflight ui: five views over the same commands"
+---
+
+`preflight ui` needs an interactive terminal. It is a view over the CLI: every
+action names the command it runs, and writes are previewed as a dry run first.
+Enter applies, Escape cancels.
+
+## Views
+
+| Key | View |
+| --- | --- |
+| `1` | **Browse**, the active profile |
+| `2` | **Catalogue**, search results |
+| `3` | **Detected**, what harnesses hold outside the profile |
+| `4` | **Doctor**, findings |
+| `5` | **Profiles** |
+
+Each view pairs a list with a detail pane: identity, scope, per-harness
+support, provenance, measured invocations and requested tools.
+
+## Keys
+
+| Key | Action |
+| --- | --- |
+| `Tab` | switch view |
+| `↑` `↓` `j` `k`, `g` `G`, PgUp/PgDn | move, jump, scroll |
+| `Enter` | inspect; adopt in Detected; switch profile in Profiles |
+| `/` | filter the list; in Catalogue, run a search |
+| `Ctrl+K` | action palette |
+| `:` | run any CLI command |
+| `n` `e` `d` `f` `m` `v` `i` | new, edit, delete, fork, move scope, verify, installation plan |
+| `a` `O` | add a catalogue result or adopt a detected one, toggle remote sources |
+| `s` `t` | cycle the scope and type filters |
+| `y` `r` `o` `?` `q` | sync, reload, raw result, keyboard reference, quit |
+
+The resource form validates against the same schema as the CLI. The status bar
+shows the active profile, harness detection, measured skill use and the
+doctor's error and warning counts.

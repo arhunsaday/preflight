@@ -2,7 +2,7 @@
 name: memory-snapshot-perf
 description: Diagnose front-end memory leaks and memory-driven slowness using Chrome DevTools heap snapshots — detached DOM nodes, listener leaks, growing closures, retained caches. Use when a web app gets slower the longer it stays open, when a tab's memory climbs and never drops, or when asked to investigate front-end performance.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: medium
 writes_files: false

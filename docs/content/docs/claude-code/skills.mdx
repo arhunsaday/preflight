@@ -1,0 +1,77 @@
+---
+title: "Skills"
+---
+A skill is a folder with a `SKILL.md`. Its frontmatter `description` is the
+trigger — it is the *only* part loaded until the skill fires, so it decides
+whether the skill is ever used.
+
+```markdown
+---
+name: my-skill
+description: What it does. Use when <situation>. Do NOT use when <situation>.
+---
+
+# My skill
+...instructions...
+```
+
+## Mine vs everyone else's
+
+| | Where | Updated by |
+| --- | --- | --- |
+| **Mine** | `claude-code/skills/<category>/` in this repo | me, in git |
+| **Theirs** | `~/.claude/skills/` via the CLI | `npx skills update` |
+
+Never edit an installed third-party skill in place — the next update reverts it
+silently. Fork it into the repo instead.
+
+## Categories
+
+| Folder | Contents |
+| --- | --- |
+| `communication/` | `caveman`, `caveman-commit`, `caveman-review`, `ponytail`, `abrege-frere` |
+| `delivery/` | `spec-workflow`, `implementation-planning`, `completion-plan`, `progress-audit`, `harvest-questions`, `ai-time-estimates` |
+| `quality/` | `verify-change`, `verify-module`, `verify-quality`, `verify-security`, `debug-loop`, `pr-workflow`, `pr-review-governance` |
+| `architecture/` | `diagram-to-adr`, `diagram-to-likec4`, `likec4-to-openspec` |
+| `design/` | `interface-cheatsheet` |
+| `tools/` | `pdf-inspector`, `reverse-engineer-api`, `memory-snapshot-perf` |
+
+Folders are for browsing. Install flattens them — see
+[what lands where](/docs/setup/what-lands-where#skills-organised-here-flat-there).
+
+## The `skills` CLI
+
+```bash
+npx -y skills@latest add <owner>/<repo>       # install
+npx -y skills@latest add <owner>/<repo> -l    # list first, install nothing
+npx -y skills@latest list                     # what's installed, from where
+npx -y skills@latest update -y                # update everything
+npx -y skills@latest find "<topic>"           # search
+npx -y skills@latest use <repo>@<skill>       # one-shot, no install
+npx -y skills@latest init <name>              # scaffold a new one
+```
+
+Browse at [skills.sh](https://www.skills.sh/). Full recommendations in
+[`skills/THIRD-PARTY.md`](https://github.com/arhunsaday/preflight/blob/main/skills/THIRD-PARTY.md).
+
+## Writing one that actually fires
+
+- **The description is the trigger.** Say when to use it *and when not to*.
+  `pdf-inspector` says "not for small PDFs, native Read handles those" — that
+  line is what stops it shadowing a built-in.
+- **One skill, one job.** Two jobs means two descriptions competing.
+- **Record `source:`** in the frontmatter — upstream, route, license, date.
+- **Ship scripts when prompt-only will not do.** The `verify-*` skills carry
+  8–13 KB Node analyzers; they are not instructions pretending to be tools.
+
+## Security
+
+A skill is a prompt that runs with your tool permissions. **Read `SKILL.md`
+before installing**, exactly as you would read a shell script before piping it
+to `bash`. Look at `allowed-tools`, and at whether it tells the agent to run
+network commands or write outside the project.
+
+## Reference
+
+- [Agent Skills](https://code.claude.com/docs/en/skills)
+- [Creating skills](https://code.claude.com/docs/en/best-practices#create-skills)

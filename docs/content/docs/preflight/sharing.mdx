@@ -1,0 +1,33 @@
+---
+title: "Sharing"
+description: "Export a setup, publish it, apply it elsewhere"
+---
+
+```sh
+preflight share --out setup.share.json     # export a payload locally
+preflight apply setup.share.json --dry-run # preview as a diff
+preflight apply setup.share.json
+preflight share --expires 2027-01-01T00:00:00.000Z
+preflight apply abc234 --dry-run           # apply by six-character code
+preflight revoke abc234
+```
+
+The payload schema rejects credentials: recognisable secret patterns, secret
+keys, authorization headers and credential-bearing URLs. `${VARIABLE}`
+references are accepted, and the landing page names the variables a recipient
+must set. Inspect a payload before you publish it.
+
+## Hosted service
+
+A Hono Cloudflare Worker (`src/worker.ts`, configured by `wrangler.jsonc` with a
+KV namespace and an R2 bucket) serves the codes. Unlisted means not listed, not
+private: anyone with a code can read it. Publishing and revoking need the owner
+token.
+
+<Callout type="info">
+Nothing is deployed, and the public share domain is still to be chosen. Docs
+use `share.example.com` as a placeholder. Point clients at a deployment with
+`PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN` and `PREFLIGHT_OWNER_ID`.
+</Callout>
+
+Deployment steps and limits: [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md).

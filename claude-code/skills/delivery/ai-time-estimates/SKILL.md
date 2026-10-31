@@ -2,7 +2,7 @@
 name: ai-time-estimates
 description: Produce realistic effort estimates for work that an AI agent will do, instead of estimating as if a human were typing every line. Use when asked how long something will take, for sprint planning, for a quote, or when a plan needs effort numbers attached.
 source:
-  upstream: hand-authored in ai-dev-kit
+  upstream: hand-authored in preflight
   imported: 2026-09-20
 risk_level: medium
 writes_files: false

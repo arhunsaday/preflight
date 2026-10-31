@@ -1,0 +1,92 @@
+---
+title: "My servers"
+---
+Setup for each server I run. **No credentials here** — every token comes from
+the environment or a secret manager.
+
+## Atlassian (Jira)
+
+```json
+{
+  "mcp-atlassian": {
+    "command": "uvx",
+    "args": ["mcp-atlassian"],
+    "env": {
+      "JIRA_URL": "https://<your-jira-host>/jira",
+      "JIRA_PERSONAL_TOKEN": "${JIRA_PERSONAL_TOKEN}"
+    }
+  }
+}
+```
+
+Personal Access Token from Jira → Profile → Personal Access Tokens. Scope it
+read-only unless you actually want the agent transitioning tickets.
+Docs: [sooperset/mcp-atlassian](https://github.com/sooperset/mcp-atlassian).
+
+Pairs with the `spec-to-tickets` and `spec-drift-triage` skills.
+
+## Grafana — one server per environment
+
+```json
+{
+  "grafana-dev":        {"command": "uvx", "args": ["mcp-grafana@1.2.0"],
+    "env": {"GRAFANA_URL": "https://grafana.dev.example.com",    "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_DEV_TOKEN}"}},
+  "grafana-staging":    {"command": "uvx", "args": ["mcp-grafana@1.2.0"],
+    "env": {"GRAFANA_URL": "https://grafana.staging.example.com","GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_STAGING_TOKEN}"}},
+  "grafana-production": {"command": "uvx", "args": ["mcp-grafana@1.2.0"],
+    "env": {"GRAFANA_URL": "https://grafana.example.com",        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_PROD_TOKEN}"}}
+}
+```
+
+Three names, three tokens — so querying production is always deliberate.
+**Pin the version**; an unpinned `uvx` upgrades mid-incident, which is the worst
+possible moment. Service account with the **Viewer** role only.
+
+Docs: [grafana/mcp-grafana](https://github.com/grafana/mcp-grafana).
+Gives the agent dashboards, Prometheus and Loki queries, and alert state — see
+[the observability workflow](/docs/workflows/observability).
+
+## Notion
+
+```json
+{"notion": {"type": "http", "url": "https://mcp.notion.com/mcp"}}
+```
+
+Remote, OAuth — `/mcp` in a session to authorize. No token in any file.
+
+## Figma
+
+A local Go bridge (`figma-mcp-go`) over stdio:
+
+```json
+{"figma-mcp-go": {"type": "stdio", "command": "node", "args": ["<path>/figma-mcp-go/bin/run.js"], "env": {}}}
+```
+
+Alternative worth knowing: [GLips/Figma-Context-MCP](https://github.com/GLips/Figma-Context-MCP)
+(★16k) serves Figma layout data to any agent.
+
+## Teams / Outlook
+
+```json
+{"teams":   {"type": "stdio", "command": "npx", "args": ["-y", "msteams-mcp@latest"]}}
+{"outlook": {"command": "node", "args": ["<path>/mcp-outlook-applescript/dist/index.js"]}}
+```
+
+Outlook is AppleScript-driven, so macOS-only and it drives the desktop client.
+
+## Local HTTP servers
+
+`radar` and `doorjames` are local. The HTTP one needs the `mcp-remote` bridge:
+
+```json
+{"radar": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:52247/mcp", "--allow-http"]}}
+```
+
+`--allow-http` is only acceptable because it is `localhost`. Never for a remote
+host.
+
+## Machine-specific paths
+
+Several of these use absolute paths (`/Users/<me>/...`), so the config does not
+transfer between machines as-is. Either keep them in the user-scope
+`~/.claude.json`, or use `${HOME}` and a consistent checkout location.

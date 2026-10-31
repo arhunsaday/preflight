@@ -4,11 +4,11 @@ import TextInput from "ink-text-input";
 import { join } from "node:path";
 import type { ReactNode } from "react";
 import { execute } from "../commands.js";
-import { AdkService } from "../service.js";
+import { PreflightService } from "../service.js";
 import { measureUsage, type Finding, type Usage } from "../analysis.js";
 import type { Context } from "../adapters.js";
-import type { AdkConfig, AdkLock, Resource, ResourceType } from "../schema.js";
-import { AdkLockSchema } from "../schema.js";
+import type { PreflightConfig, PreflightLock, Resource, ResourceType } from "../schema.js";
+import { PreflightLockSchema } from "../schema.js";
 import { readText } from "../transaction.js";
 import { diffResources } from "../diff.js";
 import {
@@ -76,7 +76,7 @@ interface Pending {
 
 export type AppliedState = "applied" | "pending";
 
-type Unmanaged = Awaited<ReturnType<AdkService["unmanaged"]>>[number];
+type Unmanaged = Awaited<ReturnType<PreflightService["unmanaged"]>>[number];
 
 interface Toast {
   text: string;
@@ -122,14 +122,14 @@ export function writes(argv: string[]): boolean {
 export function App({ context }: { context: Context }) {
   const { exit } = useApp();
   const size = useTerminalSize();
-  const service = useMemo(() => new AdkService(context), [context]);
+  const service = useMemo(() => new PreflightService(context), [context]);
   const mounted = useRef(true);
   const catalogueLoaded = useRef(false);
 
   const [view, setView] = useState<ViewId>("browse");
   const [overlay, setOverlay] = useState<Overlay>("none");
-  const [config, setConfig] = useState<AdkConfig | null>(null);
-  const [lock, setLock] = useState<AdkLock | null>(null);
+  const [config, setConfig] = useState<PreflightConfig | null>(null);
+  const [lock, setLock] = useState<PreflightLock | null>(null);
   const [harnesses, setHarnesses] = useState<HarnessSummary[]>([]);
   const [findings, setFindings] = useState<Finding[] | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -204,7 +204,7 @@ export function App({ context }: { context: Context }) {
     }
     try {
       const raw = await readText(service.store.lockPath);
-      setLock(raw ? AdkLockSchema.parse(JSON.parse(raw)) : null);
+      setLock(raw ? PreflightLockSchema.parse(JSON.parse(raw)) : null);
     } catch {
       setLock(null);
     }
@@ -387,7 +387,7 @@ export function App({ context }: { context: Context }) {
         setToast({
           text: options.title,
           tone: "success",
-          command: `adk ${full.map((a) => truncate(a, 40)).join(" ")}`,
+          command: `preflight ${full.map((a) => truncate(a, 40)).join(" ")}`,
         });
         if (writes(argv)) {
           await loadConfig();
@@ -400,7 +400,7 @@ export function App({ context }: { context: Context }) {
       setToast({
         text: errorText(error),
         tone: "danger",
-        command: `adk ${full.map((a) => truncate(a, 40)).join(" ")}`,
+        command: `preflight ${full.map((a) => truncate(a, 40)).join(" ")}`,
       });
       if (options.confirm) setPending(null);
     } finally {
@@ -507,7 +507,7 @@ export function App({ context }: { context: Context }) {
           setPrompt({ kind: "profile", label: "New profile name", value: "" });
           return;
         case "prompt-command":
-          setPrompt({ kind: "command", label: "adk", value: "" });
+          setPrompt({ kind: "command", label: "preflight", value: "" });
           return;
         case "toggle-online":
           setOnline((value) => !value);
@@ -918,7 +918,7 @@ export function App({ context }: { context: Context }) {
     if (!selectedResource) {
       const [title, next] =
         config === null
-          ? ["No configuration in this project", "i creates adk.config.json"]
+          ? ["No configuration in this project", "i creates preflight.config.json"]
           : view === "catalogue"
             ? ["No catalogue result", "/ searches, O adds remote sources"]
             : view === "detected"
@@ -1138,7 +1138,7 @@ export function App({ context }: { context: Context }) {
           issues={form.issues}
           locked={lockedFields(form.editing)}
           title={form.editing ? `EDIT ${form.editing}` : "NEW RESOURCE"}
-          command={`adk ${form.editing ? `update-json ${form.editing}` : "create-json"} … --dry-run`}
+          command={`preflight ${form.editing ? `update-json ${form.editing}` : "create-json"} … --dry-run`}
           width={width}
           height={bodyHeight}
           offset={Math.max(0, form.index + 5 - bodyHeight)}
@@ -1167,7 +1167,7 @@ export function App({ context }: { context: Context }) {
           summary={summarize(pending.result)}
           raw={jsonText(pending.result)}
           title={pending.title}
-          command={`adk ${pending.argv.map((a) => truncate(a, 40)).join(" ")}`}
+          command={`preflight ${pending.argv.map((a) => truncate(a, 40)).join(" ")}`}
           width={width}
           height={bodyHeight}
           offset={overlayOffset}
@@ -1358,7 +1358,7 @@ export function App({ context }: { context: Context }) {
       ) : (
         <Text dimColor wrap="truncate">
           {selectedResource
-            ? `adk ${view === "detected" ? "adopt" : "inspect"} ${selectedResource.id}`
+            ? `preflight ${view === "detected" ? "adopt" : "inspect"} ${selectedResource.id}`
             : "Press ? for the keyboard reference"}
         </Text>
       )}

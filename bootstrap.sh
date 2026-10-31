@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# ai-dev-kit bootstrap — links this kit's Claude Code assets into ~/.claude
+# preflight bootstrap — links this kit's Claude Code assets into ~/.claude
 #
 # Symlinks, not copies: edit a file here and the change is live immediately,
 # and `git pull` updates every machine that ran this.
@@ -36,7 +36,7 @@ for arg in "$@"; do
   esac
 done
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
-BACKUP_DIR="$CLAUDE_HOME/backups/ai-dev-kit-$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="$CLAUDE_HOME/backups/preflight-$(date +%Y%m%d-%H%M%S)"
 
 DRY_RUN=0
 FORCE=0
@@ -323,7 +323,7 @@ install_project() {
   fi
   PROJECT="$(cd "$PROJECT" && pwd)"
 
-  printf 'ai-dev-kit  %s%s%s\n' "$C_DIM" "$KIT_ROOT" "$C_OFF"
+  printf 'preflight  %s%s%s\n' "$C_DIM" "$KIT_ROOT" "$C_OFF"
   printf 'project     %s%s%s\n' "$C_DIM" "$PROJECT" "$C_OFF"
   [ "$DRY_RUN" -eq 1 ] && printf '%sdry run — nothing will be written%s\n' "$C_WARN" "$C_OFF"
 
@@ -381,7 +381,7 @@ print('\n'.join(d.get('mine', {}).get('projectScoped', {}).keys()))" 2>/dev/null
 
 [ -n "$PROJECT" ] && install_project
 
-printf 'ai-dev-kit  %s%s%s\n' "$C_DIM" "$KIT_ROOT" "$C_OFF"
+printf 'preflight  %s%s%s\n' "$C_DIM" "$KIT_ROOT" "$C_OFF"
 printf 'target      %s%s%s\n' "$C_DIM" "$CLAUDE_HOME" "$C_OFF"
 [ "$DRY_RUN" -eq 1 ] && printf '%sdry run — nothing will be written%s\n' "$C_WARN" "$C_OFF"
 [ "$UNLINK" -eq 1 ]  && printf '%sunlink mode%s\n' "$C_WARN" "$C_OFF"

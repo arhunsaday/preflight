@@ -81,7 +81,7 @@ it("shares only validated resources and previews changes", () => {
   ).toThrow();
 });
 it("counts observed invocations without inventing usage from plain mentions", async () => {
-  const dir = await mkdtemp(join(await realpath(tmpdir()), "adk-usage-"));
+  const dir = await mkdtemp(join(await realpath(tmpdir()), "preflight-usage-"));
   await writeFile(
     join(dir, "session.jsonl"),
     [
@@ -108,7 +108,7 @@ it("counts observed invocations without inventing usage from plain mentions", as
 });
 
 it("shares a loadout and a project drop-in, and refuses an empty selection", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-share-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-share-"));
   const context = { root, home: join(root, "home") };
   await execute(["init"], context);
   const project = ResourceSchema.parse({

@@ -73,15 +73,15 @@ already there.
 
 **TypeScript on Node 22+.** Not a performance decision — the work is filesystem
 I/O and JSON. It is an ecosystem decision: the `skills` CLI, the MCP SDK and
-most harness tooling are already TypeScript, and `npx adk` gives zero-install
+most harness tooling are already TypeScript, and `npx preflight` gives zero-install
 distribution. bridle is Rust and there is no point competing on speed for
 something that spends its life reading small files.
 
 ### One package, two entry points
 
 ```
-adk <command>      the CLI — everything is scriptable
-adk ui             the TUI — a view over the same commands
+preflight <command>      the CLI — everything is scriptable
+preflight ui             the TUI — a view over the same commands
 ```
 
 **The CLI is the product; the TUI is a client of it.** Any action reachable in
@@ -108,8 +108,8 @@ One declarative file describes the *desired* setup; a lockfile records what is
 actually installed. Every command computes a diff and applies it.
 
 ```
-adk.config.json     desired state, committed to git
-adk.lock.json       resolved state, what is actually on disk
+preflight.config.json     desired state, committed to git
+preflight.lock.json       resolved state, what is actually on disk
 ```
 
 **One Zod schema drives everything** — CLI flag parsing, TUI form validation,
@@ -169,9 +169,9 @@ features actually materialise.
 ## 4. Sharing
 
 ```bash
-adk share                      # → https://adk.sh/s/7f3k2   code: 7f3k2
-adk apply 7f3k2 --dry-run      # diff against the current setup
-adk apply 7f3k2
+preflight share                      # → https://share.example.com/s/7f3k2   code: 7f3k2
+preflight apply 7f3k2 --dry-run      # diff against the current setup
+preflight apply 7f3k2
 ```
 
 **The share page shows exactly what it contains before anything is applied** —
@@ -258,8 +258,8 @@ So do not integrate a public benchmark first. **Build a local fixed task set:**
 tokens, wall-clock and human interventions.
 
 ```bash
-adk bench run --config current --tasks ./bench/tasks
-adk bench compare current minimal
+preflight bench run --config current --tasks ./bench/tasks
+preflight bench compare current minimal
 ```
 
 That A/B is the one that matters, because the question is never "is this config

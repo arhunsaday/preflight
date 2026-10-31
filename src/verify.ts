@@ -41,7 +41,7 @@ export async function verifyResource(resource: Resource, connect = false) {
       type: z.string().optional(),
     })
     .parse(resolveEnvironment(resource.config));
-  const client = new Client({ name: "adk", version: "0.1.0" });
+  const client = new Client({ name: "preflight", version: "0.1.0" });
   const transport = config.url
     ? config.type === "sse"
       ? new SSEClientTransport(new URL(config.url), {

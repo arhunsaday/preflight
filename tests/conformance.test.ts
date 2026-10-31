@@ -67,7 +67,7 @@ function sample(type: ResourceType, harness: HarnessId): Resource {
 }
 
 async function workspace() {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-conformance-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-conformance-"));
   const home = join(root, "home");
   await mkdir(home);
   return { root, home };

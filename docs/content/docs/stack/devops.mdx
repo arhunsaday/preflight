@@ -1,0 +1,56 @@
+---
+title: "DevOps"
+---
+Docker, Kubernetes, Helm, Argo CD, Terraform, OpenShift · GitHub Actions,
+GitLab CI · Grafana, Prometheus, Loki, Tempo, Mimir.
+
+The workflow rules are in **[the devops workflow](/docs/workflows/devops)** and
+**[observability](/docs/workflows/observability)**. This page is what to install.
+
+## The honest gap
+
+This kit is **thin here.** It has one instinct
+(`plan-before-operational-change`), the Grafana MCP servers, and the git secret
+hook. It has no Terraform, Kubernetes, Helm, Argo CD or CI skill. For a profile
+that is half devops, that is the biggest hole in the kit.
+
+## Fill it with
+
+```bash
+npx -y skills@latest add LukasNiessen/kubernetes-skill
+npx -y skills@latest add addyosmani/agent-skills -s ci-cd-and-automation   # already installed
+```
+
+And the big one — `BagelHole/DevOps-Security-Agent-Skills`, 146 skills covering
+AWS/Azure/GCP, Kubernetes hardening, Helm, ArgoCD GitOps, Terraform,
+CIS benchmarks, incident response, disaster recovery, container scanning,
+compliance (GDPR, HIPAA, ISO27001, FedRAMP). MIT, by Toby Miller. the upstream toolkit
+references it rather than vendoring it, which is the right call at that size:
+
+```bash
+npx -y skills@latest add BagelHole/DevOps-Security-Agent-Skills -l   # list first
+```
+
+Install the 10–15 that match your stack, not all 146 — every installed skill
+costs description tokens in every session.
+
+## Tools
+
+| Tool | Use |
+| --- | --- |
+| [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt) | `k8sgpt analyze --explain` — cluster failures in plain language. Read-only by default |
+| [trivy](https://github.com/aquasecurity/trivy) | Image and IaC scanning |
+| [gitleaks](https://github.com/gitleaks/gitleaks) | Secret scanning, shareable via pre-commit |
+| [act](https://github.com/nektos/act) | Run GitHub Actions locally instead of push-to-test |
+| `helm diff` | Mandatory before any `helm upgrade` |
+
+## Non-negotiables for an agent
+
+- **`--context` and `-n` explicit on every `kubectl`.** Never rely on the
+  ambient context.
+- **Plan/diff before apply**, always. `terraform plan -out`, `kubectl diff`,
+  `helm diff upgrade`, `argocd app diff`.
+- **GitOps means editing manifests in git**, not the cluster. A `kubectl apply`
+  on an Argo-managed namespace is a bug in the plan.
+- **Pin action SHAs**, not tags.
+- **Read CI logs, do not rerun the pipeline to see.** `gh run view --log-failed`.

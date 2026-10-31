@@ -1,0 +1,77 @@
+---
+title: "CLI reference"
+description: "Every command, grouped by what it does"
+---
+
+Commands print JSON on stdout; errors go to stderr with a nonzero exit code.
+Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`.
+`preflight <command> --help` is authoritative.
+
+## Setup and state
+
+| Command | Purpose |
+| --- | --- |
+| `init` | create a project configuration |
+| `list` | list desired resources |
+| `validate <file>` | validate a desired-state configuration |
+| `profiles` | create, switch and diff profiles |
+| `sync` | reconcile desired state to harness files |
+| `audit` | show the append-only change history |
+
+## Inspect and adopt
+
+| Command | Purpose |
+| --- | --- |
+| `detect` | read installed harness resources |
+| `unmanaged` | what a harness holds that the profile does not manage |
+| `adopt <id>` | manage a detected resource where it already lives |
+| `inspect <id>` | content, permissions, configuration, provenance |
+| `doctor [--connect]` | findings, drift, context cost; `--connect` tests MCP servers |
+| `verify <id> [--connect]` | static check, or initialise the MCP server and list tools |
+
+## Change resources
+
+| Command | Purpose |
+| --- | --- |
+| `create <file>`, `create-json <json>` | add a resource |
+| `update <id> <file>`, `update-json` | patch a resource |
+| `delete <id>` | remove it and its managed wiring |
+| `fork <id> <new-id>` | duplicate under a new identity |
+| `move <id> <scope>` | switch between global and project scope |
+| `rollback`, `recover` | reverse the latest transaction, or restore an interrupted one |
+
+## Find and install
+
+| Command | Purpose |
+| --- | --- |
+| `search [query]` | catalogue search; `--online`, `--github`, `--catalog` add sources |
+| `catalog-inspect <id>`, `catalog-add <id>` | inspect, then add a bundled item |
+| `inspect-file <file>` | validate a catalogue resource file |
+| `install <id>` | print the package-manager plan; `--execute` runs it |
+
+## Measure
+
+| Command | Purpose |
+| --- | --- |
+| `usage` | observed skill and MCP invocations from transcripts |
+| `prune` | propose unused skills (never deletes) |
+| `bench scaffold\|run\|compare` | local A/B runs of two configurations |
+
+## Share, project and Git
+
+| Command | Purpose |
+| --- | --- |
+| `share`, `apply`, `revoke` | see [Sharing](/docs/preflight/sharing) |
+| `loadouts list\|show\|install` | composed sets of resources |
+| `retrofit` | detect the stack and generate a project contract |
+| `git status\|pull\|push` | delegated Git (fast-forward pull, never force push) |
+
+## Environment
+
+| Variable | Used for |
+| --- | --- |
+| `PREFLIGHT_HOME` | default harness home |
+| `PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN`, `PREFLIGHT_OWNER_ID` | the sharing service |
+| `PREFLIGHT_METRICS` | a benchmark task writes tokens and interventions here |
+
+Worked examples for each group: [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md).
