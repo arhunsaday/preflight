@@ -5,7 +5,7 @@
 - [x] Add Overview and inherited global resources, coherent context labels and paths.
 - [x] Separate Discover, source/type search controls, source failures and configurable install target.
 - [x] Replace generic MCP JSON entry with guided transport fields plus advanced editor; simplify skills and fix edit identity.
-- [ ] Exercise real Electron UX, screenshots, full checks, native CI; update ADK.md/HANDOFF and push.
+- [ ] Exercise real Electron UX, screenshots, full checks, native CI; update PREFLIGHT.md/HANDOFF and push.
 
 ## Execution brief — user-authorized full UX/CLI redesign
 

@@ -35,7 +35,7 @@ const engine: Engine = (args, context, auth) =>
         ...Object.fromEntries(
           Object.entries(process.env).filter(
             ([key]) =>
-              !["ADK_SHARE_TOKEN", "ADK_SHARE_URL", "ADK_OWNER_ID"].includes(
+              !["PREFLIGHT_SHARE_TOKEN", "PREFLIGHT_SHARE_URL", "PREFLIGHT_OWNER_ID"].includes(
                 key,
               ),
           ),
@@ -86,7 +86,7 @@ const engine: Engine = (args, context, auth) =>
     child.stdin.end(JSON.stringify({ args, context, auth }));
   });
 function handle(channel: string, fn: (...args: unknown[]) => unknown) {
-  ipcMain.handle(`adk:${channel}`, (event, ...args) => {
+  ipcMain.handle(`preflight:${channel}`, (event, ...args) => {
     if (
       event.sender !== window.webContents ||
       event.senderFrame !== window.webContents.mainFrame
@@ -140,20 +140,20 @@ async function createWindow() {
   else await window.loadFile(join(directory, "../renderer/index.html"));
 }
 app.setName("Preflight");
-if (process.env.ADK_DESKTOP_TEST_DATA)
-  app.setPath("userData", process.env.ADK_DESKTOP_TEST_DATA);
+if (process.env.PREFLIGHT_DESKTOP_TEST_DATA)
+  app.setPath("userData", process.env.PREFLIGHT_DESKTOP_TEST_DATA);
 async function boot() {
   const controller = new DesktopController(
     join(app.getPath("userData"), "workspace.json"),
-    process.env.ADK_DESKTOP_TEST_HOME ?? app.getPath("home"),
+    process.env.PREFLIGHT_DESKTOP_TEST_HOME ?? app.getPath("home"),
     engine,
   );
   await controller.load();
   controller.restoreAuth((value) =>
     safeStorage.decryptString(Buffer.from(value, "base64")),
   );
-  if (process.env.ADK_DESKTOP_TEST_ROOT)
-    await controller.addProject(process.env.ADK_DESKTOP_TEST_ROOT);
+  if (process.env.PREFLIGHT_DESKTOP_TEST_ROOT)
+    await controller.addProject(process.env.PREFLIGHT_DESKTOP_TEST_ROOT);
   handle("state", () => controller.publicState());
   handle("snapshot", () => controller.snapshot());
   handle("prepare", (args) => controller.prepare(args));
@@ -327,14 +327,14 @@ async function boot() {
   });
   handle("exportFile", async () => {
     const selected = await dialog.showSaveDialog(window, {
-      defaultPath: "adk-share.json",
+      defaultPath: "preflight-share.json",
       filters: [{ name: "JSON configuration", extensions: ["json"] }],
     });
     return selected.filePath ?? null;
   });
   installMenu((command) => {
     if (window && !window.isDestroyed())
-      window.webContents.send("adk:command", command);
+      window.webContents.send("preflight:command", command);
   });
   await createWindow();
 }

@@ -127,7 +127,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
                 type="button"
                 aria-label="Choose task manifest"
                 onClick={async () => {
-                  const path = await window.adk.chooseFile();
+                  const path = await window.preflight.chooseFile();
                   if (path) setTasks(path);
                 }}
               >

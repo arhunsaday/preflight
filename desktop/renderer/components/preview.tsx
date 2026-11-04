@@ -39,7 +39,7 @@ export function Preview({
       wide
     >
       <div className="dialog-body">
-        <div className="command-line">adk {prepared?.args.join(" ")}</div>
+        <div className="command-line">preflight {prepared?.args.join(" ")}</div>
         {prepared?.note && <Notice>{prepared.note}</Notice>}
         {summary ? (
           <>

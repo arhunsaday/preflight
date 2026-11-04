@@ -9,7 +9,7 @@ import {
 import { execute } from "../src/commands.js";
 
 const setup = async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-desktop-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-desktop-"));
   const controller = new DesktopController(
     join(root, "desktop-state.json"),
     root,
@@ -28,7 +28,7 @@ it("remembers explicitly selected canonical project paths without initializing t
   const { root, controller } = await setup();
   const state = await controller.addProject(root);
   expect(state.projects).toHaveLength(1);
-  await expect(readFile(join(root, "adk.config.json"))).rejects.toMatchObject({
+  await expect(readFile(join(root, "preflight.config.json"))).rejects.toMatchObject({
     code: "ENOENT",
   });
   const second = new DesktopController(
@@ -43,17 +43,17 @@ it("uses project-bound one-use confirmation receipts and previews without writes
   await controller.addProject(root);
   const preview = await controller.prepare(["init"]);
   expect(preview.kind).toBe("preview");
-  await expect(readFile(join(root, "adk.config.json"))).rejects.toMatchObject({
+  await expect(readFile(join(root, "preflight.config.json"))).rejects.toMatchObject({
     code: "ENOENT",
   });
   await controller.confirm(preview.receipt!);
   await expect(controller.confirm(preview.receipt!)).rejects.toThrow();
   expect(
-    JSON.parse(await readFile(join(root, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(root, "preflight.config.json"), "utf8"))
       .activeProfile,
   ).toBe("default");
   const next = await controller.prepare(["profiles", "create", "other"]);
-  const other = await mkdtemp(join(await realpath(tmpdir()), "adk-other-"));
+  const other = await mkdtemp(join(await realpath(tmpdir()), "preflight-other-"));
   await controller.addProject(other);
   await expect(controller.confirm(next.receipt!)).rejects.toThrow(/project/i);
 });
@@ -159,7 +159,7 @@ it("refuses switching project while a slow preview is being prepared", async () 
   );
   await slow.load();
   const state = await slow.addProject(root);
-  const other = await mkdtemp(join(await realpath(tmpdir()), "adk-context-"));
+  const other = await mkdtemp(join(await realpath(tmpdir()), "preflight-context-"));
   await slow.addProject(other);
   await slow.selectProject(state.projects[0]!.id);
   const preparing = slow.prepare(["init"]);
@@ -204,7 +204,7 @@ it("requires another preview when an imported resource file changes", async () =
     /changed/i,
   );
   expect(
-    JSON.parse(await readFile(join(root, "adk.config.json"), "utf8")).profiles
+    JSON.parse(await readFile(join(root, "preflight.config.json"), "utf8")).profiles
       .default.resources,
   ).toHaveLength(0);
 });
@@ -221,7 +221,7 @@ it("strips managed and inherited share tokens before running a real MCP subproce
     worker = join(root, "worker.mjs");
   await writeFile(
     server,
-    `const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(observed)},process.env.ADK_SHARE_TOKEN??'absent');let text='';process.stdin.on('data',chunk=>{text+=chunk;let at;while((at=text.indexOf('\\n'))!==-1){const line=text.slice(0,at);text=text.slice(at+1);if(!line)continue;const q=JSON.parse(line);if(q.id===undefined)continue;let result=q.method==='initialize'?{protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'test',version:'1'}}:{tools:[]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:q.id,result})+'\\n');}});`,
+    `const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(observed)},process.env.PREFLIGHT_SHARE_TOKEN??'absent');let text='';process.stdin.on('data',chunk=>{text+=chunk;let at;while((at=text.indexOf('\\n'))!==-1){const line=text.slice(0,at);text=text.slice(at+1);if(!line)continue;const q=JSON.parse(line);if(q.id===undefined)continue;let result=q.method==='initialize'?{protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'test',version:'1'}}:{tools:[]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:q.id,result})+'\\n');}});`,
   );
   await execute(
     [
@@ -250,7 +250,7 @@ it("strips managed and inherited share tokens before running a real MCP subproce
   });
   const reply = await new Promise<string>((resolve, reject) => {
     const child = spawn(process.execPath, [worker], {
-      env: { ...process.env, ADK_SHARE_TOKEN: "inherited-secret" },
+      env: { ...process.env, PREFLIGHT_SHARE_TOKEN: "inherited-secret" },
       stdio: ["pipe", "pipe", "pipe"],
     });
     let output = "",
@@ -329,12 +329,12 @@ it("manages global resources without a project and isolates the desired configur
   await controller
     .prepare(["create-json", JSON.stringify(resource)])
     .then((p) => controller.confirm(p.receipt!));
-  const globalConfig = join(root, ".adk", "global", "adk.config.json");
+  const globalConfig = join(root, ".preflight", "global", "preflight.config.json");
   expect(
     JSON.parse(await readFile(globalConfig, "utf8")).profiles.default
       .resources[0].scope,
   ).toBe("global");
-  await expect(readFile(join(root, "adk.config.json"))).rejects.toMatchObject({
+  await expect(readFile(join(root, "preflight.config.json"))).rejects.toMatchObject({
     code: "ENOENT",
   });
   await expect(
@@ -350,10 +350,10 @@ it("CLI global configuration shares the desktop store and preserves project conf
   await execute(["init", "--global"], { root, home: root });
   expect(
     JSON.parse(
-      await readFile(join(root, ".adk", "global", "adk.config.json"), "utf8"),
+      await readFile(join(root, ".preflight", "global", "preflight.config.json"), "utf8"),
     ).activeProfile,
   ).toBe("default");
-  await expect(readFile(join(root, "adk.config.json"))).rejects.toMatchObject({
+  await expect(readFile(join(root, "preflight.config.json"))).rejects.toMatchObject({
     code: "ENOENT",
   });
 });
@@ -375,7 +375,7 @@ it("invalidates previews between global and project workspaces and returns to gl
   expect(
     (await controller.forgetProject(state.activeProjectId!)).workspace,
   ).toBe("global");
-  expect(controller.context().root).toBe(join(root, ".adk", "global"));
+  expect(controller.context().root).toBe(join(root, ".preflight", "global"));
 });
 
 it("projects show inherited global resources without offering them for adoption again", async () => {

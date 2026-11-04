@@ -88,7 +88,7 @@ export function Projects({ workspace: w }: { workspace: Workspace }) {
                   title="Remove from this list. Files are not touched."
                   onClick={() =>
                     void w.task("Removing from recent projects…", async () => {
-                      await window.adk.forgetProject(p.id);
+                      await window.preflight.forgetProject(p.id);
                       await w.reload();
                       w.notify(`${p.name} removed from recent projects`);
                     })
@@ -700,7 +700,7 @@ export function Activity({ workspace: w }: { workspace: Workspace }) {
         <div>
           <h2>Local change history</h2>
           <p>
-            Every write ADK makes is journaled here. Roll back the latest change
+            Every write Preflight makes is journaled here. Roll back the latest change
             or recover an interrupted one; both open a preview.
           </p>
         </div>
@@ -749,7 +749,7 @@ export function Activity({ workspace: w }: { workspace: Workspace }) {
         <Empty
           icon={History}
           title="No history yet"
-          description="Initialize this workspace; every change made through ADK will be recorded here."
+          description="Initialize this workspace; every change made through Preflight will be recorded here."
         />
       ) : entries === null ? (
         <p className="muted">Loading history…</p>

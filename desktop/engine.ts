@@ -1,14 +1,14 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { execute, catalogResources } from "../src/commands.js";
-import { AdkService } from "../src/service.js";
-import { AdkLockSchema } from "../src/schema.js";
+import { PreflightService } from "../src/service.js";
+import { PreflightLockSchema } from "../src/schema.js";
 import { ConfigStore } from "../src/state.js";
 import { BenchRun } from "../src/bench.js";
 import type { Context } from "../src/adapters.js";
 import type { Snapshot } from "./protocol.js";
 export async function snapshot(context: Context): Promise<Snapshot> {
-  const service = new AdkService(context);
+  const service = new PreflightService(context);
   const errors: string[] = [];
   const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T) => {
     try {
@@ -38,7 +38,7 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     "Lockfile",
     async () => {
       try {
-        return AdkLockSchema.parse(
+        return PreflightLockSchema.parse(
           JSON.parse(await readFile(service.store.lockPath, "utf8")),
         );
       } catch (e) {
@@ -53,7 +53,7 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     : await safe(
         "Global configuration",
         () =>
-          new ConfigStore(join(context.home, ".adk", "global"))
+          new ConfigStore(join(context.home, ".preflight", "global"))
             .resources()
             .catch((e) => {
               if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
@@ -89,7 +89,7 @@ export async function snapshot(context: Context): Promise<Snapshot> {
       async () => {
         let files: string[];
         try {
-          files = await readdir(join(context.root, ".adk", "bench"));
+          files = await readdir(join(context.root, ".preflight", "bench"));
         } catch (e) {
           if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
           throw e;
@@ -103,7 +103,7 @@ export async function snapshot(context: Context): Promise<Snapshot> {
               BenchRun.parse(
                 JSON.parse(
                   await readFile(
-                    join(context.root, ".adk", "bench", name),
+                    join(context.root, ".preflight", "bench", name),
                     "utf8",
                   ),
                 ),

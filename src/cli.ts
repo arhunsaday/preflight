@@ -31,7 +31,7 @@ async function main() {
       homeIndex < 0 ? context.home : resolve(args[homeIndex + 1]!),
     );
     if (args.includes("--global")) {
-      selected.root = join(selected.home, ".adk", "global");
+      selected.root = join(selected.home, ".preflight", "global");
       Object.assign(selected, { globalOnly: true });
     }
     const { startUI } = await import("./ui/index.js");

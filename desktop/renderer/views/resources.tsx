@@ -564,7 +564,7 @@ export function Resources({
                         const materialized = await w.task(
                           "Inspecting source…",
                           async () => {
-                            const reply = await window.adk.prepare([
+                            const reply = await window.preflight.prepare([
                               "inspect-json",
                               JSON.stringify(resource),
                             ]);

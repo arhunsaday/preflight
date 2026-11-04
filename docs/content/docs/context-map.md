@@ -20,10 +20,10 @@ A large skill is worth reviewing for repeated instructions and reference materia
 The same estimate is available as JSON:
 
 ```sh
-adk context
-adk context --mode catalogue --agent claude-code
-adk context --scope project --agent cursor
-adk --global context
+preflight context
+preflight context --mode catalogue --agent claude-code
+preflight context --scope project --agent cursor
+preflight --global context
 ```
 
 Reports include `estimatedTokens`, `unknownCount` and an entry for each resource, with its body/catalogue estimates and explanation. Credentials and resource configuration objects are not included. The command works before initializing a managed profile and does not change files.

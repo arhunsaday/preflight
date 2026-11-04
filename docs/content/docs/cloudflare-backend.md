@@ -19,20 +19,20 @@ Never enable `AUTH_LOCAL_TEST` in production. Password signup exists solely for 
 In Account, enter the backend origin and choose **Sign in with browser**. Compare the device code and approve the device in your browser. The desktop keeps the session credential in its main process, using operating-system encryption when available; otherwise it lasts for the app session. Credentials are never returned to the renderer.
 
 ```sh
-adk auth login --service https://YOUR_ORIGIN
-adk auth status
-adk share
-adk auth logout
-adk team list
-adk team create "My team" --slug my-team
-adk team members ORGANIZATION_ID
+preflight auth login --service https://YOUR_ORIGIN
+preflight auth status
+preflight share
+preflight auth logout
+preflight team list
+preflight team create "My team" --slug my-team
+preflight team members ORGANIZATION_ID
 ```
 
-CLI credentials use macOS Keychain, Windows Credential Manager or Linux Secret Service/keyring. Only public account metadata is written to `~/.adk/account.json`. There is no plaintext credential fallback. `--no-browser` displays the verification URL instead of opening it. Sign in to the selected backend before changing `--service`; credentials are never automatically sent to a different backend.
+CLI credentials use macOS Keychain, Windows Credential Manager or Linux Secret Service/keyring. Only public account metadata is written to `~/.preflight/account.json`. There is no plaintext credential fallback. `--no-browser` displays the verification URL instead of opening it. Sign in to the selected backend before changing `--service`; credentials are never automatically sent to a different backend.
 
 ## Sharing
 
-Publication returns a hosted inspection URL such as `https://YOUR_ORIGIN/s/abc234`. Import that URL with `adk apply URL --dry-run`, review its changes, then apply it. New links use randomly generated 16-character codes; existing six-character links remain compatible. Share payloads reject literal secrets and preserve environment-variable references. The authenticated user owns each share; another account cannot revoke it. `GET /api/shares` lists the signed-in user's shares. Public and unlisted links are accessible to anyone who has the link; unlisted does not mean private or restricted to an organization.
+Publication returns a hosted inspection URL such as `https://YOUR_ORIGIN/s/abc234`. Import that URL with `preflight apply URL --dry-run`, review its changes, then apply it. New links use randomly generated 16-character codes; existing six-character links remain compatible. Share payloads reject literal secrets and preserve environment-variable references. The authenticated user owns each share; another account cannot revoke it. `GET /api/shares` lists the signed-in user's shares. Public and unlisted links are accessible to anyone who has the link; unlisted does not mean private or restricted to an organization.
 
 Better Auth's organization endpoints under `/api/auth/organization/*` manage real organization membership. The desktop Team screen can list/create cloud organizations and inspect membership. Its separate local roster remains an offline coordination feature and does not grant backend access or send invitations. The desktop provides invitation links, recipient acceptance/decline, cancellation, role changes, member removal and leaving. Access changes require confirmation and are checked server-side; the last owner cannot be removed or demoted. No invitation email is sent automatically: copy the generated `/invite/UUID` URL for the recipient. Their signed-in email must match the invitation and be verified.
 
@@ -52,15 +52,15 @@ The backend smoke test creates isolated local D1/KV/R2 storage, applies real mig
 ## Organization commands
 
 ```sh
-adk team invite ORGANIZATION_ID teammate@example.com --role member
-adk team invitations ORGANIZATION_ID
-adk team inbox
-adk team accept INVITATION_ID
-adk team reject INVITATION_ID
-adk team cancel-invitation INVITATION_ID
-adk team role ORGANIZATION_ID MEMBER_ID admin
-adk team remove ORGANIZATION_ID MEMBER_ID
-adk team leave ORGANIZATION_ID
+preflight team invite ORGANIZATION_ID teammate@example.com --role member
+preflight team invitations ORGANIZATION_ID
+preflight team inbox
+preflight team accept INVITATION_ID
+preflight team reject INVITATION_ID
+preflight team cancel-invitation INVITATION_ID
+preflight team role ORGANIZATION_ID MEMBER_ID admin
+preflight team remove ORGANIZATION_ID MEMBER_ID
+preflight team leave ORGANIZATION_ID
 ```
 
 Members can view their organizations. Administrators manage members and invitations. Only owners can assign or change owners. Better Auth enforces these rules and the last-owner constraint. Public/unlisted shares keep their existing link visibility; joining an organization does not make them private or grant another user the right to revoke the owner's share.

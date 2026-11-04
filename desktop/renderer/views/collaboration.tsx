@@ -41,7 +41,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
     w.task("Loading your shares…", async () => {
       const response = z
         .object({ shares: z.array(HostedShare) })
-        .parse(await window.adk.cloud({ action: "shares" }));
+        .parse(await window.preflight.cloud({ action: "shares" }));
       setHosted(response.shares);
       setHostedLoaded(true);
     });
@@ -106,7 +106,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
               <Button
                 aria-label={`Copy link ${item.code}`}
                 onClick={() =>
-                  void window.adk
+                  void window.preflight
                     .copyText(item.url)
                     .then(() => w.notify("Link copied"))
                 }
@@ -117,7 +117,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
               <Button
                 variant="ghost"
                 aria-label={`Open ${item.code}`}
-                onClick={() => void window.adk.openExternal(item.url)}
+                onClick={() => void window.preflight.openExternal(item.url)}
               >
                 <ExternalLink size={14} />
               </Button>
@@ -185,7 +185,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
             <Button
               disabled={!!w.busy}
               onClick={async () => {
-                const file = await window.adk.exportFile();
+                const file = await window.preflight.exportFile();
                 if (file) await w.run(["share", ...options, "--out", file]);
               }}
             >
@@ -229,7 +229,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
                 type="button"
                 disabled={!!w.busy}
                 onClick={async () => {
-                  const path = await window.adk.chooseFile();
+                  const path = await window.preflight.chooseFile();
                   if (path) setCode(path);
                 }}
               >
@@ -265,7 +265,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
     [token, setToken] = useState("");
   const account = w.state?.account;
   const [device, setDevice] = useState<Awaited<
-    ReturnType<typeof window.adk.beginSignIn>
+    ReturnType<typeof window.preflight.beginSignIn>
   > | null>(null);
   const [loginError, setLoginError] = useState("");
   useEffect(() => {
@@ -279,10 +279,10 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
         return;
       }
       try {
-        const result = await window.adk.pollSignIn(device.id);
+        const result = await window.preflight.pollSignIn(device.id);
         if (cancelled) return;
         if (result.status === "connected") {
-          w.setState(await window.adk.state());
+          w.setState(await window.preflight.state());
           setDevice(null);
         } else
           timer = setTimeout(poll, (result.interval ?? device.interval) * 1000);
@@ -297,7 +297,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
     return () => {
       cancelled = true;
       clearTimeout(timer);
-      void window.adk.cancelSignIn(device.id);
+      void window.preflight.cancelSignIn(device.id);
     };
   }, [device, w.setState]);
   return (
@@ -327,7 +327,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
             disabled={!!w.busy}
             onClick={() =>
               void w.task("Disconnecting…", async () => {
-                w.setState(await window.adk.disconnect());
+                w.setState(await window.preflight.disconnect());
               })
             }
           >
@@ -363,7 +363,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
               <div className="button-row">
                 <Button
                   onClick={() =>
-                    void window.adk
+                    void window.preflight
                       .copyText(device.userCode)
                       .then(() => w.notify("Code copied"))
                   }
@@ -373,7 +373,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
                 </Button>
                 <Button
                   onClick={() =>
-                    void window.adk.openExternal(device.verificationUri)
+                    void window.preflight.openExternal(device.verificationUri)
                   }
                 >
                   <ExternalLink size={14} />
@@ -391,7 +391,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
               onClick={() =>
                 void w.task("Opening sign-in…", async () => {
                   setLoginError("");
-                  setDevice(await window.adk.beginSignIn(service));
+                  setDevice(await window.preflight.beginSignIn(service));
                 })
               }
             >
@@ -405,7 +405,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
               onSubmit={(e) => {
                 e.preventDefault();
                 void w.task("Checking your credentials…", async () => {
-                  w.setState(await window.adk.connect({ service, token }));
+                  w.setState(await window.preflight.connect({ service, token }));
                   setToken("");
                 });
               }}
@@ -483,7 +483,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
             e.preventDefault();
             void w.task("Saving team…", async () =>
               w.setState(
-                await window.adk.team({
+                await window.preflight.team({
                   name: teamName,
                   members: team?.members ?? [],
                 }),
@@ -531,7 +531,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
                     onClick={() =>
                       void w.task("Updating roster…", async () =>
                         w.setState(
-                          await window.adk.team({
+                          await window.preflight.team({
                             name: team.name,
                             members: team.members.filter(
                               (_, index) => index !== i,
@@ -561,7 +561,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
               e.preventDefault();
               void w.task("Saving teammate…", async () => {
                 w.setState(
-                  await window.adk.team({
+                  await window.preflight.team({
                     name: team?.name ?? teamName,
                     members: [...(team?.members ?? []), { name, email, role }],
                   }),

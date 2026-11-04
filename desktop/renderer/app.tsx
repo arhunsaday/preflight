@@ -226,7 +226,7 @@ export function App() {
   const commandRef = useRef(command);
   commandRef.current = command;
   useEffect(
-    () => window.adk.onCommand((value) => commandRef.current(value)),
+    () => window.preflight.onCommand((value) => commandRef.current(value)),
     [],
   );
   useEffect(() => {
@@ -561,8 +561,8 @@ export function App() {
                 {configurationError
                   ? "Fix the configuration error before making changes."
                   : global
-                    ? "Create your shared configuration at ~/.adk/global. Existing agent files are preserved."
-                    : "Create adk.config.json to manage resources. Existing harness files are preserved."}
+                    ? "Create your shared configuration at ~/.preflight/global. Existing agent files are preserved."
+                    : "Create preflight.config.json to manage resources. Existing harness files are preserved."}
               </span>
             </div>
             <Button

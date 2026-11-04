@@ -24,7 +24,7 @@ export function OutcomeDialog({ workspace: w }: { workspace: Workspace }) {
       description={
         outcome?.applied
           ? "Changes were written. Roll back from Activity if needed."
-          : "The result returned by the shared ADK command engine."
+          : "The result returned by the shared Preflight command engine."
       }
       wide
     >
@@ -34,7 +34,7 @@ export function OutcomeDialog({ workspace: w }: { workspace: Workspace }) {
             <CheckCircle2 size={22} />
             <div>
               <strong>{w.describe(outcome.args)}</strong>
-              <span className="path">adk {outcome.args[0]}</span>
+              <span className="path">preflight {outcome.args[0]}</span>
             </div>
           </div>
         )}
@@ -45,7 +45,7 @@ export function OutcomeDialog({ workspace: w }: { workspace: Workspace }) {
               <code>{url}</code>
               <Button
                 onClick={() =>
-                  void window.adk
+                  void window.preflight
                     .copyText(url)
                     .then(() => w.notify("Link copied"))
                 }
@@ -53,7 +53,7 @@ export function OutcomeDialog({ workspace: w }: { workspace: Workspace }) {
                 <Copy size={14} />
                 Copy link
               </Button>
-              <Button onClick={() => void window.adk.openExternal(url)}>
+              <Button onClick={() => void window.preflight.openExternal(url)}>
                 <ExternalLink size={14} />
                 Open share
               </Button>
@@ -73,7 +73,7 @@ export function OutcomeDialog({ workspace: w }: { workspace: Workspace }) {
         <Button
           variant="ghost"
           onClick={() =>
-            void window.adk
+            void window.preflight
               .copyText(JSON.stringify(outcome?.value, null, 2) ?? "")
               .then(() => w.notify("Result copied"))
           }

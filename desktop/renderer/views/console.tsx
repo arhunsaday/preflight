@@ -19,7 +19,7 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
   const input = useRef<HTMLInputElement>(null);
   const counter = useRef(0);
   const submit = async () => {
-    const text = line.trim().replace(/^adk\s+/, "");
+    const text = line.trim().replace(/^preflight\s+/, "");
     if (!text) return;
     let args: string[];
     try {
@@ -53,7 +53,7 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
         <div>
           <h2>Every CLI capability, in your workspace</h2>
           <p>
-            Run ADK commands against the active workspace. Writes always open a
+            Run Preflight commands against the active workspace. Writes always open a
             preview; read-only output stays below. Use ↑ and ↓ to recall earlier
             commands.
           </p>
@@ -66,10 +66,10 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
           void submit();
         }}
       >
-        <span>adk</span>
+        <span>preflight</span>
         <input
           ref={input}
-          aria-label="ADK command"
+          aria-label="Preflight command"
           value={line}
           onChange={(e) => setLine(e.target.value)}
           spellCheck={false}
@@ -94,7 +94,7 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
         </Button>
       </form>
       <Notice tone="info">
-        This console runs ADK commands, not shell scripts. Project and home
+        This console runs Preflight commands, not shell scripts. Project and home
         paths come from the workspace and cannot be overridden here.
       </Notice>
       {history.length > 0 && (
@@ -105,7 +105,7 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
               key={entry.id}
             >
               <header>
-                <span>adk {entry.line}</span>
+                <span>preflight {entry.line}</span>
                 <time dateTime={entry.at.toISOString()}>
                   {entry.at.toLocaleTimeString()}
                 </time>

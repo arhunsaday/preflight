@@ -71,8 +71,8 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
       .length === 1;
   const load = async () => {
     const [groups, inbox] = await Promise.all([
-      window.adk.cloud({ action: "organizations" }),
-      window.adk.cloud({ action: "incoming" }),
+      window.preflight.cloud({ action: "organizations" }),
+      window.preflight.cloud({ action: "incoming" }),
     ]);
     setOrganizations(z.array(Organization).parse(groups));
     setIncoming(
@@ -87,8 +87,8 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
   };
   const open = async (organizationId: string) => {
     const [details, pending] = await Promise.all([
-      window.adk.cloud({ action: "organization", organizationId }),
-      window.adk.cloud({ action: "invitations", organizationId }),
+      window.preflight.cloud({ action: "organization", organizationId }),
+      window.preflight.cloud({ action: "invitations", organizationId }),
     ]);
     setSelected(Details.parse(details));
     setInvitations(z.array(Invitation).parse(pending));
@@ -101,8 +101,8 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
     if (!connected) return;
     let active = true;
     void Promise.all([
-      window.adk.cloud({ action: "organizations" }),
-      window.adk.cloud({ action: "incoming" }),
+      window.preflight.cloud({ action: "organizations" }),
+      window.preflight.cloud({ action: "incoming" }),
     ])
       .then(([groups, inbox]) => {
         if (active) {
@@ -235,7 +235,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                 e.preventDefault();
                 void w.task("Creating organization…", async () => {
                   const group = Organization.parse(
-                    await window.adk.cloud({
+                    await window.preflight.cloud({
                       action: "create-organization",
                       name,
                       slug,
@@ -405,7 +405,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                     onSubmit={(e) => {
                       e.preventDefault();
                       void w.task("Creating invitation…", async () => {
-                        await window.adk.cloud({
+                        await window.preflight.cloud({
                           action: "invite",
                           organizationId: selected.id,
                           email,
@@ -481,7 +481,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                                   <Button
                                     aria-label={`Copy invitation for ${i.email}`}
                                     onClick={() =>
-                                      void window.adk.copyText(link(i.id))
+                                      void window.preflight.copyText(link(i.id))
                                     }
                                   >
                                     <Copy size={14} />
@@ -562,7 +562,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
             onClick={() =>
               void w.task("Updating organization…", async () => {
                 if (!review) return;
-                await window.adk.cloud(review.operation);
+                await window.preflight.cloud(review.operation);
                 setReview(null);
                 await load();
                 if (selected && review.operation.action !== "leave")

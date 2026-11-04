@@ -51,7 +51,7 @@ it("keeps a 500 resource profile bounded and responsive", async () => {
     // Establish that input is active before measuring a burst of navigation.
     await vi.waitFor(() => {
       view.stdin.write("j");
-      expect(frame()).toMatch(/adk inspect skill:scale-[1-9]/);
+      expect(frame()).toMatch(/preflight inspect skill:scale-[1-9]/);
     }, { timeout: 5000, interval: 25 });
     const start = performance.now();
     for (let i = 0; i < 60; i++) view.stdin.write("j");

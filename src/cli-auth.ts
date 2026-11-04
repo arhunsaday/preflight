@@ -23,7 +23,7 @@ const Metadata = z.object({
 export async function storedAccount(home: string) {
   try {
     return Metadata.parse(
-      JSON.parse(await readFile(join(home, ".adk", "account.json"), "utf8")),
+      JSON.parse(await readFile(join(home, ".preflight", "account.json"), "utf8")),
     );
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
@@ -40,7 +40,7 @@ async function credential(home: string, service: string) {
 }
 export async function cliAuth(args: string[], home: string) {
   let result: unknown;
-  const program = new Command().name("adk auth").exitOverride();
+  const program = new Command().name("preflight auth").exitOverride();
   program
     .command("login")
     .requiredOption("--service <url>", "Cloudflare backend URL")
@@ -63,7 +63,7 @@ export async function cliAuth(args: string[], home: string) {
         const poll = await pollDeviceSignIn(service, "preflight-cli", device);
         if (poll.status === "pending") continue;
         const identity = await accountIdentity(service, poll.token);
-        const path = join(home, ".adk", "account.json");
+        const path = join(home, ".preflight", "account.json");
         if (await linkedComponent(path)) {
           await signOut(service, poll.token);
           throw new Error("Refusing symlink credential metadata path");
@@ -77,7 +77,7 @@ export async function cliAuth(args: string[], home: string) {
             "The OS credential store is unavailable. Enable Keychain, Windows Credential Manager or Linux Secret Service/keyring and retry.",
           );
         }
-        await mkdir(join(home, ".adk"), { recursive: true, mode: 0o700 });
+        await mkdir(join(home, ".preflight"), { recursive: true, mode: 0o700 });
         const temp = `${path}.${randomUUID()}.tmp`;
         const metadata = {
           service,
@@ -104,7 +104,7 @@ export async function cliAuth(args: string[], home: string) {
         };
         return;
       }
-      throw new Error("Sign-in expired; run adk auth login again.");
+      throw new Error("Sign-in expired; run preflight auth login again.");
     });
   program.command("status").action(async () => {
     const stored = await storedAccount(home);
@@ -134,7 +134,7 @@ export async function cliAuth(args: string[], home: string) {
         await signOut(stored.service, token);
         entry.deletePassword();
       }
-      await rm(join(home, ".adk", "account.json"), { force: true });
+      await rm(join(home, ".preflight", "account.json"), { force: true });
     }
     result = { connected: false };
   });
@@ -154,7 +154,7 @@ export async function withCliAccount<T>(
   const command = args[0] === "--global" ? args[1] : args[0];
   if (
     !["share", "revoke"].includes(command ?? "") ||
-    process.env.ADK_SHARE_TOKEN ||
+    process.env.PREFLIGHT_SHARE_TOKEN ||
     (command === "share" && args.includes("--out"))
   )
     return execute();
@@ -165,7 +165,7 @@ export async function withCliAccount<T>(
   );
   const target =
     serviceIndex < 0
-      ? (process.env.ADK_SHARE_URL ?? account.service)
+      ? (process.env.PREFLIGHT_SHARE_URL ?? account.service)
       : args[serviceIndex]!.startsWith("--service=")
         ? args[serviceIndex]!.slice(10)
         : args[serviceIndex + 1]!;
@@ -175,12 +175,12 @@ export async function withCliAccount<T>(
     );
   const token = (await credential(home, account.service)).getPassword();
   if (!token)
-    throw new Error("Stored account has no credential; run adk auth login.");
-  const keys = ["ADK_SHARE_TOKEN", "ADK_SHARE_URL", "ADK_OWNER_ID"] as const;
+    throw new Error("Stored account has no credential; run preflight auth login.");
+  const keys = ["PREFLIGHT_SHARE_TOKEN", "PREFLIGHT_SHARE_URL", "PREFLIGHT_OWNER_ID"] as const;
   const before = keys.map((key) => process.env[key]);
-  process.env.ADK_SHARE_TOKEN = token;
-  process.env.ADK_SHARE_URL = account.service;
-  process.env.ADK_OWNER_ID = account.ownerId;
+  process.env.PREFLIGHT_SHARE_TOKEN = token;
+  process.env.PREFLIGHT_SHARE_URL = account.service;
+  process.env.PREFLIGHT_OWNER_ID = account.ownerId;
   try {
     return await execute();
   } finally {
@@ -196,12 +196,12 @@ export async function cliTeam(args: string[], home: string) {
   const request = async (operation: CloudOperation) => {
     const account = await storedAccount(home);
     if (!account)
-      throw new Error("Run adk auth login before managing organizations.");
+      throw new Error("Run preflight auth login before managing organizations.");
     const token = (await credential(home, account.service)).getPassword();
-    if (!token) throw new Error("Run adk auth login to restore your session.");
+    if (!token) throw new Error("Run preflight auth login to restore your session.");
     return cloudRequest(account.service, token, operation);
   };
-  const program = new Command().name("adk team").exitOverride();
+  const program = new Command().name("preflight team").exitOverride();
   program
     .command("list")
     .description("List your cloud organizations")

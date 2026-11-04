@@ -169,7 +169,7 @@ export function Link({ url, children }: { url: string; children: ReactNode }) {
     <button
       type="button"
       className="text-link"
-      onClick={() => void window.adk.openExternal(url).catch(() => {})}
+      onClick={() => void window.preflight.openExternal(url).catch(() => {})}
     >
       {children}
       <ArrowUpRight size={13} />

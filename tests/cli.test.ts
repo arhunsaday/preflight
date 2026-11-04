@@ -37,7 +37,7 @@ it("scripts the core loop using JSON outputs and dry-run", async () => {
   });
 });
 it("context report works before initialization and includes inherited global instructions", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "adk-context-"));
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-context-"));
   const context = { root, home: join(root, "home") };
   expect(await execute(["context"], context)).toMatchObject({
     estimatedTokens: 0,

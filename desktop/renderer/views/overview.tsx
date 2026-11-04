@@ -214,8 +214,8 @@ export function Overview({
             <div>
               <dt>Configuration</dt>
               <dd>
-                <code title={`${snapshot?.root}/adk.config.json`}>
-                  {tildify(`${snapshot?.root}/adk.config.json`, home)}
+                <code title={`${snapshot?.root}/preflight.config.json`}>
+                  {tildify(`${snapshot?.root}/preflight.config.json`, home)}
                 </code>
               </dd>
             </div>

@@ -23,9 +23,9 @@ const project = join(temporary, "project"),
 await Promise.all([mkdir(project), mkdir(home), mkdir(data)]);
 const env = {
   ...process.env,
-  ADK_DESKTOP_TEST_ROOT: project,
-  ADK_DESKTOP_TEST_HOME: home,
-  ADK_DESKTOP_TEST_DATA: data,
+  PREFLIGHT_DESKTOP_TEST_ROOT: project,
+  PREFLIGHT_DESKTOP_TEST_HOME: home,
+  PREFLIGHT_DESKTOP_TEST_DATA: data,
 };
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.VERCEL_OIDC_TOKEN;
@@ -93,7 +93,7 @@ const server = createServer(async (req, res) => {
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const service = `http://127.0.0.1:${server.address().port}`;
 const executable =
-  process.env.ADK_DESKTOP_EXECUTABLE ??
+  process.env.PREFLIGHT_DESKTOP_EXECUTABLE ??
   (process.argv.includes("--packaged")
     ? await packagedExecutable()
     : undefined);
@@ -119,14 +119,14 @@ try {
   );
   await page.getByRole("button", { name: "Initialize project" }).click();
   await page.getByRole("heading", { name: "Review changes" }).waitFor();
-  await assert.rejects(readFile(join(project, "adk.config.json")));
+  await assert.rejects(readFile(join(project, "preflight.config.json")));
   await page
     .getByRole("button", { name: "Apply changes", exact: true })
     .click();
   await page.getByRole("heading", { name: "Operation result" }).waitFor();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   assert.equal(
-    JSON.parse(await readFile(join(project, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .activeProfile,
     "default",
   );
@@ -148,7 +148,7 @@ try {
     .click();
   await page.getByRole("heading", { name: "Review changes" }).waitFor();
   assert.equal(
-    JSON.parse(await readFile(join(project, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .profiles.default.resources.length,
     0,
   );
@@ -157,7 +157,7 @@ try {
     .click();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   assert.equal(
-    JSON.parse(await readFile(join(project, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .profiles.default.resources.length,
     1,
   );
@@ -197,7 +197,7 @@ try {
     .click();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   assert.equal(
-    JSON.parse(await readFile(join(project, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .profiles.default.resources[0].scope,
     "global",
   );
@@ -213,7 +213,7 @@ try {
     .click();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   assert.equal(
-    JSON.parse(await readFile(join(project, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .profiles.default.resources[0].description,
     "A verified desktop skill",
   );
@@ -229,7 +229,7 @@ try {
     .click();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   assert.ok(
-    JSON.parse(await readFile(join(project, "adk.config.json"), "utf8"))
+    JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .profiles.frontend,
   );
   await page.getByRole("button", { name: /^Doctor/ }).click();
@@ -245,7 +245,7 @@ try {
   await page
     .getByRole("button", { name: "Command console", exact: true })
     .click();
-  await page.getByRole("textbox", { name: "ADK command" }).fill("list");
+  await page.getByRole("textbox", { name: "Preflight command" }).fill("list");
   await page.getByRole("button", { name: "Run", exact: true }).click();
   // Read-only console output stays inline instead of opening a dialog.
   await page.locator(".console-entry").first().waitFor();
@@ -273,7 +273,7 @@ try {
     .getByRole("heading", { name: "Connected as smoke-owner" })
     .waitFor();
   assert.equal(
-    JSON.stringify(await page.evaluate(() => window.adk.state())).includes(
+    JSON.stringify(await page.evaluate(() => window.preflight.state())).includes(
       "desktop-smoke-token",
     ),
     false,
@@ -330,7 +330,7 @@ try {
   await page
     .getByRole("button", { name: "Initialize project", exact: true })
     .waitFor();
-  await assert.rejects(readFile(join(secondProject, "adk.config.json")));
+  await assert.rejects(readFile(join(secondProject, "preflight.config.json")));
   await page.getByRole("button", { name: /^Projects/ }).click();
   await page
     .locator(".project-item")
@@ -353,7 +353,7 @@ try {
     .click();
   await page.getByRole("heading", { name: "Review changes" }).waitFor();
   await assert.rejects(
-    readFile(join(home, ".adk", "global", "adk.config.json")),
+    readFile(join(home, ".preflight", "global", "preflight.config.json")),
   );
   await page
     .getByRole("button", { name: "Apply changes", exact: true })
@@ -376,7 +376,7 @@ try {
     .click();
   assert.equal(
     JSON.parse(
-      await readFile(join(home, ".adk", "global", "adk.config.json"), "utf8"),
+      await readFile(join(home, ".preflight", "global", "preflight.config.json"), "utf8"),
     ).profiles.default.resources.length,
     0,
   );
@@ -410,7 +410,7 @@ try {
     .getByRole("heading", { name: "Inherited global configuration" })
     .waitFor();
   await page.screenshot({ path: join(temporary, "overview.png") });
-  const contextConfigPath = join(project, "adk.config.json");
+  const contextConfigPath = join(project, "preflight.config.json");
   const contextConfigBefore = await readFile(contextConfigPath, "utf8");
   const contextConfig = JSON.parse(contextConfigBefore);
   contextConfig.profiles[contextConfig.activeProfile].resources.push(
@@ -732,7 +732,7 @@ try {
   );
   assert.equal(
     await page.evaluate(
-      async () => (await window.adk.state()).account.connected,
+      async () => (await window.preflight.state()).account.connected,
     ),
     false,
   );

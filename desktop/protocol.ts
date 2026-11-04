@@ -1,5 +1,5 @@
 import type { CloudOperation } from "../src/cloud-client.js";
-import type { AdkConfig, AdkLock, Resource } from "../src/schema.js";
+import type { PreflightConfig, PreflightLock, Resource } from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
 export interface Project {
@@ -35,8 +35,8 @@ export interface Snapshot {
   root: string;
   home: string;
   initialized: boolean;
-  config: AdkConfig | null;
-  lock: AdkLock | null;
+  config: PreflightConfig | null;
+  lock: PreflightLock | null;
   resources: Resource[];
   inherited: Resource[];
   detected: Resource[];
@@ -104,6 +104,6 @@ export interface DesktopApi {
 }
 declare global {
   interface Window {
-    adk: DesktopApi;
+    preflight: DesktopApi;
   }
 }

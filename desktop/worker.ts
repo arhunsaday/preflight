@@ -7,13 +7,13 @@ for await (const chunk of process.stdin) {
 }
 try {
   const { args, context, auth } = JSON.parse(input);
-  delete process.env.ADK_SHARE_TOKEN;
-  delete process.env.ADK_SHARE_URL;
-  delete process.env.ADK_OWNER_ID;
+  delete process.env.PREFLIGHT_SHARE_TOKEN;
+  delete process.env.PREFLIGHT_SHARE_URL;
+  delete process.env.PREFLIGHT_OWNER_ID;
   if (auth && ["share", "apply", "revoke"].includes(args[0])) {
-    if (args[0] !== "apply") process.env.ADK_SHARE_TOKEN = auth.token;
-    process.env.ADK_SHARE_URL = auth.service;
-    process.env.ADK_OWNER_ID = auth.ownerId;
+    if (args[0] !== "apply") process.env.PREFLIGHT_SHARE_TOKEN = auth.token;
+    process.env.PREFLIGHT_SHARE_URL = auth.service;
+    process.env.PREFLIGHT_OWNER_ID = auth.ownerId;
   }
   const value =
     args[0] === "@snapshot"

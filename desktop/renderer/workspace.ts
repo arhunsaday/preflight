@@ -61,9 +61,9 @@ export function useWorkspace() {
   const reload = useCallback(async () => {
     if (refreshing.current) return refreshing.current;
     const pending = (async () => {
-      const state = await window.adk.state();
+      const state = await window.preflight.state();
       setState(state);
-      setSnapshot(await window.adk.snapshot());
+      setSnapshot(await window.preflight.snapshot());
     })();
     refreshing.current = pending;
     try {
@@ -105,7 +105,7 @@ export function useWorkspace() {
   /** Prepare a command: writes open the review dialog, reads return a value. */
   const prepare = async (args: string[], display = true) =>
     task("Preparing operation…", async () => {
-      const response = await window.adk.prepare(args);
+      const response = await window.preflight.prepare(args);
       if (response.kind === "preview") setPrepared(response);
       else if (display)
         setOutcome({ args, value: response.value, applied: false });
@@ -117,7 +117,7 @@ export function useWorkspace() {
     task("Applying changes…", async () => {
       if (!prepared?.receipt) return;
       const args = prepared.args;
-      const value = await window.adk.confirm(prepared.receipt);
+      const value = await window.preflight.confirm(prepared.receipt);
       setPrepared(null);
       setOutcome({ args, value, applied: true });
       notify(describe(args));
@@ -125,21 +125,21 @@ export function useWorkspace() {
     });
   const switchProject = (id: string) =>
     task("Opening project…", async () => {
-      await window.adk.selectProject(id);
+      await window.preflight.selectProject(id);
       setPrepared(null);
       setOutcome(undefined);
       await reload();
     });
   const switchGlobal = () =>
     task("Opening global configuration…", async () => {
-      await window.adk.selectGlobal();
+      await window.preflight.selectGlobal();
       setPrepared(null);
       setOutcome(undefined);
       await reload();
     });
   const chooseProject = () =>
     task("Opening project…", async () => {
-      await window.adk.chooseProject();
+      await window.preflight.chooseProject();
       setPrepared(null);
       await reload();
     });

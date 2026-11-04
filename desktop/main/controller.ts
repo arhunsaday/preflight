@@ -293,7 +293,7 @@ export class DesktopController {
   context(): Context {
     if (this.workspace() === "global")
       return {
-        root: join(this.home, ".adk", "global"),
+        root: join(this.home, ".preflight", "global"),
         home: this.home,
         globalOnly: true,
       };
@@ -309,7 +309,7 @@ export class DesktopController {
   }
   private async fingerprint(context = this.context()) {
     const values = await Promise.all(
-      ["adk.config.json", "adk.lock.json"].map(async (name) => {
+      ["preflight.config.json", "preflight.lock.json"].map(async (name) => {
         try {
           return await readFile(join(context.root, name), "utf8");
         } catch (e) {

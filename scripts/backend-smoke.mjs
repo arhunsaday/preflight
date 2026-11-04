@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 const root = resolve(".");
 const directory = await mkdtemp(join(root, "backend-smoke-"));
-const base = `http://127.0.0.1:${process.env.ADK_AUTH_SMOKE_PORT ?? 8801}`;
+const base = `http://127.0.0.1:${process.env.PREFLIGHT_AUTH_SMOKE_PORT ?? 8801}`;
 const config = JSON.parse(await readFile("wrangler.jsonc", "utf8"));
 config.main = join(root, "src/worker.ts");
 config.vars = {
@@ -28,7 +28,7 @@ try {
   } catch {}
   assert.ok(
     !portOccupied,
-    "Smoke-test port is occupied; choose ADK_AUTH_SMOKE_PORT before testing.",
+    "Smoke-test port is occupied; choose PREFLIGHT_AUTH_SMOKE_PORT before testing.",
   );
   const migration = spawnSync(
     executable,

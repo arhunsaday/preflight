@@ -1,4 +1,4 @@
-# ADK Desktop
+# Preflight Desktop
 
 Build a real installable desktop client for the existing CLI, prioritizing the reference's quiet native three-pane workspace. Use Electron, React and Vite with Radix accessible dialogs and Lucide icons. The user authorized autonomous implementation and incremental pushes; preserve their existing configuration and lockfile edits.
 
