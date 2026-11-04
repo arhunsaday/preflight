@@ -6,7 +6,10 @@ import type { DesktopCommand } from "../protocol.js";
  * The default Electron menu binds Cmd/Ctrl+R to a full page reload and ships
  * developer tools in production. Replace it with commands the renderer owns.
  */
-export function installMenu(send: (command: DesktopCommand) => void) {
+export function installMenu(
+  send: (command: DesktopCommand) => void,
+  checkForUpdates: () => void,
+) {
   const mac = process.platform === "darwin";
   const development = !app.isPackaged;
   const command = (
@@ -18,6 +21,10 @@ export function installMenu(send: (command: DesktopCommand) => void) {
     accelerator,
     click: () => send(value),
   });
+  const updates: MenuItemConstructorOptions = {
+    label: "Check for Updates…",
+    click: () => checkForUpdates(),
+  };
   const template: MenuItemConstructorOptions[] = [
     ...(mac
       ? [
@@ -25,6 +32,7 @@ export function installMenu(send: (command: DesktopCommand) => void) {
             label: app.name,
             submenu: [
               { role: "about" },
+              updates,
               { type: "separator" },
               { role: "hide" },
               { role: "hideOthers" },
@@ -79,6 +87,7 @@ export function installMenu(send: (command: DesktopCommand) => void) {
       role: "help",
       submenu: [
         command("Keyboard Shortcuts", "CmdOrCtrl+/", "shortcuts"),
+        ...(mac ? [] : [updates]),
         {
           label: "Documentation",
           click: () => void shell.openExternal("https://ai.arhun.fr"),

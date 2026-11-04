@@ -2,6 +2,7 @@ import type { CloudOperation } from "../src/cloud-client.js";
 import type { PreflightConfig, PreflightLock, Resource } from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
+import type { UpdateState } from "./updates.js";
 export interface Project {
   id: string;
   name: string;
@@ -101,6 +102,11 @@ export interface DesktopApi {
   chooseFile(): Promise<string | null>;
   exportFile(): Promise<string | null>;
   onCommand(listener: (command: DesktopCommand) => void): () => void;
+  updateState(): Promise<UpdateState>;
+  checkForUpdates(): Promise<void>;
+  installUpdate(): Promise<void>;
+  dismissUpdate(): Promise<void>;
+  onUpdate(listener: (state: UpdateState) => void): () => void;
 }
 declare global {
   interface Window {

@@ -3,16 +3,30 @@ productName: Preflight
 icon: desktop/assets/icon.png
 asar: true
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
-directories:
-  output: desktop-release
 files:
   - desktop-out/**
   - package.json
 extraMetadata:
   main: desktop-out/main/index.mjs
+directories:
+  output: desktop-release
+  buildResources: build
+publish:
+  provider: github
+  owner: arhunsaday
+  repo: preflight
+  releaseType: draft
 mac:
   category: public.app-category.developer-tools
   target: [dmg, zip]
+  # Signing needs CSC_LINK / CSC_KEY_PASSWORD, notarization needs APPLE_ID,
+  # APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID. The release workflow turns
+  # notarization off (-c.mac.notarize=false) when they are absent.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
 win:
   target: [nsis]
 linux:

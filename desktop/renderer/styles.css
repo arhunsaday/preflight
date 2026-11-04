@@ -3647,3 +3647,50 @@ mark {
   display: inline;
   margin-bottom: 0;
 }
+
+/* Update notice */
+.update-banner {
+  position: fixed;
+  top: 44px;
+  right: 20px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  padding: 10px 10px 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  font-weight: 500;
+}
+.update-banner > svg {
+  color: var(--accent, var(--text-2));
+  flex: none;
+}
+.update-banner.success > svg {
+  color: var(--success);
+}
+.update-banner.warning > svg {
+  color: var(--warning, var(--text-2));
+}
+.update-banner > span {
+  flex: 1;
+}
+.update-banner button {
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  padding: 3px 6px;
+  border-radius: 5px;
+  font: inherit;
+}
+.update-banner button:not(.icon) {
+  color: var(--text);
+  background: var(--hover);
+}
+.update-banner button:hover {
+  color: var(--text);
+}
