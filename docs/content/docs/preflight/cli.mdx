@@ -4,7 +4,8 @@ description: "Every command, grouped by what it does"
 ---
 
 Commands print JSON on stdout; errors go to stderr with a nonzero exit code.
-Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`.
+Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
+`--global` to target the shared global configuration at `~/.preflight/global`.
 `preflight <command> --help` is authoritative.
 
 ## Setup and state
@@ -55,6 +56,7 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`.
 | --- | --- |
 | `usage` | observed skill and MCP invocations from transcripts |
 | `prune` | propose unused skills (never deletes) |
+| `context [--mode potential\|catalogue]` | estimated instruction size; see [Context map](/docs/preflight/context-map) |
 | `bench scaffold\|run\|compare` | local A/B runs of two configurations |
 
 ## Share, project and Git
@@ -65,6 +67,17 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`.
 | `loadouts list\|show\|install` | composed sets of resources |
 | `retrofit` | detect the stack and generate a project contract |
 | `git status\|pull\|push` | delegated Git (fast-forward pull, never force push) |
+
+## Account and teams
+
+| Command | Purpose |
+| --- | --- |
+| `auth login --service <url>`, `auth status`, `auth logout` | browser device sign-in; credentials go to the OS keychain |
+| `team list\|create\|members` | cloud organizations |
+| `team invite\|invitations\|inbox\|accept\|reject` | invitations |
+| `team role\|remove\|leave\|cancel-invitation` | membership changes |
+
+Backend setup: [Cloudflare backend and accounts](/docs/preflight/cloudflare-backend).
 
 ## Environment
 

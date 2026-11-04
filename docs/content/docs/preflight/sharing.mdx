@@ -8,7 +8,7 @@ preflight share --out setup.share.json     # export a payload locally
 preflight apply setup.share.json --dry-run # preview as a diff
 preflight apply setup.share.json
 preflight share --expires 2027-01-01T00:00:00.000Z
-preflight apply abc234 --dry-run           # apply by six-character code
+preflight apply https://YOUR_BACKEND/s/abc234 --dry-run  # by link or code
 preflight revoke abc234
 ```
 
@@ -19,10 +19,12 @@ must set. Inspect a payload before you publish it.
 
 ## Hosted service
 
-A Hono Cloudflare Worker (`src/worker.ts`, configured by `wrangler.jsonc` with a
-KV namespace and an R2 bucket) serves the codes. Unlisted means not listed, not
-private: anyone with a code can read it. Publishing and revoking need the owner
-token.
+A Hono Cloudflare Worker (`src/worker.ts`, configured by `wrangler.jsonc` with
+D1, a KV namespace and an R2 bucket) serves the codes: 16 random characters, with
+older six-character codes still accepted. Unlisted means not listed, not
+private: anyone with a code can read it. Publishing and revoking need the signed-in
+owner (`preflight auth login`); deployments without D1 fall back to the legacy
+owner token. Setup: [Cloudflare backend and accounts](/docs/preflight/cloudflare-backend).
 
 <Callout type="info">
 Nothing is deployed, and the public share domain is still to be chosen. Docs

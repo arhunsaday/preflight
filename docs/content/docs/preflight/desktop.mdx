@@ -1,16 +1,66 @@
 ---
-title: "Desktop app (coming)"
-description: "Planned, not started"
+title: "Desktop app"
+description: "The same engine in an Electron window, with previews, accounts and teams"
 ---
 
+The desktop app is an Electron interface over the same command engine and
+resource schemas as the [CLI](/docs/preflight/cli). Its sidebar covers skills,
+MCP servers, other resources, detected installations, the catalogue and
+discovery sources, projects, profiles, loadouts, doctor, usage, benchmarks,
+sharing, team, account and activity. A command console runs the remaining CLI
+operations without a shell. Every write opens a preview first and applies only
+after you confirm it.
+
+```sh
+npm ci
+npm run desktop:dev            # development with hot reload
+npm run desktop:check          # types and production bundles
+npm run desktop:start          # run the previously built app
+npm run desktop:pack           # native directory under desktop-release/
+npm run desktop:dist           # platform installers
+npm run desktop:smoke          # real Electron, disposable project, home and settings
+```
+
+## Workspaces
+
+The workspace selector switches between the **Global** configuration
+(`~/.preflight/global/preflight.config.json`) and a project picked through the
+native folder dialog. Opening a folder does not initialise it. Projects show the
+global resources they inherit. Global scope targets your real home directory, so
+check the exact paths in the preview before confirming.
+
+| Shortcut | Action |
+| --- | --- |
+| Cmd/Ctrl+K | palette of views, actions and workspaces |
+| Cmd/Ctrl+R | refresh the workspace |
+| Cmd/Ctrl+O | open a project |
+| Cmd/Ctrl+1–8 | jump to the main views |
+| `/` | filter the current list |
+| `?` | list every shortcut |
+
+## Security model
+
+- The renderer has no Node access; a sandboxed preload exposes explicit methods.
+- Operations run one at a time in the main process. Changing project or account
+  invalidates pending previews, and confirmation rechecks files and imported inputs.
+- Account tokens stay in the main process, encrypted with Electron `safeStorage`
+  when available and session-only otherwise. They never reach the renderer,
+  project config or installer and agent environments.
+
+## Accounts, sharing and teams
+
+Browser sign-in uses Better Auth OAuth and device authorization against the
+[Cloudflare backend](/docs/preflight/cloudflare-backend). Sharing exports and
+imports JSON locally and publishes, lists and revokes owned shares on the
+backend. The Team page manages real organizations: invitation links, accept or
+decline, roles, member removal and leaving, with the last owner protected. A
+separate local roster works offline and grants no backend access.
+
+The [context map](/docs/preflight/context-map) (**Improve → Context map**) shows
+a treemap of the instruction text a setup can load.
+
 <Callout type="info">
-A Preflight desktop app is planned. It does not exist yet, and there is no date.
+Builds are unsigned and not notarized. CI builds and tests macOS, Windows NSIS
+and Linux AppImage/deb packages; automatic updates and public installers are not
+done yet.
 </Callout>
-
-The intent is the same engine behind a windowed interface: browse and inspect a
-setup, preview a change as a diff, apply it, and roll it back, without a
-terminal. The CLI and [terminal interface](/docs/preflight/tui) are the
-supported surfaces today, and anything the app does will be a command you can
-also run there.
-
-This page will describe the app once there is something to install.

@@ -10,7 +10,7 @@ Desktop : **Improve → Context map**, treemap par type avec surfaces proportion
 
 CLI : `preflight context [--mode potential|catalogue] [--agent claude-code|cursor] [--scope global|project]`, compatible `--global` et profil absent. Rapport JSON sans configuration ni credentials. Correction des doublons globaux détectés via les vrais targets d'adapters : `PreflightService.unmanaged(inherited)` utilisé par le CLI et le snapshot desktop.
 
-Validation locale : `npm run check` (131 tests, lint/typecheck et build), `npm run desktop:check`, `npm run desktop:smoke` (carte, détail MCP, zoom, liste/filtres et viewport compact en plus des scénarios existants), et `npm --prefix docs run build` passent. Captures inspectées dans `/private/var/folders/d8/q7brvp314z343wfb046350yh0000gn/T/preflight-smoke-RHpHfi`. Doc : `docs/docs/context-map.md`.
+Validation locale : `npm run check` (131 tests, lint/typecheck et build), `npm run desktop:check`, `npm run desktop:smoke` (carte, détail MCP, zoom, liste/filtres et viewport compact en plus des scénarios existants), et `npm --prefix docs run build` passent. Captures inspectées dans `/private/var/folders/d8/q7brvp314z343wfb046350yh0000gn/T/preflight-smoke-RHpHfi`. Doc : `docs/content/docs/preflight/context-map.mdx`.
 
 Limite explicite : ni schémas MCP ni réponses d'outils ni historique/session native ne sont capturés. Une extension de mesure runtime pourrait les intégrer ultérieurement ; les coûts inconnus ne sont pas transformés en zéros ni en surfaces fictives.
 
@@ -28,7 +28,7 @@ Reste extérieur : fournir les OAuth/Cloudflare secrets et provisionner/déploye
 
 - Le commit utilisateur `bebe256` (desktop et icône avion) est conservé. Configuration globale indépendante dans `HOME/.preflight/global/preflight.config.json`, contexte global/projet explicite, Overview et ressources globales héritées en lecture seule.
 - Découverte séparée du catalogue local : sources MCP Registry, GitHub et skills.sh, filtres, prérequis/erreurs visibles, configuration avant installation. Éditeur MCP stdio/HTTP/SSE et mode JSON avancé.
-- Backend standard Better Auth + Cloudflare Workers/D1/KV/R2 : OAuth GitHub/Google configurables, sessions, device authorization RFC8628, organisations réelles, propriétaires des partages vérifiés côté serveur. Migrations générées et guide `docs/docs/cloudflare-backend.md`.
+- Backend standard Better Auth + Cloudflare Workers/D1/KV/R2 : OAuth GitHub/Google configurables, sessions, device authorization RFC8628, organisations réelles, propriétaires des partages vérifiés côté serveur. Migrations générées et guide `docs/content/docs/preflight/cloudflare-backend.mdx`.
 - Desktop : connexion navigateur principale, tokens hors renderer, compatibilité deployment token secondaire. CLI `preflight auth login/status/logout`, stockage OS sans fallback plaintext, `preflight team list/create/members`. Team desktop liste/crée les organisations et affiche leurs membres ; roster local clairement distinct.
 - Partage : URL hébergée générée, actions copier/ouvrir, import de l'URL complète via `preflight apply URL --dry-run`, codes aléatoires 16 caractères (anciens codes compatibles), liste serveur et desktop des partages du compte (`GET /api/shares`), révocation avec preview.
 - Vérification locale Cloudflare réelle : `npm run backend:smoke` applique les migrations D1 et vérifie sessions, autorisation d'appareil, organisation, logout. `npm run smoke:worker` teste explicitement la compatibilité legacy sans D1. CI couvre ces deux runtimes et les packages Electron sur macOS/Windows/Linux.
@@ -54,7 +54,7 @@ Le travail desktop est sur **`codex/implement-adk-tui`**, base `b185631`, premie
 - Packaging electron-builder, icône reproductible, test Electron Playwright sur projet/home/userData jetables ; CI vérifie bundles Node 22/24 et workflows natifs macOS, puis paquet natif.
 - Revue indépendante : credentials hérités, changements de projet/compte, inputs importés modifiés et fermeture pendant supervision ont été corrigés avec régressions. Export JSON montre maintenant le fichier avant/après et refuse sa confirmation si la destination change. Suppression du timeout global qui pouvait abandonner des processus détachés ; le CLI conserve ses timeouts de sous-processus.
 
-Points d'entrée : `desktop/main/controller.ts` (sécurité/aperçus/settings), `desktop/main/index.ts` (Electron/IPC/worker), `desktop/engine.ts` (snapshot réel), `desktop/renderer/`, `desktop/worker.ts`, `scripts/desktop-smoke.mjs`, `electron-builder.yml`. Design et plan dans `docs/superpowers/{specs,plans}/2026-10-04-desktop*.md`. Guide utilisateur dans `PREFLIGHT.md`.
+Points d'entrée : `desktop/main/controller.ts` (sécurité/aperçus/settings), `desktop/main/index.ts` (Electron/IPC/worker), `desktop/engine.ts` (snapshot réel), `desktop/renderer/`, `desktop/worker.ts`, `scripts/desktop-smoke.mjs`, `electron-builder.yml`. Design et plan dans `docs-internal/superpowers/{specs,plans}/2026-10-04-desktop*.md`. Guide utilisateur dans `PREFLIGHT.md`.
 
 ## Validation et limites
 
