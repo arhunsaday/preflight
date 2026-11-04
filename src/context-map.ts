@@ -32,9 +32,13 @@ export function buildContextReport(
         (!options.scope || r.scope === options.scope),
     )
     .map((r) => {
-      const textual = ["skill", "prompt", "subagent", "command"].includes(
-        r.type,
-      );
+      const textual = [
+        "skill",
+        "prompt",
+        "subagent",
+        "command",
+        "instructions",
+      ].includes(r.type);
       const catalogueTokens =
         r.type === "skill"
           ? Math.ceil(`${r.name}\n${r.description}`.length / 4)
@@ -47,7 +51,7 @@ export function buildContextReport(
         ? 0
         : !textual
           ? null
-          : mode === "catalogue"
+          : mode === "catalogue" && r.type !== "instructions"
             ? catalogueTokens
             : bodyTokens === null
               ? null
@@ -58,11 +62,13 @@ export function buildContextReport(
           ? "Tool schemas and responses are not available in local transport configuration. Not measured; no server was started."
           : !textual
             ? "Runtime contributions are not available locally. Configuration bytes are not model context."
-            : mode === "catalogue"
+            : mode === "catalogue" && r.type !== "instructions"
               ? "Skill names and descriptions only. Prompt, command and agent bodies are excluded. Actual catalogue exposure depends on the agent."
               : bodyTokens === null
                 ? "Instruction body unavailable. Its contribution is unknown, not zero."
-                : r.type === "skill"
+                : r.type === "instructions"
+                  ? "Instruction file text the agent adds to every session in this scope."
+                  : r.type === "skill"
                   ? "Skill catalogue plus full body if invoked. Available content is not proof that it is loaded."
                   : "Full instruction body if loaded. Activation depends on the agent and session.";
       return {

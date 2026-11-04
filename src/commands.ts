@@ -10,6 +10,7 @@ import { type Context } from "./adapters.js";
 import {
   ResourceSchema,
   ResourceTypeSchema,
+  HarnessIdSchema,
   ScopeSchema,
   SharePayloadSchema,
   PreflightConfigSchema,
@@ -392,7 +393,7 @@ export async function execute(
         .choices(["potential", "catalogue"])
         .default("potential"),
     )
-    .addOption(new Option("--agent <agent>").choices(["claude-code", "cursor"]))
+    .addOption(new Option("--agent <agent>").choices(HarnessIdSchema.options))
     .addOption(new Option("--scope <scope>").choices(["global", "project"]));
   command(
     "usage",

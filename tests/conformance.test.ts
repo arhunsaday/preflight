@@ -35,6 +35,7 @@ function sample(type: ResourceType, harness: HarnessId): Resource {
       });
     case "subagent":
     case "command":
+    case "instructions":
       return ResourceSchema.parse({
         ...base,
         content: "---\nname: conformance\n---\n\nDo the thing.\n",
@@ -119,7 +120,7 @@ for (const harness of HarnessIdSchema.options) {
     const context = await workspace();
     const adapter = createAdapters(context).find((a) => a.id === harness)!;
     const unclaimed = (
-      ["skill", "mcp", "subagent", "hook", "prompt", "tool", "plugin", "statusline", "command"] as ResourceType[]
+      ["skill", "mcp", "subagent", "hook", "prompt", "tool", "plugin", "statusline", "command", "instructions"] as ResourceType[]
     ).filter((type) => !adapter.capabilities.includes(type));
     expect(unclaimed.length).toBeGreaterThan(0);
     for (const type of unclaimed)
