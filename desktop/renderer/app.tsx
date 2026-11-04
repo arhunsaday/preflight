@@ -35,6 +35,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useWorkspace, availableResources } from "./workspace";
 import { useTheme } from "./theme";
+import { UpdateBanner } from "./components/update-banner";
 import { initials, isTyping, plural } from "./format";
 import { Overview } from "./views/overview";
 import { Resources } from "./views/resources";
@@ -669,6 +670,7 @@ export function App() {
           ])}
         </div>
       </Dialog>
+      <UpdateBanner />
       <Toasts toasts={w.toasts} dismiss={w.dismiss} />
     </div>
   );

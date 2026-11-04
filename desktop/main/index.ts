@@ -9,6 +9,7 @@ import {
   nativeTheme,
 } from "electron";
 import { installMenu } from "./menu.js";
+import { installUpdater } from "./updater.js";
 import { cloudRequest, CloudOperation } from "../../src/cloud-client.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -35,9 +36,11 @@ const engine: Engine = (args, context, auth) =>
         ...Object.fromEntries(
           Object.entries(process.env).filter(
             ([key]) =>
-              !["PREFLIGHT_SHARE_TOKEN", "PREFLIGHT_SHARE_URL", "PREFLIGHT_OWNER_ID"].includes(
-                key,
-              ),
+              ![
+                "PREFLIGHT_SHARE_TOKEN",
+                "PREFLIGHT_SHARE_URL",
+                "PREFLIGHT_OWNER_ID",
+              ].includes(key),
           ),
         ),
         ELECTRON_RUN_AS_NODE: "1",
@@ -85,21 +88,24 @@ const engine: Engine = (args, context, auth) =>
     child.stdin.on("error", (e) => finish(e));
     child.stdin.end(JSON.stringify({ args, context, auth }));
   });
+function assertTrusted(event: Electron.IpcMainInvokeEvent) {
+  if (
+    event.sender !== window.webContents ||
+    event.senderFrame !== window.webContents.mainFrame
+  )
+    throw new Error("Untrusted desktop frame");
+  const expected = process.env.ELECTRON_RENDERER_URL;
+  const url = event.senderFrame.url;
+  if (
+    expected
+      ? new URL(url).origin !== new URL(expected).origin
+      : url !== new URL("../renderer/index.html", import.meta.url).href
+  )
+    throw new Error("Untrusted desktop page");
+}
 function handle(channel: string, fn: (...args: unknown[]) => unknown) {
   ipcMain.handle(`preflight:${channel}`, (event, ...args) => {
-    if (
-      event.sender !== window.webContents ||
-      event.senderFrame !== window.webContents.mainFrame
-    )
-      throw new Error("Untrusted desktop frame");
-    const expected = process.env.ELECTRON_RENDERER_URL;
-    const url = event.senderFrame.url;
-    if (
-      expected
-        ? new URL(url).origin !== new URL(expected).origin
-        : url !== new URL("../renderer/index.html", import.meta.url).href
-    )
-      throw new Error("Untrusted desktop page");
+    assertTrusted(event);
     return fn(...args);
   });
 }
@@ -332,11 +338,13 @@ async function boot() {
     });
     return selected.filePath ?? null;
   });
+  const updater = installUpdater(() => window, assertTrusted);
   installMenu((command) => {
     if (window && !window.isDestroyed())
       window.webContents.send("preflight:command", command);
-  });
+  }, updater.checkNow);
   await createWindow();
+  updater.start();
 }
 void app
   .whenReady()
