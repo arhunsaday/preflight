@@ -42,12 +42,12 @@ export class PreflightService {
     const before = await readText(this.store.configPath);
     if (before !== null) return PreflightConfigSchema.parse(JSON.parse(before));
     const config = defaultConfig();
-    await applyFiles(
+    const plan = await applyFiles(
       this.context.root,
       [{ path: this.store.configPath, before: null, after: jsonText(config) }],
       { actor: process.env.USER ?? "local", dryRun },
     );
-    return config;
+    return dryRun ? { ...config, ...plan } : config;
   }
   list() {
     return this.store.resources();
@@ -125,6 +125,15 @@ export class PreflightService {
     source?: string,
   ) {
     config = PreflightConfigSchema.parse(config);
+    if (
+      this.context.globalOnly &&
+      Object.values(config.profiles).some((p) =>
+        p.resources.some((r) => r.scope !== "global"),
+      )
+    )
+      throw new Error(
+        "The global workspace only accepts global resources; choose a project for project scope.",
+      );
     const desired = config.profiles[config.activeProfile]!.resources;
     const lockBefore = await readText(this.store.lockPath);
     const lock = lockBefore ? Lock.parse(JSON.parse(lockBefore)) : undefined;
@@ -245,8 +254,11 @@ export class PreflightService {
     };
   }
   /** Detected resources the active profile does not manage. */
-  async unmanaged() {
-    const desired = await this.list().catch(() => [] as Resource[]);
+  async unmanaged(inherited: Resource[] = []) {
+    const desired = [
+      ...inherited,
+      ...(await this.list().catch(() => [] as Resource[])),
+    ];
     const adapters = createAdapters(this.context);
     const claimed = new Set<string>();
     for (const resource of desired)

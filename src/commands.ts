@@ -1,8 +1,10 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { readFile, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { verifyResource } from "./verify.js";
+import { ConfigStore } from "./state.js";
+import { buildContextReport, contextResources } from "./context-map.js";
 import { PreflightService } from "./service.js";
 import { type Context } from "./adapters.js";
 import {
@@ -15,6 +17,7 @@ import {
 } from "./schema.js";
 import {
   fetchShare,
+  isShareCode,
   makeShare,
   previewShare,
   publishShare,
@@ -45,6 +48,10 @@ export async function execute(
 ): Promise<unknown> {
   let result: unknown;
   const program = new Command();
+  program.addHelpText(
+    "after",
+    "\nAccount commands:\n  preflight auth login --service <url> [--no-browser]\n  preflight auth status\n  preflight auth logout\n  preflight team list|create|members\n",
+  );
   program
     .name("preflight")
     .description("Inspect, manage, scope, share and verify your AI setup")
@@ -55,14 +62,25 @@ export async function execute(
       },
       writeErr: () => {},
     })
+    .option(
+      "--global",
+      "manage the shared global configuration at HOME/.preflight/global",
+    )
     .option("--dry-run", "preview all changes without writing")
     .option("--json", "machine-readable output (default)")
     .option("--root <path>", "project root", context.root)
     .option("--home <path>", "harness home", context.home);
-  const ctx = () => ({
-    root: resolve(program.opts().root),
-    home: resolve(program.opts().home),
-  });
+  const ctx = (): Context => {
+    const home = resolve(program.opts().home);
+    const globalOnly = !!program.opts().global || !!context.globalOnly;
+    return {
+      root: globalOnly
+        ? join(home, ".preflight", "global")
+        : resolve(program.opts().root),
+      home,
+      ...(globalOnly ? { globalOnly: true } : {}),
+    };
+  };
   const service = () => new PreflightService(ctx());
   const dry = () => !!program.opts().dryRun;
   const command = (
@@ -254,11 +272,25 @@ export async function execute(
     "Search the typed catalogue and optional remote sources",
     async (query = "", options) => {
       const local = await catalog(options.catalog);
-      const sources: CatalogSource[] = [
-        { id: "catalog", search: async () => local },
-      ];
-      if (options.online) sources.push(mcpRegistry, skillsSource);
-      if (options.github)
+      const selected = z
+        .enum(["all", "bundled", "mcp-registry", "skills.sh", "github"])
+        .parse(options.source ?? "all");
+      const sources: CatalogSource[] =
+        selected === "all" || selected === "bundled"
+          ? [{ id: "catalog", search: async () => local }]
+          : [];
+      if (options.online || ["mcp-registry", "skills.sh"].includes(selected)) {
+        if (
+          ["all", "mcp-registry"].includes(selected) &&
+          options.type !== "skill"
+        )
+          sources.push(mcpRegistry);
+        if (["all", "skills.sh"].includes(selected) && options.type !== "mcp")
+          sources.push(skillsSource);
+      }
+      if (selected === "github" && !options.github)
+        throw new Error("Specify --github owner/repo for GitHub search");
+      if (options.github && ["all", "github"].includes(selected))
         sources.push(
           githubSource(
             options.github,
@@ -273,6 +305,10 @@ export async function execute(
     },
   );
   search
+    .option(
+      "--source <source>",
+      "all, bundled, mcp-registry, skills.sh or github",
+    )
     .option("--online")
     .option("--github <owner/repo>")
     .option("--type <type>")
@@ -329,6 +365,36 @@ export async function execute(
     },
   ).option("--execute", "run the package manager");
   command(
+    "context",
+    "Estimate available instruction context; MCP runtime contributions remain unknown",
+    async (options) => {
+      const read = async (store: ConfigStore) =>
+        store.resources().catch((error) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw error;
+        });
+      const owned = await read(service().store);
+      const inherited = ctx().globalOnly
+        ? []
+        : await read(new ConfigStore(join(ctx().home, ".preflight", "global")));
+      const detected = (await service().unmanaged(inherited))
+        .map((entry) => entry.resource)
+        .filter((r) => !ctx().globalOnly || r.scope === "global");
+      return buildContextReport(contextResources(detected, inherited, owned), {
+        mode: options.mode,
+        ...(options.agent ? { harness: options.agent } : {}),
+        ...(options.scope ? { scope: options.scope } : {}),
+      });
+    },
+  )
+    .addOption(
+      new Option("--mode <scenario>")
+        .choices(["potential", "catalogue"])
+        .default("potential"),
+    )
+    .addOption(new Option("--agent <agent>").choices(["claude-code", "cursor"]))
+    .addOption(new Option("--scope <scope>").choices(["global", "project"]));
+  command(
     "usage",
     "Measure observed skill and MCP invocation counts",
     async (options) =>
@@ -375,15 +441,15 @@ export async function execute(
         visibility: options.public ? "public" : "unlisted",
         ...(options.expires ? { expiresAt: options.expires } : {}),
       });
-      if (dry()) return payload;
       if (options.out) {
         const path = resolve(ctx().root, options.out);
         return applyFiles(
           ctx().root,
           [{ path, before: await readText(path), after: jsonText(payload) }],
-          { actor: process.env.USER ?? "local" },
+          { actor: process.env.USER ?? "local", dryRun: dry() },
         );
       }
+      if (dry()) return payload;
       if (!process.env.PREFLIGHT_SHARE_TOKEN)
         throw new Error(
           "Set PREFLIGHT_SHARE_TOKEN for publishing or use --out payload.json",
@@ -408,16 +474,29 @@ export async function execute(
     "apply <file-or-code>",
     "Preview or apply a share through the policy and audit pipeline",
     async (value, options) => {
-      const payload = /^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(value)
-        ? await fetchShare(shareBase(options.service), value)
-        : SharePayloadSchema.parse(await input(value));
+      let sharedUrl: URL | undefined;
+      if (/^https?:\/\//i.test(value)) {
+        sharedUrl = new URL(value);
+        serviceUrl(sharedUrl.origin);
+        if (
+          sharedUrl.username ||
+          sharedUrl.password ||
+          !sharedUrl.pathname.startsWith("/s/") ||
+          !isShareCode(sharedUrl.pathname.slice(3))
+        )
+          throw new Error("Use a Preflight share URL ending in /s/<code>");
+      }
+      const payload = sharedUrl
+        ? await fetchShare(sharedUrl.origin, sharedUrl.pathname.slice(3))
+        : isShareCode(value)
+          ? await fetchShare(shareBase(options.service), value)
+          : SharePayloadSchema.parse(await input(value));
       previewShare(payload, await service().list());
       return service().import(payload.resources, dry(), value);
     },
   ).option("--service <url>");
   command("revoke <code>", "Revoke a hosted share", async (code, options) => {
-    if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/i.test(code))
-      throw new Error("Invalid code");
+    if (!isShareCode(code)) throw new Error("Invalid code");
     const url = `${serviceUrl(shareBase(options.service))}/api/shares/${code.toLowerCase()}`;
     if (dry()) return { method: "DELETE", url };
     if (!process.env.PREFLIGHT_SHARE_TOKEN) throw new Error("Set PREFLIGHT_SHARE_TOKEN");

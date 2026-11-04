@@ -72,7 +72,7 @@ it("names the upstream installer for a loadout skill the catalogue lacks", () =>
 });
 it("shares only validated resources and previews changes", () => {
   const payload = makeShare([resource], { ownerId: "test" });
-  expect(shareCode()).toMatch(/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/);
+  expect(shareCode()).toMatch(/^[23456789abcdefghjkmnpqrstuvwxyz]{16}$/);
   expect(previewShare(payload, [])[0]?.kind).toBe("add");
   expect(() =>
     makeShare([{ ...resource, config: { TOKEN: "literal" } }], {

@@ -1,0 +1,23 @@
+appId: dev.preflight.desktop
+productName: Preflight
+icon: desktop/assets/icon.png
+asar: true
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+directories:
+  output: desktop-release
+files:
+  - desktop-out/**
+  - package.json
+extraMetadata:
+  main: desktop-out/main/index.mjs
+mac:
+  category: public.app-category.developer-tools
+  target: [dmg, zip]
+win:
+  target: [nsis]
+linux:
+  executableName: preflight
+  maintainer: Preflight contributors
+  synopsis: Manage AI development setups
+  category: Development
+  target: [AppImage, deb]

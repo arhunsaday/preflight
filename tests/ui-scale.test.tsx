@@ -1,5 +1,5 @@
 import React from "react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { render } from "ink-testing-library";
 import { mkdir, mkdtemp, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -35,16 +35,31 @@ it("keeps a 500 resource profile bounded and responsive", async () => {
   const view = render(<App context={context} />);
   const tick = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
   try {
-    await tick(300);
     const frame = () => view.lastFrame() ?? "";
-    expect(frame()).toContain("scale skill number 0");
+    await vi.waitFor(
+      () => {
+        expect(frame()).toContain("scale skill number 0");
+        expect(frame()).toContain("✖");
+        expect(frame()).not.toContain("doctor pending");
+      },
+      { timeout: 10000, interval: 25 },
+    );
+    await tick(25);
     expect(frame()).not.toContain("scale skill number 400");
     expect(frame().split("\n").length).toBeLessThanOrEqual(34);
+    // Ink may paint before its passive input effect subscribes under a busy worker.
+    // Establish that input is active before measuring a burst of navigation.
+    await vi.waitFor(() => {
+      view.stdin.write("j");
+      expect(frame()).toMatch(/adk inspect skill:scale-[1-9]/);
+    }, { timeout: 5000, interval: 25 });
     const start = performance.now();
     for (let i = 0; i < 60; i++) view.stdin.write("j");
-    await tick(50);
+    await vi.waitFor(
+      () => expect(frame()).not.toContain("scale skill number 0 "),
+      { timeout: 2500, interval: 25 },
+    );
     expect(performance.now() - start).toBeLessThan(3000);
-    expect(frame()).not.toContain("scale skill number 0 ");
   } finally {
     view.unmount();
   }

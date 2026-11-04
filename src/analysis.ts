@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 import { join } from "node:path";
 import { secretPaths, type Resource } from "./schema.js";
+import { buildContextReport } from "./context-map.js";
 export interface Finding {
   code: string;
   severity: "info" | "warning" | "error";
@@ -44,10 +45,15 @@ export function analyze(resources: Resource[]): Finding[] {
           `Same description as ${descriptions.get(trigger)}`,
         );
       if (trigger) descriptions.set(trigger, r.id);
+      // Same estimate as the context map, so the two views never disagree.
+      const [entry] = buildContextReport([r]).entries;
+      const tokens = entry
+        ? entry.catalogueTokens + (entry.bodyTokens ?? 0)
+        : 0;
       add(
         "context-estimate",
         "info",
-        `Approximately ${Math.ceil((r.content ?? r.description).length / 4)} tokens if loaded (character estimate, not tokenizer output).`,
+        `Approximately ${tokens} tokens if loaded (character estimate, not tokenizer output).`,
       );
     }
     if (r.type === "plugin" && r.enabled)

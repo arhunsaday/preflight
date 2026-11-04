@@ -5,8 +5,7 @@
 #
 #   npm run smoke:worker
 #
-# Wrangler is not a dependency of this package — it is large and only needed
-# here — so the first run downloads it through npx.
+# Uses the lockfile-pinned Wrangler installed by npm ci.
 set -uo pipefail
 
 PORT="${PREFLIGHT_SMOKE_PORT:-8799}"
@@ -14,6 +13,8 @@ BASE="http://127.0.0.1:${PORT}"
 TOKEN="smoke-$RANDOM"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOG="$(mktemp)"
+CONFIG="$(mktemp "$ROOT/legacy-worker-XXXXXX.json")"
+(cd "$ROOT" && node --input-type=module -e 'import fs from "node:fs"; const c=JSON.parse(fs.readFileSync("wrangler.jsonc","utf8")); delete c.d1_databases; delete c.vars.BASE_URL; fs.writeFileSync(process.argv[1],JSON.stringify(c));' "$CONFIG")
 failures=0
 
 cd "$ROOT"
@@ -29,11 +30,11 @@ printf 'WRITE_TOKEN=%s\n' "$TOKEN" > .dev.vars
 
 cleanup() {
   [ -n "${PID:-}" ] && kill "$PID" 2>/dev/null
-  rm -f .dev.vars
+  rm -f .dev.vars "$CONFIG"
 }
 trap cleanup EXIT
 
-npx --yes wrangler@4 dev --local --port "$PORT" \
+node node_modules/wrangler/bin/wrangler.js dev --config "$CONFIG" --local --port "$PORT" \
   --inspector-port "${PREFLIGHT_SMOKE_INSPECTOR:-9899}" > "$LOG" 2>&1 &
 PID=$!
 
@@ -72,6 +73,9 @@ process.stdout.write(JSON.stringify({
   }],
 }));')
 
+check "account without token" 401 "$(code_for "$BASE/api/account")"
+check "account with token" 200 "$(code_for "$BASE/api/account" -H "authorization: Bearer $TOKEN")"
+
 check "missing share is not found" 404 "$(code_for "$BASE/s/aaaaaa")"
 check "publish without a token" 401 \
   "$(code_for -X POST "$BASE/api/shares" -H 'content-type: application/json' -d "$payload")"
@@ -80,10 +84,10 @@ code=$(curl -s -X POST "$BASE/api/shares" \
   -H 'content-type: application/json' -H "authorization: Bearer $TOKEN" \
   -d "$payload" | node -e 'let s="";process.stdin.on("data",d=>s+=d)
     .on("end",()=>process.stdout.write(String(JSON.parse(s).code ?? "")))')
-if [ ${#code} -eq 6 ]; then
-  printf '  ok    %-34s %s\n' "publish returns a short code" "$code"
+if [ ${#code} -eq 16 ]; then
+  printf '  ok    %-34s %s\n' "publish returns a random code" "$code"
 else
-  printf '  FAIL  %-34s got %s\n' "publish returns a short code" "${code:-nothing}"
+  printf '  FAIL  %-34s got %s\n' "publish returns a random code" "${code:-nothing}"
   failures=$((failures + 1))
   exit 1
 fi

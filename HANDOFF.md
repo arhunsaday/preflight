@@ -1,4 +1,84 @@
-# Reprise du projet Preflight — 24 septembre 2026 (mis à jour en fin de session TUI)
+## Mise à jour du 7 octobre 2026 — accents duotones
+
+Les commits UI de l'autre agent (shell clavier/thèmes, refonte neutre arrondie et logo `d7db05f`) sont conservés. Navigation et ressources utilisent désormais Phosphor 2.1.10 en poids duotone, avec imports par icône. Composants partagés dans `desktop/renderer/components/semantic-icons.tsx` : icônes et badges par type, badges Claude/Cursor, mapping des vues de navigation. Palette discrète bleu/teal/violet/ambre/vert/rose, adaptée aux thèmes clair/sombre via les tokens existants. Les actions restent neutres, les statuts gardent leur sens et les labels textuels/accessibilité restent présents. Aucun agent supplémentaire n'est prétendu pris en charge.
+
+Validation : `npm run check` (132 tests, lint, typecheck et build), `npm run desktop:check`, lint final et parcours Electron avec captures clair/sombre. Le smoke vérifie les couches SVG duotones, les badges d'agents et tous les parcours précédents. Les deux fichiers pnpm préexistants ne font pas partie de ce changement ; package-lock npm reste la référence de CI. Un run du smoke a expiré au délai existant de 12 secondes du scénario final d’annulation de connexion ; la relance complète passe sans modification de l’auth. À surveiller si ce timeout réapparaît. Captures finales : `/private/var/folders/d8/q7brvp314z343wfb046350yh0000gn/T/preflight-smoke-anV5FT`.
+
+## Mise à jour du 6 octobre 2026 — carte du contexte
+
+Desktop : **Improve → Context map**, treemap par type avec surfaces proportionnelles, zoom par catégorie, inspection, liste triée, recherche et filtres agent/global/projet. Deux scénarios : catalogue des skills ou instructions complètes si chargées. Calcul partagé `src/context-map.ts`, `ceil(characters / 4)` par contribution, aucune prétention de mesure de session réelle. MCP et autres contributions runtime inconnues affichées séparément ; aucun serveur démarré. Ressources désactivées exclues du total, profil projet prioritaire à ID égal. Les résultats du catalogue de découverte ne font pas partie de l'inventaire.
+
+CLI : `preflight context [--mode potential|catalogue] [--agent claude-code|cursor] [--scope global|project]`, compatible `--global` et profil absent. Rapport JSON sans configuration ni credentials. Correction des doublons globaux détectés via les vrais targets d'adapters : `PreflightService.unmanaged(inherited)` utilisé par le CLI et le snapshot desktop.
+
+Validation locale : `npm run check` (131 tests, lint/typecheck et build), `npm run desktop:check`, `npm run desktop:smoke` (carte, détail MCP, zoom, liste/filtres et viewport compact en plus des scénarios existants), et `npm --prefix docs run build` passent. Captures inspectées dans `/private/var/folders/d8/q7brvp314z343wfb046350yh0000gn/T/preflight-smoke-RHpHfi`. Doc : `docs/docs/context-map.md`.
+
+Limite explicite : ni schémas MCP ni réponses d'outils ni historique/session native ne sont capturés. Une extension de mesure runtime pourrait les intégrer ultérieurement ; les coûts inconnus ne sont pas transformés en zéros ni en surfaces fictives.
+
+## Mise à jour du 5 octobre 2026 — équipes et identité visuelle
+
+La CI complète du commit équipes/UI `720af1a` est verte (https://github.com/arhunsaday/preflight/actions/runs/37344158861), comme celle du socle `2d85366` : backend Cloudflare, Node 22/24, docs, packages et parcours Electron macOS/Windows/Linux. Wrangler est désormais verrouillé dans package-lock ; le smoke tue son groupe de processus, ce qui résout le blocage Linux. Les liens nouveaux ont 16 caractères aléatoires, les anciens restent compatibles.
+
+Implémentation suivante : client cloud validé partagé main/CLI (`src/cloud-client.ts`), équipes réelles avec invitations/acceptation/refus/annulation, rôles owner/admin/member, retrait et départ. Better Auth impose les permissions côté serveur et protège le dernier propriétaire. URL `/invite/UUID` avec retour OAuth, destinataire/email vérifié et acceptation explicite ; livraison manuelle du lien, aucun faux envoi email. UI membre sans commandes admin.
+
+Refonte visuelle : Manrope embarquée/offline, palette marine/pétrole, Overview asymétrique avec schéma global→projet et inventaire, tableaux membres/invitations, roster local replié, compte fixé en bas de sidebar. Icône avion utilisateur conservée. Tests Electron avec vrai Better Auth et SQLite : deux connexions par device authorization, création/invitation/acceptation et vue membre. Smoke Wrangler réel couvre D1 invitations/rôles et KV/R2. Les scopes, reçus de preview, stockage sécurisé et isolation renderer restent conservés.
+
+Reste extérieur : fournir les OAuth/Cloudflare secrets et provisionner/déployer le backend réel, signature/notarisation des installateurs. Les liens unlisted/public ne sont pas des partages privés d'équipe. Priorités fonctionnelles ultérieures : partage privé avec ACL explicites si souhaité, transfert entre stores global/projet, transport email si souhaité.
+
+## Mise à jour du 4 octobre 2026 — UX et backend standard
+
+- Le commit utilisateur `bebe256` (desktop et icône avion) est conservé. Configuration globale indépendante dans `HOME/.preflight/global/preflight.config.json`, contexte global/projet explicite, Overview et ressources globales héritées en lecture seule.
+- Découverte séparée du catalogue local : sources MCP Registry, GitHub et skills.sh, filtres, prérequis/erreurs visibles, configuration avant installation. Éditeur MCP stdio/HTTP/SSE et mode JSON avancé.
+- Backend standard Better Auth + Cloudflare Workers/D1/KV/R2 : OAuth GitHub/Google configurables, sessions, device authorization RFC8628, organisations réelles, propriétaires des partages vérifiés côté serveur. Migrations générées et guide `docs/docs/cloudflare-backend.md`.
+- Desktop : connexion navigateur principale, tokens hors renderer, compatibilité deployment token secondaire. CLI `preflight auth login/status/logout`, stockage OS sans fallback plaintext, `preflight team list/create/members`. Team desktop liste/crée les organisations et affiche leurs membres ; roster local clairement distinct.
+- Partage : URL hébergée générée, actions copier/ouvrir, import de l'URL complète via `preflight apply URL --dry-run`, codes aléatoires 16 caractères (anciens codes compatibles), liste serveur et desktop des partages du compte (`GET /api/shares`), révocation avec preview.
+- Vérification locale Cloudflare réelle : `npm run backend:smoke` applique les migrations D1 et vérifie sessions, autorisation d'appareil, organisation, logout. `npm run smoke:worker` teste explicitement la compatibilité legacy sans D1. CI couvre ces deux runtimes et les packages Electron sur macOS/Windows/Linux.
+
+À poursuivre : UI des invitations et des rôles d'organisation, déplacement de ressources entre les deux stores global/projet, meilleure couverture des opérations CLI spécialisées. Aucun fournisseur OAuth réel ni service public n'a été provisionné ou déployé ; renseigner les bindings et secrets Cloudflare puis déployer selon le guide. Les installateurs restent non signés. Ne pas présenter les liens unlisted comme privés.
+
+# Reprise du projet Preflight — 4 octobre 2026
+
+## État courant et règles de reprise
+
+La dernière demande utilisateur donne priorité à une application desktop couvrant le CLI : skills, MCP, projets, loadouts, benchmark, collaboration, équipe, doctor et auth. Il autorise le travail autonome sans questions et les commits/pushes progressifs. La capture Skillscout sert d'inspiration visuelle, pas de spécification fonctionnelle supplémentaire.
+
+Le travail desktop est sur **`codex/implement-adk-tui`**, base `b185631`, premier lot poussé `caf2d38`. Le dépôt distant redirige vers `https://github.com/arhunsaday/preflight`. Vérifier les références actuelles avant toute suite ; les paragraphes historiques ci-dessous décrivent une session antérieure et leur affirmation « travail sur main » ne décrit pas ce lot. Aucun merge, déploiement Cloudflare ou publication npm n'a été effectué pendant ce lot.
+
+**Préserver `preflight.config.json`, fichier utilisateur non suivi présent dans le checkout.** Ne pas l'ajouter au commit ni le remplacer. Le changement initial de package-lock concernait les indicateurs peer et a été conservé lors du fast-forward puis intégré à l'installation des dépendances desktop.
+
+## Livré dans ce lot
+
+- Audit et fast-forward des huit commits de l'autre agent : adoption, TUI, registre MCP tolérant, vraies installations, partage par scope/loadout, doctor connecté, acceptation et Worker smoke étaient déjà livrés. Baseline vérifiée : 94 tests.
+- Electron/React/electron-vite avec interface native à trois panneaux inspirée de la capture : liste/détail des skills et MCP, catalogue/détection/adoption, formulaires CRUD, profils, projets, loadouts, doctor, usage, benchmarks, partage, compte, roster local et activité. Console sans shell pour les commandes restantes.
+- Projets choisis par dialogue natif, sans initialisation implicite. Schémas/services/transactions CLI réutilisés par un worker isolé ; renderer sandboxé sans Node, preload restreint, validation dans main. Aperçus à reçus uniques, expiration, contexte immuable, contrôle de l'état et relecture des inputs avant confirmation.
+- Partage JSON et Worker : connexion propriétaire via nouveau `GET /api/account`, publication/import/révocation réels, token chiffré safeStorage ou session-only. Token absent des snapshots, configs projet et environnements d'installateurs/agents.
+- Packaging electron-builder, icône reproductible, test Electron Playwright sur projet/home/userData jetables ; CI vérifie bundles Node 22/24 et workflows natifs macOS, puis paquet natif.
+- Revue indépendante : credentials hérités, changements de projet/compte, inputs importés modifiés et fermeture pendant supervision ont été corrigés avec régressions. Export JSON montre maintenant le fichier avant/après et refuse sa confirmation si la destination change. Suppression du timeout global qui pouvait abandonner des processus détachés ; le CLI conserve ses timeouts de sous-processus.
+
+Points d'entrée : `desktop/main/controller.ts` (sécurité/aperçus/settings), `desktop/main/index.ts` (Electron/IPC/worker), `desktop/engine.ts` (snapshot réel), `desktop/renderer/`, `desktop/worker.ts`, `scripts/desktop-smoke.mjs`, `electron-builder.yml`. Design et plan dans `docs/superpowers/{specs,plans}/2026-10-04-desktop*.md`. Guide utilisateur dans `PREFLIGHT.md`.
+
+## Validation et limites
+
+- `npm run check` : 108 tests / 18 fichiers, lint/types/build passent.
+- `npm run desktop:check` et workflows Electron réels passent : init, ajout, déplacement global, édition, profils, doctor, loadouts, console, équipe locale, auth/publication/import/révocation et changement de projet.
+- Python : 33 tests ; `python3 scripts/kit.py check` : zéro problème.
+- Worker navigateur compilé ; Wrangler KV/R2 local : 11 contrôles passent (dont account autorisé/non autorisé).
+- Paquet `.app` macOS arm64 construit sans signature. Windows/Linux sont des cibles configurées, pas validées sur leurs OS.
+- Le roster équipe est **local, sans invitations, contrôle d'accès ni synchronisation**. Auth est le **jeton propriétaire du Worker existant**, sans OIDC/signup multi-utilisateur. Aucune métrique ou identité de démonstration n'est livrée dans les écrans.
+- Aucun benchmark payant d'agent n'est lancé. Les scénarios humains de longue durée et les intégrations externes non testées restent ceux du bilan historique.
+- Pas d'annulation d'opération, d'auto-update, de signature/notarisation ou de distribution publique. Une fermeture normale attend les moteurs actifs ; un arrêt forcé de l'OS conserve les limites habituelles du CLI.
+
+## Prochaines tranches
+
+1. Vérifier le résultat de la CI du dernier commit desktop, puis poursuivre les tests natifs Windows/Linux et préparer des installateurs signés/notarisés selon les comptes disponibles.
+2. Remplacer le roster local par un vrai backend multi-utilisateur (invitations, rôles, politiques) et OIDC seulement si cette tranche est choisie ; ne pas présenter le roster actuel comme de l'administration d'organisation.
+3. Déployer le Worker avec les bindings réels et domaine, puis exécuter un vrai benchmark A/B avec des agents et budgets explicites. Aucun accès Cloudflare ou crédit d'agent n'est présumé.
+4. Continuer les écarts de `ACCEPTANCE.md`, notamment catalogues externes et validation humaine. Le desktop ne change pas les capacités des adaptateurs Claude/Cursor.
+
+Commandes : `npm run desktop:dev`, `npm run desktop:check`, `npm run desktop:smoke`, `CSC_IDENTITY_AUTO_DISCOVERY=false npm run desktop:pack`. Pour valider le paquet, passer `PREFLIGHT_DESKTOP_EXECUTABLE` au smoke avec le chemin `desktop-release/mac-arm64/Preflight.app/Contents/MacOS/Preflight` sur cette machine. Tous les tests d'écriture doivent utiliser un projet/home jetables.
+
+---
+
+## Historique — session CLI/TUI du 24 septembre 2026
 
 ## Demande et règles de travail
 

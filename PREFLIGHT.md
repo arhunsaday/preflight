@@ -1,4 +1,4 @@
-# Preflight CLI and terminal interface
+# Preflight desktop, CLI and terminal interface
 
 Preflight manages declarative AI development setups with a scriptable CLI and an Ink terminal interface. Requires Node.js 22 or newer. The existing shell/Python development kit remains available.
 
@@ -17,6 +17,28 @@ node dist/cli.js ui
 Use `npm link` to expose the `preflight` executable locally. This package has not been published to npm. Commands emit JSON by default; errors go to stderr and exit nonzero. Use `--root /absolute/project` and `--home /absolute/test-home` to target another project or an isolated harness home. Both paths should be real directories, not symlink aliases. `PREFLIGHT_HOME` changes the CLI's default harness home.
 
 Detection and doctor are read-only and do not require `init`.
+
+## Desktop application
+
+Preflight is an Electron application over the same command engine and resource schemas. Its sidebar covers skills, MCPs, other resources, detected installations, catalogue, projects, profiles, loadouts, doctor, usage, benchmarks, sharing, team, account and activity. The command console exposes the remaining CLI operations without executing a shell. Dedicated forms use the same validation as CLI; edits, installations, connected checks and benchmark runs require a preview and confirmation.
+
+```sh
+npm ci
+npm run desktop:dev            # development with hot reload
+npm run desktop:check          # types and production bundles
+npm run desktop:start          # run the previously built application
+npm run desktop:pack           # native directory under desktop-release/
+npm run desktop:dist           # platform installers
+npm run desktop:smoke          # real Electron; disposable project, home and settings
+```
+
+Use the workspace selector to manage Global configuration without opening a project, or select a project through the native folder picker. The global desired configuration lives at `HOME/.preflight/global/preflight.config.json`; projects show inherited global resources and link back to their editor. Opening a folder does not initialize it or change its harness configuration. The selected project determines project scope; global scope targets your actual home directory. Review the exact paths in the preview before confirming. Cmd/Ctrl+K opens a palette of views, actions and workspaces; Cmd/Ctrl+R refreshes the workspace (it no longer reloads the page); Cmd/Ctrl+O opens a project; Cmd/Ctrl+1–8 jump to the main views; `/` filters the current list and `↑`/`↓` move through it; `?` lists every shortcut. The same commands are in the native menu bar, which no longer ships developer tools in packaged builds. The theme follows the system and can be pinned to light or dark from the sidebar or the palette. Operations serialize in the main process; project/account changes invalidate pending previews, and confirmation rechecks files and imported inputs. Normal quit is blocked while an engine operation is supervising subprocesses; there is no cancellation button yet.
+
+The renderer has no Node access and uses an isolated, sandboxed preload with explicit methods. Account tokens are kept in the main process, encrypted with Electron safeStorage when available, otherwise session-only; they are not included in renderer snapshots, project config, or installer/agent environments. Account connection validates the existing sharing deployment via authenticated `GET /api/account`; upgrade the Worker before connecting. HTTPS is required except for loopback development. Browser sign-in uses Better Auth OAuth and standard device authorization against the Cloudflare backend. Tokens remain outside the renderer. Legacy deployment tokens are secondary and rejected by backends configured with D1 authentication. See `docs/docs/cloudflare-backend.md` for migrations, provider setup and login.
+
+Sharing supports local JSON export/import and authenticated publish/revoke against the existing Worker. The Team page lists/creates real cloud organizations and inspects their membership through Better Auth. A separate local coordination roster remains available offline and does not grant backend access. Invitation links, recipient acceptance, cancellation, roles, member removal and leaving are available. Access changes are reviewed and authorized by Better Auth; the last owner is protected. Benchmark views show saved real runs and scaffold/preview/run/compare manifests; an empty workspace has no fabricated results. External installers and agents retain their CLI boundaries and costs.
+
+The macOS Apple Silicon directory build and packaged app are exercised locally; CI checks Node 22/24 and builds/tests native macOS, Windows NSIS and Linux AppImage/deb packages. Each platform has passed the real Electron and installer workflow. Builds are currently unsigned and not notarized; release signing, automatic updates and public installer distribution remain separate work. Tests may set `PREFLIGHT_DESKTOP_TEST_ROOT`, `PREFLIGHT_DESKTOP_TEST_HOME`, `PREFLIGHT_DESKTOP_TEST_DATA` to disposable paths. For packaged smoke, set `PREFLIGHT_DESKTOP_EXECUTABLE` to the native executable.
 
 ## Terminal interface
 
@@ -157,24 +179,25 @@ preflight share --id skill:ponytail --dry-run
 
 The schema rejects recognizable credential patterns, secret-key literals, authorization headers, credential-bearing URLs and secret argv pairs. It accepts `${VARIABLE}` references, including `Bearer ${VARIABLE}`. It does not silently redact or transform source content. Heuristic scanning cannot identify every arbitrary secret; inspect exported payloads before publishing. Required variable names appear on the share page. Use resource descriptions to explain where credentials come from.
 
-The Worker implements six-character case-insensitive codes without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
+The Worker implements 16-character random case-insensitive codes (with compatibility for existing six-character codes) without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
 
-`npm run smoke:worker` exercises the Worker against a real Wrangler runtime with local KV and R2: a missing share, publishing with and without the write token, the landing page naming the required variables without carrying their values, reading the share back, and revoking it with and without the token. It downloads Wrangler through `npx` rather than carrying it as a dependency, creates a throwaway `.dev.vars`, and removes it again. Nothing leaves the machine and no Cloudflare account is involved.
+`npm run backend:smoke` exercises real local Cloudflare D1/KV/R2: migrations, sessions, device approval, organizations, owned publication/listing/revocation and logout. `npm run smoke:worker` separately verifies legacy token deployments without D1. Wrangler is pinned in the lockfile. Tests create isolated storage and do not deploy.
 
-To run the supplied Hono Worker:
-
-1. Install/run Wrangler 4 and configure `wrangler.jsonc` with your Cloudflare KV namespace and R2 bucket. `OWNER_ID` identifies the deployment owner.
-2. Set `WRITE_TOKEN` using `wrangler secret put WRITE_TOKEN` (or a local `.dev.vars` file for development).
-3. Run `npx wrangler dev` locally, or deploy using your configured account.
-4. Set client `PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN`, and `PREFLIGHT_OWNER_ID` to match.
+Configure D1, KV and R2 bindings, the canonical HTTPS `BASE_URL`, a `BETTER_AUTH_SECRET` and GitHub/Google OAuth provider secrets. Apply D1 migrations, then deploy with Wrangler under your configured Cloudflare account. Full setup instructions: [Cloudflare backend and accounts](docs/docs/cloudflare-backend.md).
 
 ```sh
+preflight auth login --service https://YOUR_BACKEND
+preflight auth status
 preflight share --expires 2027-01-01T00:00:00.000Z
-preflight apply abc234 --dry-run
+preflight apply https://YOUR_BACKEND/s/abc234 --dry-run
 preflight revoke abc234 --dry-run
+preflight team list
+preflight team create "My team" --slug my-team
+preflight team members ORGANIZATION_ID
+preflight auth logout
 ```
 
-The code includes tenant ownership in both lookup records and storage keys. This release uses a deployment-level write token; OIDC, organization administration and a public multi-user service remain deferred. Production deployment should apply request quotas at the Cloudflare boundary. Nothing is deployed by this repository. `share.example.com` is a placeholder: the public share domain is still to be chosen, and clients point at it with `PREFLIGHT_SHARE_URL`. Public share reads are unauthenticated; publishing and revoking require the owner token. Revocation/expiry are not recoverable local file transactions. Exported local payloads can be rolled back like other Preflight writes.
+CLI credentials use the operating system's credential store; public metadata alone is saved in `HOME/.preflight/account.json`. Publishing and revoking require the authenticated owner's session. Public/unlisted reads are unauthenticated; organization membership does not make share links private. Production request quotas belong at the Cloudflare boundary. No public service is deployed by this repository. `share.example.com` is a placeholder: the public share domain is still to be chosen, and clients point at it with `PREFLIGHT_SHARE_URL`. Revocation/expiry are not recoverable local file transactions; exported local payloads use the normal transaction pipeline.
 
 ## Loadouts, retrofit and Git
 
@@ -214,3 +237,21 @@ The separate checkout/home prevents changes leaking between tasks but is **not a
 The delivered local product includes the CLI/TUI, two adapters, transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
 
 Adapter/source references: [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
+
+## Shared global configuration and discovery
+
+```sh
+preflight --global init --dry-run
+preflight --global init
+preflight --global list
+preflight --global create resource.json --dry-run
+preflight search filesystem --source mcp-registry --type mcp
+preflight search react --source github --github vercel-labs/agent-skills --type skill
+preflight ui --global
+```
+
+Resources created in the global workspace must use `scope: global`. Project resources remain in their own stores. Online discovery is separate from the bundled catalogue in desktop, with explicit sources, errors and a configuration step before installation.
+
+### Context map
+
+The desktop **Improve → Context map** shows a proportional treemap of available instructions, with category zoom, resource details, agent/scope filters and a sorted list. `preflight context [--mode potential|catalogue] [--agent claude-code|cursor] [--scope global|project]` produces the same local character estimates. Unknown MCP/runtime contributions remain explicit; this does not measure a live conversation. See [context map](docs/docs/context-map.md).
