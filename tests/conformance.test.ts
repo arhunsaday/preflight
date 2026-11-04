@@ -61,6 +61,8 @@ function sample(type: ResourceType, harness: HarnessId): Resource {
       });
     case "plugin":
       return ResourceSchema.parse({ ...base, name: "probe@marketplace" });
+    case "instruction":
+      return ResourceSchema.parse({ ...base, content: "Prefer small diffs.\n" });
     default:
       return ResourceSchema.parse(base);
   }

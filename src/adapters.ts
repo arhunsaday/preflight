@@ -75,6 +75,126 @@ export function frontmatter(content: string) {
   const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
   return match ? object(yaml(match[1]!)) : {};
 }
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+const blockPattern = (id?: string) => {
+  const name = id ? escapeRegExp(id) : "[^ ]+";
+  return new RegExp(
+    `\\n?<!-- preflight:begin (${name}) -->\\n[\\s\\S]*?\\n<!-- preflight:end \\1 -->\\n?`,
+    "g",
+  );
+};
+/**
+ * Instructions are written as a marked block, so the text a person wrote
+ * around it is kept. Returns null when nothing but whitespace would remain.
+ */
+export function setInstructionBlock(
+  text: string | null,
+  id: string,
+  content: string | null,
+): string | null {
+  const current = text ?? "";
+  const block =
+    content === null
+      ? ""
+      : `<!-- preflight:begin ${id} -->\n${content.replace(/\n+$/, "")}\n<!-- preflight:end ${id} -->\n`;
+  const pattern = blockPattern(id);
+  let next: string;
+  if (pattern.test(current)) {
+    pattern.lastIndex = 0;
+    next = current.replace(pattern, (match) =>
+      block ? (match.startsWith("\n") ? "\n" : "") + block : "\n",
+    );
+  } else if (!block) next = current;
+  else next = current.trim() ? current.replace(/\n*$/, "\n\n") + block : block;
+  next = next.replace(/\n{3,}/g, "\n\n");
+  if (content === null) next = next.replace(/\n+$/, "\n");
+  return next.trim() ? next.replace(/^\n+/, "") : null;
+}
+/** The Preflight blocks of an instruction file, in order. */
+export function instructionBlocks(text: string | null) {
+  return [...(text ?? "").matchAll(blockPattern())].map((match) => ({
+    id: match[1]!,
+    content: match[0]
+      .replace(/^\n?<!-- preflight:begin [^ ]+ -->\n/, "")
+      .replace(/\n<!-- preflight:end [^ ]+ -->\n?$/, ""),
+  }));
+}
+function instructionResources(
+  harness: HarnessId,
+  scope: Scope,
+  path: string,
+  text: string | null,
+) {
+  return instructionBlocks(text).map((block) =>
+    ResourceSchema.parse({
+      id: `instruction:${harness}:${scope}:${slug(block.id)}`,
+      type: "instruction",
+      name: block.id.replace(/^instruction:/, ""),
+      source: `file://${path}`,
+      scope,
+      harnesses: [harness],
+      content: block.content,
+      config: { block: block.id },
+    }),
+  );
+}
+/** The text of a file outside every Preflight block. */
+export function unmanagedText(text: string | null) {
+  return (text ?? "").replace(blockPattern(), "\n").replace(/\s+/g, " ").trim();
+}
+const hasBlocks = (text: string) => /<!-- preflight:begin [^ ]+ -->/.test(text);
+/**
+ * Lock digest of a managed file. For a file holding instruction blocks only the
+ * blocks count, so a person editing their own text around them is not drift.
+ */
+export function lockDigest(text: string) {
+  if (!hasBlocks(text)) return digest(text);
+  return digest(
+    (text.match(blockPattern()) ?? []).map((b) => b.trim()).join("\n"),
+  );
+}
+/** True when a change to an existing file only touched Preflight blocks. */
+export function onlyBlocksChanged(before: string, after: string | null) {
+  return (
+    (hasBlocks(before) || hasBlocks(after ?? "")) &&
+    unmanagedText(before) === unmanagedText(after)
+  );
+}
+/** extraKnownMarketplaces entry for a plugin resource, if it names one. */
+export function pluginMarketplace(resource: Resource) {
+  const parsed = z
+    .object({
+      name: z.string().regex(/^[a-z0-9][a-z0-9._-]*$/i),
+      source: z.union([
+        z
+          .object({
+            source: z.literal("github"),
+            repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
+            ref: z.string().optional(),
+          })
+          .strict(),
+        z
+          .object({ source: z.literal("directory"), path: z.string().min(1) })
+          .strict(),
+        z
+          .object({
+            source: z.literal("git"),
+            url: z.string().url(),
+            ref: z.string().optional(),
+          })
+          .strict(),
+      ]),
+    })
+    .strict()
+    .safeParse(resource.config.marketplace);
+  if (!parsed.success) return undefined;
+  if (resource.name.split("@")[1] !== parsed.data.name)
+    throw new Error(
+      "Invalid resource: plugin marketplace name differs from name@marketplace",
+    );
+  return parsed.data;
+}
 async function emptyDirectoryTree(path: string): Promise<boolean> {
   const stat = await lstat(path);
   if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
@@ -103,8 +223,9 @@ class FileAdapter implements HarnessAdapter {
             "command",
             "statusline",
             "plugin",
+            "instruction",
           ]
-        : ["skill", "mcp", "command"];
+        : ["skill", "mcp", "command", "instruction"];
   }
   paths() {
     return {
@@ -191,6 +312,22 @@ class FileAdapter implements HarnessAdapter {
         };
       case "statusline":
         return { path: join(base, "settings.json"), key: "statusLine" };
+      case "instruction":
+        if (this.id === "cursor") {
+          if (resource.scope === "global")
+            throw new Error(
+              "Invalid resource: Cursor keeps user rules in its settings, not a file; use project scope",
+            );
+          return { path: join(base, "rules", `${name}.mdc`) };
+        }
+        return {
+          path:
+            resource.scope === "global"
+              ? join(base, "CLAUDE.md")
+              : join(this.context.root, "CLAUDE.md"),
+          section: "block",
+          key: resource.id,
+        };
       default:
         throw new Error(`${this.id} does not support ${resource.type}`);
     }
@@ -211,7 +348,11 @@ class FileAdapter implements HarnessAdapter {
         );
       const target = this.target(resource);
       const key = target.path + "#" + (target.key ?? "");
-      if (resource.type !== "hook" && targets.has(key))
+      if (
+        resource.type !== "hook" &&
+        target.section !== "block" &&
+        targets.has(key)
+      )
         throw new Error(`Target collision: ${key}`);
       targets.add(key);
     }
@@ -244,6 +385,23 @@ class FileAdapter implements HarnessAdapter {
       const removing = !wanted.includes(resource);
       const target = this.target(resource);
       const file = await obtain(target.path);
+      if (resource.type === "instruction") {
+        if (!removing && !resource.content?.trim())
+          throw new Error(
+            `Invalid resource: instruction ${resource.id} has no content`,
+          );
+        file.after =
+          target.section === "block"
+            ? setInstructionBlock(
+                file.after,
+                resource.id,
+                removing ? null : resource.content!,
+              )
+            : removing
+              ? null
+              : `---\ndescription: ${JSON.stringify(resource.description || resource.name)}\nalwaysApply: true\n---\n${resource.content!.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "")}`;
+        continue;
+      }
       if (!target.key) {
         if (!removing && resource.type === "skill" && !resource.content?.trim())
           throw new Error(
@@ -304,6 +462,25 @@ class FileAdapter implements HarnessAdapter {
           delete block[target.key];
       } else if (removing) {
         delete block[target.key];
+        const marketplace =
+          resource.type === "plugin" ? pluginMarketplace(resource) : undefined;
+        if (marketplace && doc.extraKnownMarketplaces) {
+          const known = object(doc.extraKnownMarketplaces);
+          const stillUsed = wanted.some(
+            (r) =>
+              r.type === "plugin" &&
+              r.scope === resource.scope &&
+              pluginMarketplace(r)?.name === marketplace.name,
+          );
+          if (
+            !stillUsed &&
+            JSON.stringify(known[marketplace.name]) ===
+              JSON.stringify({ source: marketplace.source })
+          )
+            delete known[marketplace.name];
+          if (Object.keys(known).length) doc.extraKnownMarketplaces = known;
+          else delete doc.extraKnownMarketplaces;
+        }
         if (resource.type === "statusline" && resource.config.script === true)
           await materialize(resource, true);
       } else {
@@ -317,8 +494,18 @@ class FileAdapter implements HarnessAdapter {
           )
         )
           throw new Error(`Refusing unmanaged entry: ${target.key}`);
-        if (resource.type === "plugin") block[target.key] = resource.enabled;
-        else if (
+        if (resource.type === "plugin") {
+          block[target.key] = resource.enabled;
+          const marketplace = pluginMarketplace(resource);
+          if (marketplace) {
+            const known = object(doc.extraKnownMarketplaces ?? {});
+            const entry = { source: marketplace.source };
+            // A person's own declaration of the same marketplace is kept.
+            if (!Object.hasOwn(known, marketplace.name))
+              known[marketplace.name] = entry;
+            doc.extraKnownMarketplaces = known;
+          }
+        } else if (
           resource.type === "statusline" &&
           resource.config.script === true
         ) {
@@ -424,6 +611,42 @@ class FileAdapter implements HarnessAdapter {
           );
       }
       if (this.id === "claude-code") {
+        const path =
+          scope === "global"
+            ? join(base, "CLAUDE.md")
+            : join(this.context.root, "CLAUDE.md");
+        resources.push(
+          ...instructionResources(this.id, scope, path, await readText(path)),
+        );
+      } else if (scope === "project") {
+        let rules: string[] = [];
+        try {
+          rules = await readdir(join(base, "rules"));
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+        }
+        for (const name of rules.filter((n) => n.endsWith(".mdc"))) {
+          const path = join(base, "rules", name);
+          const content = await readText(path);
+          if (content === null) continue;
+          const meta = frontmatter(content);
+          resources.push(
+            ResourceSchema.parse({
+              id: `instruction:${this.id}:${scope}:${name.replace(/[^a-z0-9._-]/gi, "-")}`,
+              type: "instruction",
+              name: name.replace(/\.mdc$/, ""),
+              description:
+                typeof meta.description === "string" ? meta.description : "",
+              source: `file://${path}`,
+              scope,
+              harnesses: [this.id],
+              content,
+              config: meta,
+            }),
+          );
+        }
+      }
+      if (this.id === "claude-code") {
         const path = join(base, "settings.json");
         const settings = await readText(path);
         if (settings) {
@@ -481,9 +704,89 @@ class FileAdapter implements HarnessAdapter {
     return { resources, issues };
   }
 }
+/**
+ * Codex reads AGENTS.md: ~/.codex/AGENTS.md for every session and AGENTS.md
+ * at the project root. Preflight manages instructions there, nothing else yet.
+ */
+class CodexAdapter implements HarnessAdapter {
+  readonly id = "codex" as const;
+  capabilities: ResourceType[] = ["instruction"];
+  constructor(readonly context: Context) {}
+  paths() {
+    return {
+      global: join(this.context.home, ".codex"),
+      project: this.context.root,
+    };
+  }
+  async detect() {
+    for (const path of [
+      this.paths().global,
+      join(this.context.root, "AGENTS.md"),
+    ])
+      try {
+        await lstat(path);
+        return true;
+      } catch {
+        /* Not there. */
+      }
+    return false;
+  }
+  target(resource: Resource) {
+    if (resource.type !== "instruction")
+      throw new Error(`codex does not support ${resource.type}`);
+    return {
+      path: join(this.paths()[resource.scope], "AGENTS.md"),
+      section: "block",
+      key: resource.id,
+    };
+  }
+  async read(): Promise<HarnessState> {
+    const resources: Resource[] = [];
+    for (const scope of ["global", "project"] as const) {
+      const path = join(this.paths()[scope], "AGENTS.md");
+      resources.push(
+        ...instructionResources(this.id, scope, path, await readText(path)),
+      );
+    }
+    return { resources, issues: [] };
+  }
+  async plan(desired: Resource[], previous: Resource[]) {
+    const files = new Map<string, FileChange>();
+    const relevant = (r: Resource) =>
+      r.harnesses.includes(this.id) && r.enabled && r.type === "instruction";
+    const wanted = desired.filter(relevant);
+    for (const resource of [...previous.filter(relevant), ...wanted]) {
+      const removing = !wanted.includes(resource);
+      if (!removing && !resource.content?.trim())
+        throw new Error(
+          `Invalid resource: instruction ${resource.id} has no content`,
+        );
+      const { path } = this.target(resource);
+      let file = files.get(path);
+      if (!file) {
+        const before = await readText(path);
+        file = { path, before, after: before };
+        files.set(path, file);
+      }
+      file.after = setInstructionBlock(
+        file.after,
+        resource.id,
+        removing ? null : resource.content!,
+      );
+    }
+    return [...files.values()];
+  }
+  async write(plan: { files: FileChange[]; dryRun?: boolean }) {
+    return applyFiles(this.context.root, plan.files, {
+      actor: process.env.USER ?? "local",
+      dryRun: plan.dryRun ?? false,
+    });
+  }
+}
 export const createAdapters = (context: Context): HarnessAdapter[] => [
   new FileAdapter("claude-code", context),
   new FileAdapter("cursor", context),
+  new CodexAdapter(context),
 ];
 export async function detectAll(adapters: HarnessAdapter[]) {
   return Promise.all(

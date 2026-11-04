@@ -21,6 +21,7 @@ import { ClockCounterClockwiseIcon } from "@phosphor-icons/react/dist/csr/ClockC
 import { SlidersHorizontalIcon } from "@phosphor-icons/react/dist/csr/SlidersHorizontal";
 import { CloudArrowDownIcon } from "@phosphor-icons/react/dist/csr/CloudArrowDown";
 import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
+import { ScrollIcon } from "@phosphor-icons/react/dist/csr/Scroll";
 import { AsteriskIcon } from "@phosphor-icons/react/dist/csr/Asterisk";
 import type { ResourceType, HarnessId } from "../../../src/schema";
 import type { LucideIcon } from "lucide-react";
@@ -34,6 +35,7 @@ export const resourceAppearance = {
   tool: { icon: WrenchIcon, tone: "teal" },
   plugin: { icon: PuzzlePieceIcon, tone: "green" },
   statusline: { icon: GaugeIcon, tone: "amber" },
+  instruction: { icon: ScrollIcon, tone: "rose" },
 } satisfies Record<ResourceType, { icon: typeof StackIcon; tone: string }>;
 const navigationAppearance = {
   overview: { icon: HouseIcon, tone: "blue" },
