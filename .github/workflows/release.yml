@@ -1,0 +1,228 @@
+name: Release
+
+# One tag releases everything: vX.Y.Z -> npm package + GitHub Release with the
+# desktop installers. See RELEASING.md for the one-time setup and the secrets.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag matches package.json
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Tag $TAG does not match package.json version $version. Use npm run release."
+            exit 1
+          fi
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no [$version] section. Use npm run release."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
+      - run: npm ci
+      - run: npm run check
+      - run: npm run desktop:check
+      - name: Package contents
+        run: |
+          # `main` only serves the Electron entry (desktop-out/), and npm always packs it.
+          npm pkg delete main
+          npm pack --dry-run --json --ignore-scripts > pack.json
+          node -e '
+            const files = JSON.parse(require("fs").readFileSync("pack.json", "utf8"))[0].files.map((f) => f.path);
+            const allowed = /^(dist\/|PREFLIGHT\.md$|README\.md$|LICENSE$|CHANGELOG\.md$|package\.json$)/;
+            const extra = files.filter((f) => !allowed.test(f));
+            for (const f of ["dist/cli.js", "PREFLIGHT.md", "README.md", "LICENSE", "CHANGELOG.md"])
+              if (!files.includes(f)) { console.error("missing from package: " + f); process.exit(1); }
+            if (extra.length) { console.error("unexpected files in package:\n" + extra.join("\n")); process.exit(1); }
+            console.log(files.length + " files, all expected");
+          '
+
+  draft:
+    name: draft release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HAS_CSC_LINK: ${{ secrets.CSC_LINK != '' }}
+      HAS_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD != '' }}
+      HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+      HAS_APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+      HAS_APPLE_TEAM: ${{ secrets.APPLE_TEAM_ID != '' }}
+    outputs:
+      signed: ${{ steps.signing.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: macOS signing secrets
+        id: signing
+        run: |
+          if [ "$HAS_CSC_LINK" = true ] && [ "$HAS_CSC_KEY_PASSWORD" = true ] && [ "$HAS_APPLE_ID" = true ] && [ "$HAS_APPLE_PASSWORD" = true ] && [ "$HAS_APPLE_TEAM" = true ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::macOS signing secrets are incomplete: the macOS build will be unsigned. See RELEASING.md."
+          fi
+      - name: Release notes
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          SIGNED: ${{ steps.signing.outputs.signed }}
+        run: |
+          {
+            awk -v h="## [$VERSION]" 'index($0, h) == 1 { on = 1; next } on && /^## \[|^\[[^]]+\]: / { exit } on' CHANGELOG.md
+            echo
+            echo "## Install"
+            echo
+            echo '- npm: `npm install -g @arhunsaday/preflight` or `npx @arhunsaday/preflight`'
+            echo '- Homebrew: `brew install arhunsaday/tap/preflight` (CLI), `brew install --cask arhunsaday/tap/preflight` (desktop)'
+            echo '- Desktop: download the installer for your system below. `SHA256SUMS` lists the checksums.'
+            if [ "$SIGNED" != true ]; then
+              echo
+              echo '> **This release was built without macOS signing and notarization.** The macOS app is not signed by Apple, Gatekeeper will warn on first launch (right-click, Open), and the macOS app does not update itself. Windows installers are not code-signed either.'
+            else
+              echo
+              echo '> The macOS app is signed with a Developer ID and notarized by Apple. Windows installers are not code-signed, so SmartScreen may warn.'
+            fi
+          } > notes.md
+      - name: Create or refresh the draft
+        env:
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "Preflight $VERSION" --notes-file notes.md "${flags[@]}"
+          else
+            gh release create "$TAG" --draft --verify-tag --title "Preflight $VERSION" --notes-file notes.md "${flags[@]}"
+          fi
+
+  desktop:
+    name: desktop (${{ matrix.name }})
+    needs: [verify, draft]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: macOS arm64 + x64
+            runner: macos-latest
+            args: --mac --arm64 --x64
+          - name: Windows x64
+            runner: windows-latest
+            args: --win --x64
+          - name: Linux x64
+            runner: ubuntu-latest
+            args: --linux --x64
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run desktop:build
+      - name: Build and upload (macOS, signed and notarized)
+        if: runner.os == 'macOS' && needs.draft.outputs.signed == 'true'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npx electron-builder ${{ matrix.args }} --publish always
+      - name: Build and upload (macOS, unsigned)
+        if: runner.os == 'macOS' && needs.draft.outputs.signed != 'true'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder ${{ matrix.args }} -c.mac.notarize=false --publish always
+      - name: Build and upload (Windows, Linux)
+        if: runner.os != 'macOS'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder ${{ matrix.args }} --publish always
+      - name: Installers are present
+        # Keeps the checks of scripts/desktop-artifacts.mjs (refuses an empty set).
+        run: npm run desktop:manifest
+
+  npm:
+    name: npm publish
+    needs: [verify, desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # npm >= 11.5.1 is needed for trusted publishing
+      - run: npm ci
+      - run: npm run check
+      - name: Keep the Electron entry out of the package
+        run: npm pkg delete main
+      - name: Token fallback
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "NPM_TOKEN is set: publishing with the token."
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> "$HOME/.npmrc"
+          else
+            echo "No NPM_TOKEN: publishing through trusted publishing (OIDC)."
+          fi
+      - name: Publish
+        env:
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          tag=latest
+          if [ "$PRERELEASE" = true ]; then tag=next; fi
+          npm publish --provenance --access public --tag "$tag"
+
+  publish:
+    name: publish release
+    needs: [verify, draft, desktop, npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checksums
+        run: |
+          mkdir assets
+          gh release download "$TAG" --dir assets --pattern '*.dmg' --pattern '*.zip' --pattern '*.exe' --pattern '*.AppImage' --pattern '*.deb'
+          (cd assets && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+          gh release upload "$TAG" assets/SHA256SUMS --clobber
+      - name: Publish the release
+        run: gh release edit "$TAG" --draft=false
