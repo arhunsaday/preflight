@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://ai.arhun.fr'),
   title: { default: 'Preflight', template: '%s | Preflight' },
   description: 'Preflight, the Claude Code kit, and the workflows around them',
-  icons: { icon: [{ url: '/img/favicon.svg', type: 'image/svg+xml' }, { url: '/img/favicon.png' }], apple: '/img/favicon.png' },
+  // Favicon and touch icon come from app/icon.svg and app/apple-icon.png.
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

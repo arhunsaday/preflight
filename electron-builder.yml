@@ -11,11 +11,14 @@ files:
 extraMetadata:
   main: desktop-out/main/index.mjs
 mac:
+  icon: desktop/assets/icon.icns
   category: public.app-category.developer-tools
   target: [dmg, zip]
 win:
+  icon: desktop/assets/icon.ico
   target: [nsis]
 linux:
+  icon: desktop/assets/icons
   executableName: preflight
   maintainer: Preflight contributors
   synopsis: Manage AI development setups
