@@ -12,8 +12,7 @@ import {
 import {
   createAdapters,
   detectAll,
-  lockDigest,
-  onlyBlocksChanged,
+  digest,
   safeRelative,
   type Context,
 } from "./adapters.js";
@@ -97,7 +96,7 @@ export class PreflightService {
       const lock = Lock.parse(JSON.parse(raw));
       for (const f of lock.files) {
         const text = await readText(f.path);
-        if ((text === null ? null : lockDigest(text)) !== f.digest)
+        if ((text === null ? null : digest(text)) !== f.digest)
           findings.push({
             code: "drift",
             severity: "error",
@@ -142,7 +141,7 @@ export class PreflightService {
     await this.policy(desired, previous);
     for (const file of lock?.files ?? []) {
       const value = await readText(file.path);
-      if ((value === null ? null : lockDigest(value)) !== file.digest)
+      if ((value === null ? null : digest(value)) !== file.digest)
         throw new Error(
           `Managed file changed; inspect before applying: ${file.path}`,
         );
@@ -166,13 +165,7 @@ export class PreflightService {
               // An unsupported type has no target here; apply warns about it.
             }
         for (const file of planned) {
-          if (
-            !owned.has(file.path) &&
-            file.before !== null &&
-            // An instruction block lands in a file a person writes; it is
-            // accepted only when every line outside the blocks is unchanged.
-            !onlyBlocksChanged(file.before, file.after)
-          ) {
+          if (!owned.has(file.path) && file.before !== null) {
             const shared = new Set([
               join(this.context.home, ".claude.json"),
               join(this.context.root, ".mcp.json"),
@@ -232,7 +225,7 @@ export class PreflightService {
     const lockFiles = [
       ...files
         .filter((f) => f.after !== null)
-        .map((f) => ({ path: f.path, digest: lockDigest(f.after!) })),
+        .map((f) => ({ path: f.path, digest: digest(f.after!) })),
       ...(lock?.files.filter((f) => !files.some((n) => n.path === f.path)) ??
         []),
     ];
@@ -285,22 +278,18 @@ export class PreflightService {
           ? resource.source.slice("file://".length)
           : "";
         const key =
-          resource.type === "instruction"
-            ? typeof resource.config.block === "string"
-              ? resource.config.block
-              : ""
-            : resource.type === "skill" ||
-                resource.type === "subagent" ||
-                resource.type === "command"
-              ? ""
-              : resource.type === "statusline"
-                ? "statusLine"
-                : resource.type === "hook"
-                  ? String(
-                      (resource.config as { event?: unknown }).event ??
-                        "PreToolUse",
-                    )
-                  : resource.name;
+          resource.type === "skill" ||
+          resource.type === "subagent" ||
+          resource.type === "command"
+            ? ""
+            : resource.type === "statusline"
+              ? "statusLine"
+              : resource.type === "hook"
+                ? String(
+                    (resource.config as { event?: unknown }).event ??
+                      "PreToolUse",
+                  )
+                : resource.name;
         if (!claimed.has(`${path}#${key}`))
           found.push({ harness: state.id, resource, path });
       }
@@ -433,8 +422,7 @@ export class PreflightService {
   }
   async audit() {
     return (
-      (await readText(join(this.context.root, ".preflight", "audit.jsonl"))) ??
-      ""
+      (await readText(join(this.context.root, ".preflight", "audit.jsonl"))) ?? ""
     )
       .split("\n")
       .filter(Boolean)

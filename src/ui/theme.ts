@@ -37,7 +37,6 @@ export const typeLabel: Record<ResourceType, string> = {
   plugin: "plugin",
   statusline: "status",
   command: "cmd",
-  instruction: "instr",
 };
 
 export const typeColor: Record<ResourceType, string> = {
@@ -50,7 +49,6 @@ export const typeColor: Record<ResourceType, string> = {
   plugin: "magentaBright",
   statusline: "blueBright",
   command: "cyanBright",
-  instruction: "greenBright",
 };
 
 export const scopeColor: Record<Scope, string> = {

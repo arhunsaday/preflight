@@ -10,14 +10,13 @@ export const ResourceTypeSchema = z.enum([
   "plugin",
   "statusline",
   "command",
-  "instruction",
 ]);
 export type ResourceType = z.infer<typeof ResourceTypeSchema>;
 
 export const ScopeSchema = z.enum(["global", "project"]);
 export type Scope = z.infer<typeof ScopeSchema>;
 
-export const HarnessIdSchema = z.enum(["claude-code", "cursor", "codex"]);
+export const HarnessIdSchema = z.enum(["claude-code", "cursor"]);
 export type HarnessId = z.infer<typeof HarnessIdSchema>;
 
 const jsonValue: z.ZodType<unknown> = z.lazy(() =>
