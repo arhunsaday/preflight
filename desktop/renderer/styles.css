@@ -4177,3 +4177,23 @@ pre.patch .hunk {
 .checklist .badge svg {
   vertical-align: -2px;
 }
+
+/* Resource switch: On / Off / Manual with the token cost */
+.resource-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.resource-switch .segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.resource-switch .segmented button:disabled {
+  opacity: 0.5;
+}
+.resource-switch small {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}

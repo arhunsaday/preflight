@@ -20,11 +20,25 @@ export function ContextMap({ workspace: w }: { workspace: Workspace }) {
     [selected, setSelected] = useState(""),
     [display, setDisplay] = useState("map"),
     [disabled, setDisabled] = useState(false);
-  const resources = contextResources(
-    w.snapshot?.detected ?? [],
-    w.snapshot?.inherited ?? [],
-    w.snapshot?.resources ?? [],
-  );
+  // Files on disk that Preflight does not manage can be switched here;
+  // the ones it manages are changed in Resources, so the lock stays true.
+  const switchable = [
+    ...(w.snapshot?.detected ?? []),
+    ...(w.snapshot?.disabled ?? []),
+  ];
+  const resources = [
+    ...contextResources(
+      w.snapshot?.detected ?? [],
+      w.snapshot?.inherited ?? [],
+      w.snapshot?.resources ?? [],
+    ),
+    ...(w.snapshot?.disabled ?? []),
+  ];
+  const toggle = {
+    find: (id: string) => switchable.find((r) => r.id === id),
+    busy: !!w.busy,
+    run: (args: string[]) => void w.run(args),
+  };
   const report = buildContextReport(resources, {
     mode,
     ...(harness === "all" ? {} : { harness: harness as HarnessId }),
@@ -185,6 +199,7 @@ export function ContextMap({ workspace: w }: { workspace: Workspace }) {
               selected={selected}
               select={setSelected}
               total={total}
+              toggle={toggle}
             />
           )}
           <div className="context-legend">
@@ -218,7 +233,7 @@ export function ContextMap({ workspace: w }: { workspace: Workspace }) {
             </div>
           )}
         </div>
-        <ContextDetail detail={detail} />
+        <ContextDetail detail={detail} toggle={toggle} />
       </div>
     </div>
   );

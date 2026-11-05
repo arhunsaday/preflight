@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Map as MapIcon } from "lucide-react";
 import { layoutTreemap, type ContextEntry } from "../../../src/context-map";
 import type { ResourceType } from "../../../src/schema";
+import type { Resource } from "../../../src/schema";
 import { Badge, Empty } from "./ui";
+import { ResourceSwitch, switchable } from "./resource-switch";
 export const names: Record<ResourceType, string> = {
   skill: "Skills",
   prompt: "Prompts",
@@ -123,11 +125,20 @@ export function ContextTree({
   );
 }
 
+/** A switch for entries that are files on disk Preflight does not manage. */
+export type ContextSwitch = {
+  find: (id: string) => Resource | undefined;
+  busy: boolean;
+  run: (args: string[]) => void;
+};
 export function ContextDetail({
   detail,
+  toggle,
 }: {
   detail: ContextEntry | undefined;
+  toggle?: ContextSwitch;
 }) {
+  const target = detail && toggle?.find(detail.id);
   return (
     <aside className="context-detail" aria-live="polite">
       {detail ? (
@@ -144,6 +155,13 @@ export function ContextDetail({
             </span>
           </div>
           <p>{detail.reason}</p>
+          {target && switchable(target) && toggle && (
+            <ResourceSwitch
+              resource={target}
+              disabled={toggle.busy}
+              onChange={toggle.run}
+            />
+          )}
           <dl>
             <dt>Skill catalogue</dt>
             <dd>~{count(detail.catalogueTokens)} tokens</dd>
@@ -195,11 +213,13 @@ export function ContextList({
   selected,
   select,
   total,
+  toggle,
 }: {
   entries: ContextEntry[];
   selected: string;
   select: (id: string) => void;
   total: number;
+  toggle?: ContextSwitch;
 }) {
   return (
     <div className="context-table">
@@ -210,6 +230,7 @@ export function ContextList({
             <th>Scope</th>
             <th>Estimated tokens</th>
             <th>Share of sized content</th>
+            {toggle && <th>Switch</th>}
           </tr>
         </thead>
         <tbody>
@@ -237,6 +258,22 @@ export function ContextList({
                   ? `${((e.tokens / total) * 100).toFixed(1)}%`
                   : "—"}
               </td>
+              {toggle && (
+                <td>
+                  {(() => {
+                    const target = toggle.find(e.id);
+                    return target && switchable(target) ? (
+                      <ResourceSwitch
+                        resource={target}
+                        disabled={toggle.busy}
+                        onChange={toggle.run}
+                      />
+                    ) : (
+                      "—"
+                    );
+                  })()}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

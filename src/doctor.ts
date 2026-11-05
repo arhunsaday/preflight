@@ -6,6 +6,7 @@ import {
   findingTitle,
   skillClusters,
   skillCount,
+  skillManualCandidates,
   unusedContext,
   type Finding,
   type Severity,
@@ -141,8 +142,19 @@ export async function extendedChecks(
       .map((p) => [p.id, p.listingTokens]),
   );
   if (evidence?.sessions) {
+    const manual = skillManualCandidates(
+      resources,
+      evidence,
+      days,
+      thresholds.manualMaxUses,
+    );
+    const manualIds = new Set(manual.map((f) => f.resourceId));
+    // A skill that is a manual candidate gets that finding instead of the generic one.
     findings.push(
-      ...unusedContext(resources, evidence, days, pluginTokens),
+      ...unusedContext(resources, evidence, days, pluginTokens).filter(
+        (f) => !(f.resourceId && manualIds.has(f.resourceId)),
+      ),
+      ...manual,
       ...mcpScopeFindings(resources, evidence),
       ...cacheFindings(evidence, thresholds.cacheGapMinutes),
     );

@@ -70,16 +70,22 @@ it("reports skills, agents and MCP servers unused in the window with recoverable
   const findings = await new PreflightService(f.context).doctor();
   const unused = findings.filter((x) => x.code === "unused-context");
   expect(unused.map((x) => x.message.split(" was")[0])).toEqual(
-    expect.arrayContaining(["Skill lint-fix", "MCP server idle"]),
+    expect.arrayContaining(["MCP server idle"]),
   );
+  // An unused skill gets the manual-skill finding instead of the generic one.
+  expect(unused.some((x) => /lint-fix/.test(x.message))).toBe(false);
+  expect(
+    findings.find((x) => x.code === "skill-manual-candidate" && /lint-fix/.test(x.message))?.fix,
+  ).toMatch(/preflight skill manual lint-fix/);
   expect(unused.some((x) => /deploy|scout|grafana|manual/.test(x.message))).toBe(false);
-  const lint = unused.find((x) => x.message.includes("lint-fix"))!;
+  const lint = findings.find((x) => x.code === "skill-manual-candidate" && x.message.includes("lint-fix"))!;
   expect(lint.tokens).toBe(Math.ceil("lint-fix\nFix lint errors across the repository".length / 4));
   expect(lint.fix).toMatch(/disable-model-invocation: true/);
   // Single-project global server, and the window is configurable.
   expect(codes(findings)).toContain("mcp-global-single-project");
   const wide = await execute(["doctor", "--days", "60"], f.context) as Finding[];
-  expect(wide.some((x) => x.code === "unused-context" && x.message.includes("lint-fix"))).toBe(false);
+  // One use in the wider window: still rare, but no longer unused.
+  expect(wide.find((x) => x.code === "skill-manual-candidate" && x.message.includes("lint-fix"))?.message).toMatch(/used 1 time/);
 });
 
 it("accepts the usage counts of measureUsage for unused-context", () => {

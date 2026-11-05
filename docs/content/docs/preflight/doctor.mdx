@@ -22,6 +22,7 @@ Token figures are character estimates (characters / 4), the same as the [context
 
 | Code | Severity | What it means |
 |---|---|---|
+| `skill-manual-candidate` | note | A model-invocable Claude Code skill was used at most `manualMaxUses` times (default 1) in the last N days. Shows the listing tokens a manual skill saves. Fix: `preflight skill manual <name>`, which sets `disable-model-invocation: true`; the skill stays callable as `/name`. A skill with this finding does not get `unused-context` as well. |
 | `unused-context` | warning | A skill, subagent, MCP server or plugin is listed every session but was not used in the last N days. Shows the listing tokens it would recover. Fix: `disable-model-invocation: true`, `claude plugin disable`, `claude mcp remove`. |
 | `effort-default-high` | warning | `effortLevel` is `xhigh` or `max` in a settings file. |
 | `agent-no-model` | warning | A custom subagent has no `model:` in its frontmatter. Suggests `haiku` for search agents, `sonnet` otherwise. |
@@ -57,6 +58,7 @@ Every threshold can be set under `doctor` in `preflight.config.json`. The global
   "profiles": { "default": { "resources": [] } },
   "doctor": {
     "unusedDays": 30,
+    "manualMaxUses": 1,
     "instructionsMaxLines": 200,
     "skillSimilarity": 0.5,
     "skillTarget": { "min": 60, "max": 80 },
@@ -74,6 +76,7 @@ Every threshold can be set under `doctor` in `preflight.config.json`. The global
 
 | Key | Default | Used by |
 |---|---|---|
+| `manualMaxUses` | 1 | `skill-manual-candidate`: uses in the window at or below which a skill is a candidate |
 | `unusedDays` | 30 | `unused-context`, `mcp-global-single-project`, cache checks (`--days` overrides it) |
 | `instructionsMaxLines` | 200 | `claude-md-long` |
 | `skillSimilarity` | 0.5 | `skill-cluster` (0.05 to 1) |
@@ -101,3 +104,15 @@ preflight instructions draft [--scope global|project] [--agent claude-code|codex
 **Health → Doctor** groups findings by severity, with the explanation, fix and token cost of each. **Count MCP processes** runs the `--processes` check; **Measure startup hooks** previews and then runs `--measure`. **Health → Instructions** shows the instructions file, a line gauge against the limit, imports and lint findings; **Draft improvements** opens the diff in the review dialog and writes only when you apply it. The Overview shows the number of global skills against the target range.
 
 Adapted in part from [agent-compass](https://github.com/me-cedric/agent-compass) (MIT); see `THIRD_PARTY_NOTICES.md`.
+
+## Manual skills and switches
+
+```sh
+preflight skill manual deploy lint-fix        # preview
+preflight skill manual deploy lint-fix --apply
+preflight skill auto deploy --apply            # undo
+preflight disable grafana --apply              # skill, MCP server, plugin, hook, subagent
+preflight enable grafana --apply
+```
+
+Without `--apply`, each command only previews. `skill manual` changes one frontmatter line and keeps every other byte of `SKILL.md`. `disable` uses the switch of the agent when it has one: `enabledPlugins` for Claude Code plugins, `disabledMcpjsonServers` for project MCP servers, `enabled = false` for Codex MCP servers. Otherwise Preflight moves the entry or file to `.preflight/disabled/` (in the home or project folder) and `enable` puts it back. The preview shows the listing tokens saved. There is no `doctor --fix` yet.

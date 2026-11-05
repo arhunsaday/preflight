@@ -53,6 +53,7 @@ import { runBench, compareRuns, BenchRun } from "./bench.js";
 import { runArena, type ArenaSide } from "./bench-arena.js";
 import { DEFAULT_MAX_CV, DEFAULT_MIN_RUNS } from "./bench-checklist.js";
 import { retrofit } from "./retrofit.js";
+import { skillMode, toggleResources } from "./toggle.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
 import { defaultService } from "./auth-client.js";
 import packageJson from "../package.json" with { type: "json" };
@@ -279,6 +280,32 @@ export async function execute(
       "run each SessionStart hook once in a temporary folder to measure its output",
     )
     .option("--text", "human-readable output grouped by severity");
+  // Manual skills and the one-click switch. Without --apply these only preview.
+  const skill = program
+    .command("skill")
+    .description("Make skills manual (/name only, 0 listing tokens) or automatic");
+  for (const [mode, text] of [
+    ["manual", "Set disable-model-invocation: true; the skill is invoked by /name only"],
+    ["auto", "Remove disable-model-invocation; the model may invoke the skill again"],
+  ] as const)
+    skill
+      .command(`${mode} <names...>`)
+      .description(text)
+      .option("--apply", "write the change (without it, only preview)")
+      .action(async (names: string[], options) => {
+        result = await skillMode(ctx(), names, mode === "manual", dry() || !options.apply);
+      });
+  for (const [mode, text] of [
+    ["disable", "Switch skills, MCP servers, plugins, hooks or subagents off"],
+    ["enable", "Switch them on again"],
+  ] as const)
+    program
+      .command(`${mode} <resources...>`)
+      .description(`${text}; a resource is an id, type:name or a name`)
+      .option("--apply", "write the change (without it, only preview)")
+      .action(async (refs: string[], options) => {
+        result = await toggleResources(ctx(), refs, mode === "enable", dry() || !options.apply);
+      });
   const instructions = program
     .command("instructions")
     .description("Lint or draft CLAUDE.md and AGENTS.md instruction files");

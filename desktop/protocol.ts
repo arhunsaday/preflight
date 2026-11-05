@@ -71,6 +71,8 @@ export interface Snapshot {
   resources: Resource[];
   inherited: Resource[];
   detected: Resource[];
+  /** Detected resources Preflight switched off by moving them to its store. */
+  disabled?: Resource[];
   catalogue: Resource[];
   findings: Finding[];
   /** Doctor checks that did not run, and the facts behind the findings. */

@@ -12,6 +12,14 @@ import { plural, tildify } from "../format";
 import { Button, Dialog, Json, Notice } from "./ui";
 const changeIcon = (kind: string) =>
   /add|creat/i.test(kind) ? Plus : /remov|delet/i.test(kind) ? Minus : PenLine;
+/** Listing tokens a skill, plugin or resource switch saves or adds. */
+function tokenNote(value: unknown) {
+  const v = value as { tokens?: unknown; tokenEffect?: unknown } | null;
+  if (!v || typeof v.tokens !== "number" || !v.tokenEffect) return "";
+  return v.tokens
+    ? `${v.tokenEffect === "saved" ? "Saves" : "Adds"} about ${v.tokens.toLocaleString()} listing tokens per session.`
+    : "";
+}
 /** Commands whose effects leave this machine or a package manager. */
 const irreversible = ["install", "share", "revoke", "git"];
 export function Preview({
@@ -49,6 +57,9 @@ export function Preview({
               </strong>
               <span>{plural(summary.files.length, "file")} affected</span>
             </div>
+            {tokenNote(prepared?.value) && (
+              <Notice>{tokenNote(prepared?.value)}</Notice>
+            )}
             {summary.warnings.map((warning, i) => (
               <Notice key={i}>{warning}</Notice>
             ))}
