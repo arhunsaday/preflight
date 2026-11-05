@@ -34,6 +34,7 @@ export function ResourceForm({
     config: JSON.stringify(resource?.config ?? {}, null, 2),
     claude: resource?.harnesses.includes("claude-code") ?? true,
     cursor: resource?.harnesses.includes("cursor") ?? false,
+    codex: resource?.harnesses.includes("codex") ?? false,
   });
   const [advanced, setAdvanced] = useState(false);
   const [transport, setTransport] = useState(
@@ -108,6 +109,7 @@ export function ResourceForm({
               harnesses: [
                 ...(value.claude ? ["claude-code"] : []),
                 ...(value.cursor ? ["cursor"] : []),
+                ...(value.codex ? ["codex"] : []),
               ],
               content: value.content,
               config,
@@ -194,6 +196,14 @@ export function ResourceForm({
                 onChange={(e) => field("cursor", e.target.checked)}
               />
               Cursor
+            </label>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={value.codex}
+                onChange={(e) => field("codex", e.target.checked)}
+              />
+              Codex
             </label>
           </fieldset>
           {value.type === "mcp" ? (

@@ -22,6 +22,8 @@ import { SlidersHorizontalIcon } from "@phosphor-icons/react/dist/csr/SlidersHor
 import { CloudArrowDownIcon } from "@phosphor-icons/react/dist/csr/CloudArrowDown";
 import { CodeIcon } from "@phosphor-icons/react/dist/csr/Code";
 import { AsteriskIcon } from "@phosphor-icons/react/dist/csr/Asterisk";
+import { ArticleIcon } from "@phosphor-icons/react/dist/csr/Article";
+import { HexagonIcon } from "@phosphor-icons/react/dist/csr/Hexagon";
 import type { ResourceType, HarnessId } from "../../../src/schema";
 import type { LucideIcon } from "lucide-react";
 export const resourceAppearance = {
@@ -34,6 +36,7 @@ export const resourceAppearance = {
   tool: { icon: WrenchIcon, tone: "teal" },
   plugin: { icon: PuzzlePieceIcon, tone: "green" },
   statusline: { icon: GaugeIcon, tone: "amber" },
+  instructions: { icon: ArticleIcon, tone: "green" },
 } satisfies Record<ResourceType, { icon: typeof StackIcon; tone: string }>;
 const navigationAppearance = {
   overview: { icon: HouseIcon, tone: "blue" },
@@ -104,6 +107,19 @@ export function ResourceBadge({ type }: { type: ResourceType }) {
     </span>
   );
 }
+export const harnessAppearance = {
+  "claude-code": {
+    icon: AsteriskIcon,
+    tone: "amber",
+    name: "Claude Code",
+    short: "Claude",
+  },
+  cursor: { icon: CodeIcon, tone: "violet", name: "Cursor", short: "Cursor" },
+  codex: { icon: HexagonIcon, tone: "teal", name: "Codex", short: "Codex" },
+} satisfies Record<
+  HarnessId,
+  { icon: typeof StackIcon; tone: string; name: string; short: string }
+>;
 export function HarnessBadge({
   harness,
   compact = false,
@@ -111,16 +127,15 @@ export function HarnessBadge({
   harness: HarnessId;
   compact?: boolean;
 }) {
-  const claude = harness === "claude-code";
-  const Icon = claude ? AsteriskIcon : CodeIcon;
+  const { icon: Icon, tone, name, short } = harnessAppearance[harness];
   return (
     <span
       className={`badge semantic-badge harness-badge ${compact ? "compact" : ""}`}
-      data-tone={claude ? "amber" : "violet"}
-      title={claude ? "Claude Code" : "Cursor"}
+      data-tone={tone}
+      title={name}
     >
       <Icon size={compact ? 13 : 14} weight="duotone" aria-hidden="true" />
-      <span>{claude ? (compact ? "Claude" : "Claude Code") : "Cursor"}</span>
+      <span>{compact ? short : name}</span>
     </span>
   );
 }
