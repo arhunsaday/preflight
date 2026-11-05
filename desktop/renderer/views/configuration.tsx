@@ -25,6 +25,7 @@ import {
   Activity as ActivityIcon,
   FilePen,
   Check,
+  Circle,
 } from "lucide-react";
 import loadoutCatalog from "../../../catalog/loadouts.json";
 import type { Workspace } from "../workspace";
@@ -150,15 +151,60 @@ const severityIcon = {
   info: Info,
 };
 const severityTone = { error: "red", warning: "amber", info: "info" };
+const severityWord = { error: "Error", warning: "Warning", info: "Note" };
+type DoctorFinding = NonNullable<Workspace["snapshot"]>["findings"][number];
+export function FindingRow({ finding: f }: { finding: DoctorFinding }) {
+  const FindingIcon = severityIcon[f.severity];
+  return (
+    <article className={`finding ${f.severity}`} data-code={f.code}>
+      <FindingIcon size={19} aria-hidden="true" />
+      <div>
+        <h3>
+          {f.title ?? humanize(f.code)}
+          <Badge tone={severityTone[f.severity]}>
+            {severityWord[f.severity]}
+          </Badge>
+          {f.tokens !== undefined && (
+            <span className="finding-cost">
+              ~{f.tokens.toLocaleString()} tokens/session
+            </span>
+          )}
+        </h3>
+        <p>{f.message}</p>
+        {f.explanation && <p className="finding-why">{f.explanation}</p>}
+        {f.fix && (
+          <p className="finding-fix">
+            <span>Fix</span>
+            <code>{f.fix}</code>
+          </p>
+        )}
+        <small>
+          {f.code}
+          {f.resourceId ? ` · ${f.resourceId}` : ""}
+        </small>
+      </div>
+    </article>
+  );
+}
 export function Doctor({ workspace: w }: { workspace: Workspace }) {
   const [severity, setSeverity] = useState<
     "all" | "error" | "warning" | "info"
   >("all");
-  const findings = w.snapshot?.findings ?? [];
+  const [processes, setProcesses] = useState<DoctorFinding[] | null>(null);
+  useEffect(() => setProcesses(null), [w.snapshot]);
+  const findings = [
+    ...(w.snapshot?.findings ?? []),
+    ...(processes ?? []).filter((f) => f.code === "mcp-processes"),
+  ];
+  const skipped = w.snapshot?.doctor?.skipped ?? [];
   const order = { error: 0, warning: 1, info: 2 };
   const filtered = findings
     .filter((f) => severity === "all" || f.severity === severity)
-    .sort((a, b) => order[a.severity] - order[b.severity]);
+    .sort(
+      (a, b) =>
+        order[a.severity] - order[b.severity] ||
+        (b.tokens ?? -1) - (a.tokens ?? -1),
+    );
   const counts = {
     error: findings.filter((f) => f.severity === "error").length,
     warning: findings.filter((f) => f.severity === "warning").length,
@@ -167,23 +213,46 @@ export function Doctor({ workspace: w }: { workspace: Workspace }) {
   const state = counts.error ? "error" : counts.warning ? "warn" : "ok";
   const Icon =
     state === "error" ? ShieldX : state === "warn" ? ShieldAlert : ShieldCheck;
+  const countProcesses = async () => {
+    const value = await w.run(["doctor", "--processes"], false);
+    if (Array.isArray(value)) {
+      const found = (value as DoctorFinding[]).filter(
+        (f) => f.code === "mcp-processes",
+      );
+      setProcesses(found);
+      if (!found.length) w.notify("Process counting is not available here");
+    }
+  };
   return (
     <div className="page-scroll">
       <div className="section-intro">
         <div>
           <h2>Check your setup</h2>
           <p>
-            Wiring, permissions, conflicts and drift across your configured
-            agents. Findings refresh with the workspace.
+            Wiring, permissions, drift, and what your setup costs in context on
+            every session. Findings refresh with the workspace.
           </p>
         </div>
-        <Button
-          disabled={!!w.busy}
-          onClick={() => void w.run(["doctor", "--connect"])}
-        >
-          <ShieldCheck size={15} />
-          Test MCP connections
-        </Button>
+        <div className="button-row">
+          <Button
+            disabled={!!w.busy}
+            onClick={() => void w.run(["doctor", "--connect"])}
+          >
+            <ShieldCheck size={15} />
+            Test MCP connections
+          </Button>
+          <Button disabled={!!w.busy} onClick={() => void countProcesses()}>
+            <ActivityIcon size={15} />
+            Count MCP processes
+          </Button>
+          <Button
+            disabled={!!w.busy}
+            onClick={() => void w.run(["doctor", "--measure"])}
+          >
+            <Layers size={15} />
+            Measure startup hooks
+          </Button>
+        </div>
       </div>
       <div className={`health-summary ${state}`}>
         <Icon size={28} />
@@ -193,7 +262,7 @@ export function Doctor({ workspace: w }: { workspace: Workspace }) {
               ? `${plural(counts.error, "issue")} need attention`
               : counts.warning
                 ? "No blocking issues, a few things to review"
-                : "Everything looks healthy"}
+                : "Nothing blocking"}
           </strong>
           <p>
             {plural(counts.error, "error")} ·{" "}
@@ -224,24 +293,45 @@ export function Doctor({ workspace: w }: { workspace: Workspace }) {
           ))}
         </div>
       </div>
-      <div className="findings">
-        {filtered.map((f, i) => {
-          const FindingIcon = severityIcon[f.severity];
-          return (
-            <article className={`finding ${f.severity}`} key={i}>
-              <FindingIcon size={19} />
-              <div>
-                <h3>
-                  {humanize(f.code)}
-                  <Badge tone={severityTone[f.severity]}>{f.severity}</Badge>
-                </h3>
-                <p>{f.message}</p>
-                {f.resourceId && <small>{f.resourceId}</small>}
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      {(["error", "warning", "info"] as const).map((group) => {
+        const items = filtered.filter((f) => f.severity === group);
+        if (!items.length) return null;
+        const GroupIcon = severityIcon[group];
+        return (
+          <section
+            className={`finding-group ${group}`}
+            key={group}
+            aria-label={severityWord[group]}
+          >
+            <h3 className="finding-group-title">
+              <GroupIcon size={15} aria-hidden="true" />
+              {severityWord[group]}
+              <span>{items.length}</span>
+            </h3>
+            <div className="findings">
+              {items.map((f, i) => (
+                <FindingRow finding={f} key={`${f.code}-${i}`} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+      {skipped.length > 0 && (
+        <section className="finding-group skipped" aria-label="Skipped">
+          <h3 className="finding-group-title">
+            <Circle size={13} aria-hidden="true" />
+            Skipped
+            <span>{skipped.length}</span>
+          </h3>
+          <ul className="skipped-list">
+            {skipped.map((s) => (
+              <li key={s.check}>
+                <strong>{s.check}</strong> · {s.reason}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {!findings.length ? (
         <Empty
           icon={ShieldCheck}

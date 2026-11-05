@@ -7,6 +7,8 @@ import type {
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
 import type { UpdateState } from "./updates.js";
+import type { DoctorExtras } from "../src/doctor.js";
+import type { InstructionsReport } from "../src/instructions.js";
 export interface Project {
   id: string;
   name: string;
@@ -52,6 +54,10 @@ export interface Snapshot {
   detected: Resource[];
   catalogue: Resource[];
   findings: Finding[];
+  /** Doctor checks that did not run, and the facts behind the findings. */
+  doctor: Pick<DoctorExtras, "skipped" | "facts"> | null;
+  /** Instruction files (CLAUDE.md, AGENTS.md) with their lint findings. */
+  instructions: InstructionsReport | null;
   usage: Usage | null;
   /** True when the person turned transcript reading off. */
   transcriptsOff?: boolean;
@@ -74,6 +80,7 @@ export const desktopViews = [
   "resources",
   "catalogue",
   "doctor",
+  "instructions",
   "context",
   "console",
 ] as const;

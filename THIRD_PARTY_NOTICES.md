@@ -1,12 +1,20 @@
 # Third-party notices
 
-Preflight includes code adapted from the projects below. Each keeps its own license.
+Preflight includes code adapted from the projects below. Each keeps its own
+license. Each adapted file names its source in a header comment.
 
 ## agent-compass
 
-- Source: https://github.com/me-cedric/agent-compass (`engine/usage.mjs`)
-- Used in: `src/usage.ts` (transcript usage, deduplication, cache and cost accounting)
-- License: MIT
+- Source: https://github.com/me-cedric/agent-compass, commit `72d72711fa3d1941658b97755674e0204274a80d`
+- License: MIT, Copyright (c) 2026 CGI
+- Adapted:
+  - `engine/usage.mjs` → `src/usage.ts` (transcript usage, deduplication,
+    cache and cost accounting).
+  - `engine/global.mjs` → `src/doctor-global.ts` (global setup reading,
+    injecting hook events, Codex `config.toml` tables, SessionStart
+    measurement, plugin and MCP budgets).
+  - The listing-line estimate of `engine/tokens.mjs` informs `listingTokens`
+    in `src/context-map.ts`.
 
 ```
 MIT License
@@ -31,3 +39,20 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## pstack (cursor/plugins)
+
+- Source: https://github.com/cursor/plugins, folder `pstack`, commit `bb68f2365eceafa0cb2d253112f675acf5f144cc`
+- License: MIT, Copyright (c) 2026 Lauren Tan
+- Used as a reference, no code copied: the advice to set
+  `disable-model-invocation: true` on overlapping or rarely used skills
+  (`skill-cluster`, `unused-context`) and the per-role subagent model rule in
+  `preflight instructions draft`.
+
+```
+MIT License
+
+Copyright (c) 2026 Lauren Tan
+```
+
+The full MIT text above applies to pstack as well.

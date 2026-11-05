@@ -189,6 +189,9 @@ it("previews only the commands that change state", () => {
   expect(writes(["git", "status"])).toBe(false);
   expect(writes(["git", "push"])).toBe(true);
   expect(writes(["doctor"])).toBe(false);
+  expect(writes(["doctor", "--measure"])).toBe(true);
+  expect(writes(["instructions", "lint"])).toBe(false);
+  expect(writes(["instructions", "draft", "--write"])).toBe(true);
   expect(writes(["unmanaged"])).toBe(false);
   expect(writes([])).toBe(false);
 });

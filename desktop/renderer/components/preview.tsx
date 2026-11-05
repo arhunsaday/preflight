@@ -91,6 +91,29 @@ export function Preview({
             {!summary.files.length && !summary.changes.length && (
               <p className="muted">This operation does not change any file.</p>
             )}
+            {typeof (prepared?.value as { patch?: unknown })?.patch ===
+              "string" && (
+              <pre className="patch" aria-label="Proposed diff">
+                {String((prepared!.value as { patch: string }).patch)
+                  .split("\n")
+                  .map((line, i) => (
+                    <span
+                      key={i}
+                      className={
+                        line.startsWith("+") && !line.startsWith("+++")
+                          ? "add"
+                          : line.startsWith("-") && !line.startsWith("---")
+                            ? "del"
+                            : line.startsWith("@@")
+                              ? "hunk"
+                              : ""
+                      }
+                    >
+                      {line + "\n"}
+                    </span>
+                  ))}
+              </pre>
+            )}
             <details>
               <summary>Full preview</summary>
               <Json value={prepared?.value} />

@@ -76,6 +76,12 @@ export const commandGroups = [
     commands: [
       "doctor",
       "doctor --connect",
+      "doctor --processes",
+      "doctor --measure",
+      "doctor --days 60",
+      "instructions lint",
+      "instructions draft --scope global",
+      "instructions draft --scope project --write",
       "usage",
       "context --mode potential",
       "context --mode catalogue --agent claude-code",

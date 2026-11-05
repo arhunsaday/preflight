@@ -117,6 +117,16 @@ export function Overview({
   const completed = steps.filter((s) => s.done).length;
   const next = steps.findIndex((s) => !s.done);
   const HealthIcon = errors ? ShieldX : warnings ? ShieldAlert : ShieldCheck;
+  const facts = snapshot?.doctor?.facts;
+  const target = facts?.thresholds.skillTarget ?? { min: 60, max: 80 };
+  const globalSkills = facts?.globalSkills ?? 0;
+  const skillScale = Math.max(target.max * 1.25, globalSkills, 1);
+  const skillState =
+    globalSkills > target.max
+      ? "over"
+      : globalSkills >= target.min
+        ? "within"
+        : "under";
   return (
     <div className="page-scroll overview-page">
       <div className="section-intro">
@@ -200,6 +210,41 @@ export function Overview({
               </span>
             </div>
           </div>
+          {facts && (
+            <div className={`skill-gauge ${skillState}`}>
+              <div className="skill-gauge-label">
+                <strong>{globalSkills} global skills</strong>
+                <span>
+                  target {target.min}–{target.max} ·{" "}
+                  {skillState === "over"
+                    ? "▲ over target"
+                    : skillState === "within"
+                      ? "● within target"
+                      : "○ room to add"}
+                </span>
+              </div>
+              <div
+                className="skill-gauge-track"
+                role="meter"
+                aria-label="Global skills against the target"
+                aria-valuemin={0}
+                aria-valuemax={target.max}
+                aria-valuenow={globalSkills}
+              >
+                <i
+                  className="band"
+                  style={{
+                    left: `${(target.min / skillScale) * 100}%`,
+                    width: `${((target.max - target.min) / skillScale) * 100}%`,
+                  }}
+                />
+                <i
+                  className="value"
+                  style={{ width: `${(globalSkills / skillScale) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
           <div className="button-row">
             <Button onClick={() => navigate("doctor")}>Open doctor</Button>
             <Button variant="ghost" onClick={() => navigate("context")}>

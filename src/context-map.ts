@@ -17,6 +17,19 @@ export interface ContextOptions {
   harness?: HarnessId;
   scope?: Scope;
 }
+/** A skill or agent the model cannot invoke by itself is not listed. */
+export const modelInvocable = (r: Resource) =>
+  r.config["disable-model-invocation"] !== true &&
+  r.config["disable-model-invocation"] !== "true";
+/**
+ * Tokens of the listing line an agent shows for a skill or subagent on every
+ * session: its name and description. Zero when it is not listed.
+ * Adapted from me-cedric/agent-compass engine/tokens.mjs `listingLine` (MIT).
+ */
+export function listingTokens(r: Resource) {
+  if (!["skill", "subagent"].includes(r.type) || !modelInvocable(r)) return 0;
+  return Math.ceil(`${r.name}\n${r.description}`.length / 4);
+}
 /** Local character estimate only. No runtime loading, tokenizer, or MCP execution. */
 export function buildContextReport(
   resources: Resource[],
@@ -39,10 +52,7 @@ export function buildContextReport(
         "command",
         "instructions",
       ].includes(r.type);
-      const catalogueTokens =
-        r.type === "skill"
-          ? Math.ceil(`${r.name}\n${r.description}`.length / 4)
-          : 0;
+      const catalogueTokens = r.type === "skill" ? listingTokens(r) : 0;
       const bodyTokens =
         textual && r.content !== undefined
           ? Math.ceil(r.content.length / 4)
