@@ -1,10 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="88 24 848 896" fill="currentColor">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="182 181 660 660" fill="currentColor">
   <title>Preflight</title>
-  <!-- One colour (currentColor): the dial with the tick cut out, and the beacon index. -->
-  <mask id="cut">
-    <rect width="1024" height="1024" fill="#fff"/>
-    <path d="M296 566 L444 700 L768 364" fill="none" stroke="#000" stroke-width="112" stroke-linecap="round" stroke-linejoin="round"/>
-  </mask>
-  <circle cx="512" cy="540" r="372" mask="url(#cut)"/>
-  <path d="M512 52 L570 134 L454 134Z" stroke="currentColor" stroke-width="24" stroke-linejoin="round"/>
+  <!-- One colour (currentColor): the airliner seen from above. -->
+  <g transform="translate(548 476) rotate(45)">
+    <path d="M0 -340 C34 -340 46 -300 46 -255 L46 -80 L340 70 L340 135 L46 55 L46 205 L135 275 L135 318 L0 288 L-135 318 L-135 275 L-46 205 L-46 55 L-340 135 L-340 70 L-46 -80 L-46 -255 C-46 -300 -34 -340 0 -340 Z"/>
+  </g>
 </svg>

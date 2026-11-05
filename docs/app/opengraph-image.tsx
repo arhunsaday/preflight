@@ -4,7 +4,7 @@ export const alt = 'Preflight — see and fix your AI coding setup';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-// The attitude-indicator mark (assets/brand/logo.svg) on the dark brand ground,
+// The plane mark (assets/brand/icon.svg) on the dark brand ground,
 // with a horizon and range rings drawn in the same ink as the site background.
 export default function Image() {
   const rings = [150, 260, 370];
@@ -33,16 +33,12 @@ export default function Image() {
         </svg>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 80px', width: 860 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-            <svg width="70" height="74" viewBox="88 24 848 896">
-              <clipPath id="d">
-                <circle cx="512" cy="540" r="372" />
-              </clipPath>
-              <g clipPath="url(#d)">
-                <rect width="1024" height="1024" fill="#13707a" />
-                <path d="M0 676 L1024 500 L1024 1024 L0 1024Z" fill="#0a3b43" />
+            <svg width="72" height="72" viewBox="0 0 1024 1024">
+              <rect width="1024" height="1024" rx="232" fill="#13707a" />
+              <g transform="translate(548 476) rotate(45)">
+                <path fill="#f3f1ea" d="M0 -340 C34 -340 46 -300 46 -255 L46 -80 L340 70 L340 135 L46 55 L46 205 L135 275 L135 318 L0 288 L-135 318 L-135 275 L-46 205 L-46 55 L-340 135 L-340 70 L-46 -80 L-46 -255 C-46 -300 -34 -340 0 -340 Z" />
+                <circle cx="340" cy="102" r="30" fill="#f0a04a" />
               </g>
-              <path d="M512 52 L570 134 L454 134Z" fill="#f0a04a" stroke="#f0a04a" strokeWidth="24" strokeLinejoin="round" />
-              <path d="M296 566 L444 700 L768 364" fill="none" stroke="#f3f1ea" strokeWidth="112" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>Preflight</div>
           </div>
