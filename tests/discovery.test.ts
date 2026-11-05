@@ -1,7 +1,17 @@
-import { it, expect, vi, afterEach } from "vitest";
+import { it, expect, vi, afterEach, beforeAll } from "vitest";
 import { execute } from "../src/commands.js";
 import { mcpRegistry, skillsSource } from "../src/catalog.js";
-const context = { root: process.cwd(), home: process.cwd() };
+import { mkdtemp, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { useFixtureSource } from "./support/sources.js";
+const context = { root: process.cwd(), home: "" };
+beforeAll(async () => {
+  context.home = join(
+    await realpath(await mkdtemp(join(tmpdir(), "preflight-discovery-"))),
+  );
+  await useFixtureSource(context.home);
+});
 afterEach(() => vi.restoreAllMocks());
 it("selects only the requested online source and forwards its failures", async () => {
   const mcp = vi
@@ -23,7 +33,7 @@ it("offline discovery never contacts remote sources", async () => {
   const mcp = vi.spyOn(mcpRegistry, "search");
   const skills = vi.spyOn(skillsSource, "search");
   const reply = await execute(
-    ["search", "ponytail", "--source", "bundled"],
+    ["search", "ponytail", "--source", "sources"],
     context,
   );
   expect(reply).toMatchObject({

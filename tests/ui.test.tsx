@@ -13,11 +13,13 @@ import { dirname, join } from "node:path";
 import { App, ResourceList } from "../src/ui/index.js";
 import { PreflightService } from "../src/service.js";
 import { ResourceSchema } from "../src/schema.js";
+import { useFixtureSource } from "./support/sources.js";
 
 async function workspace() {
   const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-ui-"));
   const context = { root, home: join(root, "home") };
   await mkdir(context.home);
+  await useFixtureSource(context.home);
   return context;
 }
 
@@ -316,7 +318,8 @@ it("adopts an installed resource from the detected view", async () => {
     "SKILL.md",
   );
   await mkdir(dirname(skill), { recursive: true });
-  const body = "---\nname: installed-earlier\ndescription: predates Preflight\n---\n";
+  const body =
+    "---\nname: installed-earlier\ndescription: predates Preflight\n---\n";
   await writeFile(skill, body);
   const view = render(<App context={context} />);
   const ui = driver(view);

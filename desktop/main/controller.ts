@@ -81,6 +81,7 @@ export const allowedCommands = new Set([
   "apply",
   "revoke",
   "loadouts",
+  "source",
   "retrofit",
   "git",
   "bench",
@@ -117,6 +118,7 @@ function isRead(args: string[]) {
     return !args.includes("--connect");
   if (args[0] === "profiles") return ["list", "diff"].includes(args[1] ?? "");
   if (args[0] === "loadouts") return ["list", "show"].includes(args[1] ?? "");
+  if (args[0] === "source") return ["list", "show"].includes(args[1] ?? "");
   if (args[0] === "bench") return args[1] === "compare";
   return args[0] === "git" && args[1] === "status";
 }

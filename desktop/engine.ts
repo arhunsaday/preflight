@@ -138,7 +138,7 @@ export async function snapshot(context: Context): Promise<Snapshot> {
                 r.harnesses.some((h) => g.harnesses.includes(h)),
             ),
         ),
-    catalogue: catalogResources(),
+    catalogue: await safe("Sources", () => catalogResources(context.home), []),
     findings,
     usage,
     loadouts,

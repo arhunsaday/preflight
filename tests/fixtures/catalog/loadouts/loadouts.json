@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "loadouts": {
+    "base": {
+      "description": "Everyone",
+      "provides": {
+        "skills": [{ "id": "ponytail", "scope": "global", "why": "Agents over-build by default" }],
+        "hooks": [{ "id": "protect-files", "why": "Lockfiles are not agent-editable", "blocking": true }],
+        "plugins": [{ "id": "hello", "why": "Proves plugins install from a source" }]
+      }
+    },
+    "junior": {
+      "extends": "base",
+      "description": "Learning the codebase",
+      "provides": {
+        "skills": [{ "id": "systematic-debugging", "external": "obra/superpowers", "why": "Reproduce first" }]
+      }
+    }
+  },
+  "presets": { "junior-web": ["junior"] }
+}
