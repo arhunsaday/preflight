@@ -33,7 +33,12 @@ import {
   githubSource,
   inspectRemote,
 } from "./catalog.js";
-import { measureUsage } from "./analysis.js";
+import {
+  measureUsage,
+  usageGroupings,
+  type UsageAgent,
+  type UsageGrouping,
+} from "./usage.js";
 import { resolveLoadout, materializeLoadout } from "./loadouts.js";
 import { installationPlan, runCommand, gitSync } from "./operations.js";
 import { fixedTaskSet } from "./bench-tasks.js";
@@ -395,15 +400,58 @@ export async function execute(
     )
     .addOption(new Option("--agent <agent>").choices(HarnessIdSchema.options))
     .addOption(new Option("--scope <scope>").choices(["global", "project"]));
+  const usageWindow = (options: Record<string, string | undefined>) => ({
+    home: ctx().home,
+    ...(options.since ? { since: options.since } : {}),
+    ...(options.until ? { until: options.until } : {}),
+    ...(options.agent ? { agent: options.agent as UsageAgent | "all" } : {}),
+    ...(options.project ? { project: resolve(options.project) } : {}),
+    ...(options.codexHome ? { codexHome: resolve(options.codexHome) } : {}),
+  });
   command(
     "usage",
-    "Measure observed skill and MCP invocation counts",
-    async (options) =>
-      measureUsage(
+    "Tokens, cache hit rate and cost estimate from local Claude Code and Codex transcripts; nothing leaves the machine",
+    async (options) => {
+      const usage = await measureUsage(
         resolve(options.transcripts ?? join(ctx().home, ".claude", "projects")),
         (await service().detect()).flatMap((s) => s.resources),
-      ),
-  ).option("--transcripts <directory>");
+        {
+          ...usageWindow(options),
+          ...(options.by === "session" ? { sessionLimit: Infinity } : {}),
+        },
+      );
+      if (!options.by) return usage;
+      const rows = {
+        session: usage.bySession,
+        skill: usage.bySkill,
+        project: usage.byProject,
+        model: usage.byModel,
+        day: usage.byDay,
+        agent: usage.byAgent,
+      }[options.by as UsageGrouping];
+      return {
+        by: options.by,
+        window: usage.window,
+        totals: usage.totals,
+        cacheHitRate: usage.cacheHitRate,
+        costEstimate: usage.costEstimate,
+        sessions: usage.sessions,
+        rows,
+      };
+    },
+  )
+    .addOption(new Option("--by <grouping>").choices([...usageGroupings]))
+    .option("--since <window>", "30d, 12w, 6m or YYYY-MM-DD (default: all)")
+    .option("--until <day>", "last local day to count (default: today)")
+    .addOption(
+      new Option("--agent <agent>").choices(["claude-code", "codex", "all"]),
+    )
+    .option("--project <root>", "only sessions of this repository root")
+    .option("--transcripts <directory>", "Claude Code transcript folder")
+    .option(
+      "--codex-home <directory>",
+      "Codex home (default CODEX_HOME or ~/.codex)",
+    );
   command(
     "prune",
     "Propose unused skills from measured transcripts; never deletes automatically",
@@ -411,8 +459,12 @@ export async function execute(
       measureUsage(
         resolve(options.transcripts ?? join(ctx().home, ".claude", "projects")),
         await service().list(),
+        // Skill calls are only observable in Claude Code transcripts.
+        { ...usageWindow(options), agent: "claude-code" },
       ),
-  ).option("--transcripts <directory>");
+  )
+    .option("--transcripts <directory>")
+    .option("--since <window>", "30d, 12w, 6m or YYYY-MM-DD (default: all)");
   command(
     "share",
     "Publish an inspectable configuration or export a payload",
@@ -500,7 +552,8 @@ export async function execute(
     if (!isShareCode(code)) throw new Error("Invalid code");
     const url = `${serviceUrl(shareBase(options.service))}/api/shares/${code.toLowerCase()}`;
     if (dry()) return { method: "DELETE", url };
-    if (!process.env.PREFLIGHT_SHARE_TOKEN) throw new Error("Set PREFLIGHT_SHARE_TOKEN");
+    if (!process.env.PREFLIGHT_SHARE_TOKEN)
+      throw new Error("Set PREFLIGHT_SHARE_TOKEN");
     const response = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${process.env.PREFLIGHT_SHARE_TOKEN}` },

@@ -28,6 +28,7 @@ import {
 } from "../src/ui/index.js";
 import { execute } from "../src/commands.js";
 import { ResourceSchema } from "../src/schema.js";
+import { measureUsage } from "../src/usage.js";
 
 const state: ActionState = {
   view: "browse",
@@ -53,7 +54,7 @@ it("wraps long inspection text into scrollable terminal lines", () => {
 it("truncates with an ellipsis and tokenizes quoted command input", () => {
   expect(truncate("configuration", 6)).toBe("confi…");
   expect(truncate("short", 20)).toBe("short");
-  expect(tokenize('create-json \'{"a": 1}\'')).toEqual([
+  expect(tokenize("create-json '{\"a\": 1}'")).toEqual([
     "create-json",
     '{"a": 1}',
   ]);
@@ -82,7 +83,9 @@ it("ranks contiguous and early fuzzy matches first", () => {
 });
 
 it("exposes every interface action as a real CLI command", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-parity-"));
+  const root = await mkdtemp(
+    join(await realpath(tmpdir()), "preflight-parity-"),
+  );
   const context = { root, home: root };
   const names = [
     ...new Set(actions.map((action) => action.cli).filter(Boolean)),
@@ -100,9 +103,9 @@ it("offers resource actions only when a resource is selected", () => {
   expect(ids({ ...state, resource: undefined })).not.toContain("delete");
   expect(ids({ ...state, view: "profiles" })).not.toContain("delete");
   expect(byKey("d", state)?.id).toBe("delete");
-  expect(byKey("d", { ...state, view: "profiles", profile: "minimal" })?.id).toBe(
-    "profile-diff",
-  );
+  expect(
+    byKey("d", { ...state, view: "profiles", profile: "minimal" })?.id,
+  ).toBe("profile-diff");
 });
 
 it("shows the command a confirmed action previews first", () => {
@@ -190,8 +193,13 @@ it("previews only the commands that change state", () => {
   expect(writes([])).toBe(false);
 });
 
-it("counts observed invocations per resource without double counting", () => {
+it("counts observed invocations per resource without double counting", async () => {
+  const nothing = await measureUsage(
+    join(await realpath(tmpdir()), "preflight-no-transcripts"),
+    [],
+  );
   const usage = {
+    ...nothing,
     sessions: 3,
     invocations: {
       "skill:example": 2,

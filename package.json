@@ -12,7 +12,8 @@
   "files": [
     "dist",
     "catalog",
-    "PREFLIGHT.md"
+    "PREFLIGHT.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
     "node": ">=22"
