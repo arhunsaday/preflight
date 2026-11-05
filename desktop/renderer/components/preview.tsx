@@ -125,7 +125,10 @@ export function Preview({
       </div>
       <div className="dialog-footer">
         <span className="hint">
-          {prepared && irreversible.includes(prepared.args[0] ?? "")
+          {prepared &&
+          irreversible.includes(prepared.args[0] ?? "") &&
+          // A repository install writes journaled files only.
+          !prepared.args.includes("--apply")
             ? "External effects of this operation are not reversed by rollback."
             : "Configuration writes are journaled and can be rolled back."}
         </span>

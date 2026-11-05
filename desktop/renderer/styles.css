@@ -4166,3 +4166,64 @@ pre.patch .hunk {
   white-space: nowrap;
   margin: 1px 0 6px;
 }
+
+/* Discover → From GitHub */
+.repo-install {
+  overflow: auto;
+  padding: 14px 18px 24px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.repo-install h3 {
+  font-size: 13px;
+  text-transform: capitalize;
+}
+.repo-install .file-list {
+  margin: 6px 0 0;
+}
+.repo-install-agents {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.repo-install-agents > span {
+  color: var(--text-2);
+}
+.repo-install-agents label,
+.repo-install-row {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--text);
+}
+.repo-install-agents label {
+  gap: 6px;
+}
+.repo-install-row {
+  gap: 10px;
+  cursor: pointer;
+}
+.repo-install label > input[type="checkbox"] {
+  width: auto;
+  flex-shrink: 0;
+}
+.repo-install-row > span small {
+  font-size: 12px;
+}
+.repo-install-row .row-harnesses {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.repo-install-row strong {
+  font-weight: 600;
+}
+.repo-install-reason {
+  display: block;
+  color: var(--text-2);
+  margin-top: 2px;
+}
