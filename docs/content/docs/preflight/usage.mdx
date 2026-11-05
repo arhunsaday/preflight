@@ -1,0 +1,46 @@
+---
+title: "Usage"
+description: "Tokens, cache hit rate and cost estimates from local Claude Code and Codex transcripts"
+---
+
+`preflight usage` reads agent transcripts on your computer and reports tokens, cache use and an estimated cost. Transcripts are read locally only. Nothing leaves the machine.
+
+```sh
+preflight usage                         # everything, all agents
+preflight usage --since 30d             # the last 30 local days (also 12w, 6m, YYYY-MM-DD)
+preflight usage --by session            # one row per session
+preflight usage --by skill --agent claude-code
+preflight usage --by day --project /path/to/repo
+```
+
+`--by` takes `session`, `skill`, `project`, `model`, `day` or `agent`. `--agent` takes `claude-code`, `codex` or `all`. Output is JSON.
+
+## Sources
+
+| Agent | Files |
+| --- | --- |
+| Claude Code | `~/.claude/projects/**/*.jsonl` (`--transcripts` changes the folder) |
+| Codex | `~/.codex/sessions/**/rollout-*.jsonl` and `.jsonl.zst`, plus `archived_sessions` (`CODEX_HOME` or `--codex-home` changes the folder) |
+
+## How it counts
+
+- Claude Code writes one line per content block of a streamed message. A message counts once per `message.id:requestId`, from the line with the largest output count.
+- Tokens are input, output, cache read and cache write. The cache hit rate is cache reads divided by all input tokens (input + cache write + cache read).
+- A Codex session reports cumulative totals. Each change is one step, dated by its own line, so a session that runs over several days is split by day. Cached input is counted as cache read.
+- A project is the repository root of the session's working directory. A Claude worktree or a linked Git worktree counts for its main checkout.
+- A skill's tokens run from after its `Skill` call to the next user prompt. Codex has no skill call to observe.
+- Tool calls count once per tool-use id. Text mentions do not count.
+
+## Cost estimate
+
+Costs use Anthropic list prices from `src/data/prices.json`, which names its source and retrieval date. Cache writes cost 1.25× input for 5 minutes and 2× for 1 hour; fast mode doubles a message. Batch, data-residency, plan and negotiated prices are not applied, so the figure is an estimate. Codex (OpenAI) models have no price in the table: their tokens are reported as `unpricedTokens` and listed in `unpricedModels`, and the estimate is marked incomplete rather than counting them as free.
+
+## Pruning
+
+`preflight prune` uses the same reader for Claude Code skill calls and proposes installed skills that were never called. It never deletes anything. No transcripts means unknown usage, and prune proposes nothing.
+
+## Desktop
+
+**Health → Usage** shows the last 30 days: tokens, cache hit rate, estimated cost, sessions per agent, a bar chart of tokens per day, and the top sessions and skills. The **Read conversation transcripts** setting on that page is on by default. Turn it off and the app stops reading transcripts; usage and prune then report nothing.
+
+Adapted from [agent-compass](https://github.com/me-cedric/agent-compass) `engine/usage.mjs` (MIT); see `THIRD_PARTY_NOTICES.md`.

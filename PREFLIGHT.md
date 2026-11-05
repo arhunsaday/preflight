@@ -97,18 +97,21 @@ Online search connects to the official MCP registry and the documented skills.sh
 
 To install a remote result, save one resource object from search output into a JSON file, then run `inspect-file resource.json` and `create resource.json --dry-run`. `create` materializes remote skill content and bounded text support files before applying. Inspect reports source, pinned commit when available, raw content and configuration, including requested tools. Binary or oversized skill assets require the upstream installer.
 
-CRUD applies to all nine resource types. Native adapter wiring is intentionally explicit:
+CRUD applies to all ten resource types. Native adapter wiring is intentionally explicit:
 
-| Resource | Claude Code | Cursor |
-| --- | --- | --- |
-| Skills and support files | `.claude/skills` | `.cursor/skills` |
-| MCP | project `.mcp.json`; user `~/.claude.json` | `.cursor/mcp.json` |
-| Subagents | `.claude/agents` | catalogued only |
-| Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only |
-| Commands | `.claude/commands` | `.cursor/commands` |
-| Statusline | `.claude/settings.json`; managed script in `.claude/statusline` | catalogued only |
-| Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only |
-| Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers |
+| Resource | Claude Code | Cursor | Codex |
+| --- | --- | --- | --- |
+| Skills and support files | `.claude/skills` | `.cursor/skills` | `~/.agents/skills`, project `.agents/skills` |
+| MCP | project `.mcp.json`; user `~/.claude.json` | `.cursor/mcp.json` | `[mcp_servers.<name>]` in `.codex/config.toml` (user `~/.codex`, project `.codex`); stdio and streamable HTTP |
+| Instructions | catalogued only | catalogued only | managed block in `~/.codex/AGENTS.md` and project `AGENTS.md` |
+| Subagents | `.claude/agents` | catalogued only | catalogued only |
+| Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only | catalogued only |
+| Commands | `.claude/commands` | `.cursor/commands` | catalogued only |
+| Statusline | `.claude/settings.json`; managed script in `.claude/statusline` | catalogued only | catalogued only |
+| Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only | catalogued only |
+| Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers | catalogued; Codex removed custom prompts in 0.117 and the doctor flags `~/.codex/prompts` |
+
+Codex's `config.toml` and `AGENTS.md` are shared with the person: Preflight edits only its own `[mcp_servers.<name>]` tables and marker-delimited blocks, keeps every other byte, and its lockfile digest covers only those parts, so edits around them are not drift. `CODEX_HOME` moves the Codex home. Skills in `~/.agents/skills` are the shared store Codex reads; Claude Code and Cursor still get their own copies, not links. See [Codex](docs/content/docs/preflight/codex.mdx).
 
 Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; Preflight does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue.
 
@@ -158,13 +161,15 @@ Delegated skill installation passes every target agent in the single `--agent <a
 `doctor` reports broken/missing skill files, parse failures, managed-file drift, approximate context cost, identical trigger descriptions, broad permissions, possible credentials and missing wiring. It also reads Claude user/project `settings.json` and `settings.local.json`, reporting credential locations and possible shell access around Read denials without printing credential values. Context cost is a character-based estimate, not a tokenizer measurement. Trigger conflicts are exact-description matches, not semantic analysis. These checks are useful evidence, not a comprehensive security audit.
 
 ```sh
+preflight usage --since 30d --by session
+preflight usage --agent codex --by day
 preflight usage --transcripts /path/to/claude/jsonl/transcripts
 preflight prune --transcripts /path/to/claude/jsonl/transcripts
 preflight verify mcp:example
 preflight verify mcp:example --connect
 ```
 
-Usage streams Claude-style JSONL transcript files and counts structured `tool_use` entries, including `Skill` and MCP tool names. Text mentions do not count. No transcripts means unknown usage; prune makes no proposal in that case. Prune proposes IDs only and never deletes automatically. Transcript files are counted, not deduplicated conversational sessions; unsupported transcript formats do not constitute evidence of nonuse.
+Usage reads Claude Code transcripts (`~/.claude/projects`) and Codex rollouts (`~/.codex/sessions`, plain or zstd) locally; nothing leaves the machine. Claude messages count once per `message.id:requestId`; Codex sessions count each change of their cumulative token totals. It reports input, output, cache read and cache write tokens, the cache hit rate, and a list-price cost estimate from `src/data/prices.json` (dated, with its source), grouped `--by session|skill|project|model|day|agent`. Codex models have no price in the table: their tokens are reported as unpriced and the estimate is marked incomplete. Tool calls count once per tool-use id, including `Skill` and MCP tool names; text mentions do not count. No transcripts means unknown usage; prune makes no proposal in that case. Prune uses Claude Code skill calls only, proposes IDs and never deletes automatically; unsupported transcript formats do not constitute evidence of nonuse. The desktop's "Read conversation transcripts" setting (on by default) turns all of this off. See [Usage](docs/content/docs/preflight/usage.mdx). The usage reader is adapted from agent-compass (MIT); see `THIRD_PARTY_NOTICES.md`.
 
 `verify --connect` explicitly starts the configured MCP process or connects to its HTTP/SSE endpoint, initializes it and lists tools with bounded request timeouts. It invokes no tools. Environment references must resolve before connecting. `doctor --connect` does the same for every enabled MCP server in the active profile and folds the result into the findings, replacing “configured; connection not tested” with what actually happened. Without that flag the doctor never starts a configured program.
 
@@ -234,9 +239,9 @@ The separate checkout/home prevents changes leaking between tasks but is **not a
 
 `npm run check` runs ESLint, strict application type checking, Vitest integration/unit/TUI tests, and the packaged build. The SDK has an upstream optional-property declaration mismatch; vendor declarations are skipped, with a narrow documented transport cast at the integration boundary. Application code remains strict. Existing Python and shell checks continue in CI.
 
-The delivered local product includes the CLI/TUI, two adapters, transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
+The delivered local product includes the CLI/TUI, three adapters (Claude Code, Cursor, Codex), transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
 
-Adapter/source references: [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
+Adapter/source references: [Codex configuration](https://developers.openai.com/codex/config-reference), [Codex skills](https://developers.openai.com/codex/skills), [Codex AGENTS.md](https://developers.openai.com/codex/guides/agents-md), [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
 
 ## Shared global configuration and discovery
 
@@ -254,4 +259,4 @@ Resources created in the global workspace must use `scope: global`. Project reso
 
 ### Context map
 
-The desktop **Improve → Context map** shows a proportional treemap of available instructions, with category zoom, resource details, agent/scope filters and a sorted list. `preflight context [--mode potential|catalogue] [--agent claude-code|cursor] [--scope global|project]` produces the same local character estimates. Unknown MCP/runtime contributions remain explicit; this does not measure a live conversation. See [context map](docs/content/docs/preflight/context-map.mdx).
+The desktop **Improve → Context map** shows a proportional treemap of available instructions, with category zoom, resource details, agent/scope filters and a sorted list. `preflight context [--mode potential|catalogue] [--agent claude-code|cursor|codex] [--scope global|project]` produces the same local character estimates. Unknown MCP/runtime contributions remain explicit; this does not measure a live conversation. See [context map](docs/content/docs/preflight/context-map.mdx).
