@@ -27,7 +27,8 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 | `unmanaged` | what a harness holds that the profile does not manage |
 | `adopt <id>` | manage a detected resource where it already lives |
 | `inspect <id>` | content, permissions, configuration, provenance |
-| `doctor [--connect]` | findings, drift, context cost; `--connect` tests MCP servers |
+| `doctor [--connect] [--days n] [--processes] [--measure]` | findings by severity with fix and token cost; see [Doctor](./doctor) |
+| `instructions lint [file]` / `instructions draft [--scope] [--agent] [--write]` | lint or draft CLAUDE.md / AGENTS.md; see [Doctor](./doctor#instructions) |
 | `verify <id> [--connect]` | static check, or initialise the MCP server and list tools |
 
 ## Change resources

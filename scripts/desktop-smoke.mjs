@@ -237,6 +237,21 @@ try {
     .getByRole("heading", { name: "Check your setup", exact: true })
     .waitFor();
   await page.screenshot({ path: join(temporary, "doctor.png") });
+  await page.getByRole("button", { name: "Instructions", exact: true }).click();
+  await page.getByRole("heading", { name: "What your agent reads every session" }).waitFor();
+  await page
+    .getByRole("button", { name: "Draft improvements", exact: true })
+    .click();
+  await page.getByRole("heading", { name: "Review changes" }).waitFor();
+  await page.getByLabel("Proposed diff").waitFor();
+  await assert.rejects(readFile(join(project, "CLAUDE.md")));
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  assert.match(await readFile(join(project, "CLAUDE.md"), "utf8"), /## Secrets/);
+  await page.getByRole("meter", { name: "Lines against the limit" }).waitFor();
+  await page.screenshot({ path: join(temporary, "instructions.png") });
   await page.getByRole("button", { name: "Loadouts", exact: true }).click();
   await page.locator(".loadout-list button").first().click();
   await page

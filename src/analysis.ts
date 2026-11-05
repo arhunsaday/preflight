@@ -493,7 +493,7 @@ export function skillCount(
     {
       code: "skill-count",
       severity: over ? "warning" : "info",
-      message: `${global.length} model-invocable global skills; the target is ${target.min}-${target.max}.`,
+      message: `${global.length} model-invocable global skill${global.length === 1 ? "" : "s"}; the target is ${target.min}-${target.max}.`,
       explanation: findingCatalog["skill-count"]!.explanation,
       tokens,
       ...(over

@@ -42,7 +42,7 @@ export function Instructions({ workspace: w }: { workspace: Workspace }) {
     <div className="page-scroll instructions-page">
       <div className="section-intro">
         <div>
-          <h2>Instructions</h2>
+          <h2>What your agent reads every session</h2>
           <p>
             The file your agent loads on every session. Keep it short and
             verifiable; move task-specific rules into skills.
