@@ -1,40 +1,61 @@
 ---
 title: "Terminal interface"
-description: "preflight ui: five views over the same commands"
+description: "preflight ui: a keyboard dashboard, the terminal counterpart of the desktop Overview"
 ---
 
-`preflight ui` needs an interactive terminal. It is a view over the CLI: every
-action names the command it runs, and writes are previewed as a dry run first.
-Enter applies, Escape cancels.
+`preflight ui` needs an interactive terminal. It opens a dashboard. The
+dashboard reads the same engine as the CLI and the desktop app. It works in
+80x24 and in larger terminals.
 
-## Views
+## Layout
 
-| Key | View |
-| --- | --- |
-| `1` | **Browse**, the active profile |
-| `2` | **Catalogue**, search results |
-| `3` | **Detected**, what harnesses hold outside the profile |
-| `4` | **Doctor**, findings |
-| `5` | **Profiles** |
+- **Tabs.** `All`, then one tab for each harness found on this machine (Claude
+  Code, Codex, Cursor). A harness that is not installed has no tab.
+- **Sections** (left): Overview, Skills, MCP, Subagents, Hooks, Plugins,
+  Instructions, Profiles, Doctor, Usage.
+- **Detail pane** (right): the content of the section for the selected tab.
+- **Footer.** The main keys, or the result of the last action.
 
-Each view pairs a list with a detail pane: identity, scope, per-harness
-support, provenance, measured invocations and requested tools.
+The Overview shows the count of each resource type, the active profile, the
+doctor finding counts and the estimated context cost in tokens. A resource
+list shows name, scope and a status as glyph and word (`● enabled`,
+`○ disabled`). Under the list, the pane shows the description and the source
+of the selected item. The Doctor section lists findings by severity
+(`✖ error`, `▲ warning`, `• info`) with the message and the fix. The Usage
+section shows sessions, tokens, cost estimate, cache hits and the skills that
+no session called.
+
+The colours follow the desktop app: a petrol accent and beacon orange for
+warnings. Set `NO_COLOR` to remove all colour. The glyphs and words keep the
+meaning.
 
 ## Keys
 
 | Key | Action |
 | --- | --- |
-| `Tab` | switch view |
-| `↑` `↓` `j` `k`, `g` `G`, PgUp/PgDn | move, jump, scroll |
-| `Enter` | inspect; adopt in Detected; switch profile in Profiles |
-| `/` | filter the list; in Catalogue, run a search |
-| `Ctrl+K` | action palette |
-| `:` | run any CLI command |
-| `n` `e` `d` `f` `m` `v` `i` | new, edit, delete, fork, move scope, verify, installation plan |
-| `a` `O` | add a catalogue result or adopt a detected one, toggle remote sources |
-| `s` `t` | cycle the scope and type filters |
-| `y` `r` `o` `?` `q` | sync, reload, raw result, keyboard reference, quit |
+| `↑` `↓` `j` `k` | move in the focused column |
+| `←` `→` `h` `l` | focus the sections or the items |
+| `Tab`, `Shift+Tab` | next or previous harness tab |
+| `Enter` | open the section; in Profiles, preview a switch |
+| `g` `G` | first or last item |
+| `/` | filter the items. `Enter` keeps the filter, `Esc` clears it |
+| `p` | switch profile |
+| `d` | run the doctor again and show its findings |
+| `m` | manage resources (the full screen below) |
+| `?` | key reference |
+| `q` | quit |
 
-The resource form validates against the same schema as the CLI. The status bar
-shows the active profile, harness detection, measured skill use and the
-doctor's error and warning counts.
+## Switch a profile
+
+Press `p`, choose a profile, and press `Enter`. The dashboard shows a dry run:
+the resource changes and the files that would change. Nothing is written at
+this point. Press `Enter` to apply, or `Esc` to cancel. The switch uses the
+same service call as `preflight profiles switch`.
+
+## Manage resources
+
+Press `m`, or start with `preflight ui --classic`, to open the resource
+manager. It keeps the actions that the dashboard does not cover: the
+catalogue, detected resources and adopt, the resource form, the action
+palette (`Ctrl+K`), `:` to run any CLI command, and the raw result view. Every
+write there shows a dry run first. `q` leaves the interface.

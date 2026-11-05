@@ -36,7 +36,7 @@ async function main() {
       Object.assign(selected, { globalOnly: true });
     }
     const { startUI } = await import("./ui/index.js");
-    await startUI(selected);
+    await startUI(selected, { classic: args.includes("--classic") });
     return;
   }
   // A person at a terminal reads doctor and instructions grouped and worded;

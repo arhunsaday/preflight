@@ -9,6 +9,7 @@ and the desktop application share one version.
 
 ### Added
 
+- `preflight ui` opens a keyboard dashboard: a tab for each detected harness, a list of sections (Overview, Skills, MCP, Subagents, Hooks, Plugins, Instructions, Profiles, Doctor, Usage) and a detail pane. `p` switches profile with a preview, `d` runs the doctor, `/` filters. `m` or `--classic` opens the resource manager.
 - `preflight` command line: `detect`, `doctor`, `init`, `list`, `search`, `add`, `remove`, `install`, `share`, `import`, `loadout`, `bench` and more. Commands print JSON by default; previews are required before anything is written.
 - Adapters for Claude Code, Codex and Cursor covering skills, MCP servers, subagents, hooks, plugins and instruction files, with `preflight.config.json` / lock file ownership and recovery.
 - Doctor: findings, drift between declared and installed state, observed usage, and the context cost of each resource. Context map showing what every harness loads into a session.
