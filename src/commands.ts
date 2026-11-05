@@ -50,6 +50,7 @@ import { installationPlan, runCommand, gitSync } from "./operations.js";
 import { fixedTaskSet } from "./bench-tasks.js";
 import { runBench, compareRuns, BenchRun } from "./bench.js";
 import { retrofit } from "./retrofit.js";
+import { reflectCommands } from "./reflect.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
 import { defaultService } from "./auth-client.js";
 import packageJson from "../package.json" with { type: "json" };
@@ -758,6 +759,7 @@ export async function execute(
       "--codex-home <directory>",
       "Codex home (default CODEX_HOME or ~/.codex)",
     );
+  reflectCommands(program, { ctx, dry, done: (value) => (result = value) });
   command(
     "prune",
     "Propose unused skills from measured transcripts; never deletes automatically",

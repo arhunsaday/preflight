@@ -179,7 +179,7 @@ const secretKey =
 const secretValue =
   /(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|https?:\/\/[^/\s:@]+:[^/@\s]+@|(?:Bearer|Basic)\s+[A-Za-z0-9+/_.=-]+|(?:token|password|secret|api[_-]?key)\s*[=:]\s*["']?[A-Za-z0-9_+/.=-]+)/i;
 const envReference = /^\$\{[A-Z][A-Z0-9_]*\}$/;
-function containsSecret(value: string): boolean {
+export function containsSecret(value: string): boolean {
   return secretValue.test(value.replace(/\$\{[A-Z][A-Z0-9_]*\}/g, ""));
 }
 export function secretPaths(value: unknown, path = "$"): string[] {
