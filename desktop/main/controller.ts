@@ -88,6 +88,7 @@ export const allowedCommands = new Set([
   "usage",
   "context",
   "prune",
+  "reflect",
   "share",
   "apply",
   "revoke",
@@ -125,6 +126,10 @@ const reads = new Set([
 ]);
 function isRead(args: string[]) {
   if (reads.has(args[0]!)) return true;
+  // reflect writes reports to .preflight/reflect, and verdict and dismiss
+  // change only Preflight's lesson records. Adding a lesson is previewed.
+  if (args[0] === "reflect")
+    return !(args[1] === "lesson" && args[2] === "add");
   if (["doctor", "verify"].includes(args[0]!))
     return !args.includes("--connect") && !args.includes("--measure");
   if (args[0] === "instructions") return !args.includes("--write");
@@ -378,7 +383,9 @@ export class DesktopController {
     return this.exclusive(async () => {
       const args = validateCommand(input).filter((a) => a !== "--dry-run");
       if (
-        ["usage", "prune"].includes(args[0]!) &&
+        (["usage", "prune"].includes(args[0]!) ||
+          (args[0] === "reflect" &&
+            !["show", "lessons", "lesson"].includes(args[1] ?? ""))) &&
         !this.settings.preferences.readTranscripts
       )
         throw new Error(

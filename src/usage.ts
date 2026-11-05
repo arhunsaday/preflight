@@ -267,7 +267,7 @@ export function repoRoot(
   return result;
 }
 
-async function walk(
+export async function walk(
   dir: string,
   match: (name: string) => boolean,
   after: number,

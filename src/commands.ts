@@ -55,6 +55,7 @@ import { runArena, type ArenaSide } from "./bench-arena.js";
 import { DEFAULT_MAX_CV, DEFAULT_MIN_RUNS } from "./bench-checklist.js";
 import { retrofit } from "./retrofit.js";
 import { skillMode, toggleResources } from "./toggle.js";
+import { reflectCommands } from "./reflect.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
 import { defaultService } from "./auth-client.js";
 import packageJson from "../package.json" with { type: "json" };
@@ -828,6 +829,7 @@ export async function execute(
       "--codex-home <directory>",
       "Codex home (default CODEX_HOME or ~/.codex)",
     );
+  reflectCommands(program, { ctx, dry, done: (value) => (result = value) });
   command(
     "prune",
     "Propose unused skills from measured transcripts; never deletes automatically",

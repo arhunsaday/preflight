@@ -30,6 +30,7 @@ import {
 import type { Workspace } from "../workspace";
 import { humanize, plural, relativeTime, tildify } from "../format";
 import { Badge, Button, Empty, Json, Notice } from "../components/ui";
+import { ReflectPanel } from "./reflect";
 
 export function Projects({ workspace: w }: { workspace: Workspace }) {
   const projects = w.state?.projects ?? [];
@@ -648,6 +649,7 @@ export function Usage({ workspace: w }: { workspace: Workspace }) {
           )}
         </>
       )}
+      {reading && !w.snapshot?.transcriptsOff && <ReflectPanel workspace={w} />}
     </div>
   );
 }

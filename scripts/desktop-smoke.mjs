@@ -50,6 +50,40 @@ await writeFile(
     },
   }) + "\n",
 );
+// A struggling session for Reflect: one command fails four times, and one
+// result holds a fake key that the trajectory must not show.
+const smokeKey = `sk-ant-api03-${"S".repeat(40)}`;
+const struggle = [];
+const at = (minute) => new Date(Date.now() - (60 - minute) * 60000).toISOString();
+const step = (minute, type, content) =>
+  JSON.stringify({
+    type,
+    sessionId: "struggle-session",
+    cwd: project,
+    timestamp: at(minute),
+    message: { content },
+  });
+for (let i = 0; i < 4; i++)
+  struggle.push(
+    step(i * 2, "assistant", [
+      { type: "tool_use", id: `f${i}`, name: "Bash", input: { command: "npm run e2e" } },
+    ]),
+    step(i * 2 + 1, "user", [
+      { type: "tool_result", tool_use_id: `f${i}`, content: "Error: missing browser", is_error: true },
+    ]),
+  );
+struggle.push(
+  step(20, "assistant", [
+    { type: "tool_use", id: "k1", name: "Bash", input: { command: "printenv" } },
+  ]),
+  step(21, "user", [
+    { type: "tool_result", tool_use_id: "k1", content: `KEY=${smokeKey}` },
+  ]),
+);
+await writeFile(
+  join(home, ".claude", "projects", "-smoke", "struggle.jsonl"),
+  struggle.join("\n") + "\n",
+);
 const fixtureSource = resolve("tests/fixtures/catalog");
 const env = {
   ...process.env,
@@ -696,6 +730,59 @@ try {
   );
   await transcripts.click();
   await page.getByText("Cache hit rate", { exact: true }).waitFor();
+  // Reflect: rank, read the redacted trajectory, accept a lesson, judge it.
+  await page
+    .getByRole("button", { name: "Find struggling sessions", exact: true })
+    .click();
+  await page
+    .locator(".reflect-item")
+    .first()
+    .waitFor()
+    .catch(async (e) => {
+      throw new Error(
+        `Reflect ranked no session: ${await page.locator(".page-scroll").innerText()}`,
+        { cause: e },
+      );
+    });
+  await page
+    .getByRole("button", { name: "Open trajectory struggle", exact: true })
+    .click();
+  const trajectory = page.getByLabel("Trajectory", { exact: true });
+  await trajectory.waitFor();
+  const trajectoryText = await trajectory.innerText();
+  assert.ok(trajectoryText.includes("npm run e2e"), "Trajectory shows the command");
+  assert.ok(!trajectoryText.includes(smokeKey), "Trajectory hides the fake key");
+  await page.screenshot({ path: join(temporary, "reflect-trajectory.png") });
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page
+    .getByRole("button", {
+      name: "Accept Document the right way to run `npm run e2e`",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("heading", { name: "Review changes" }).waitFor();
+  await page.getByText("reflect-lessons", { exact: false }).first().waitFor();
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByText("Verdict unknown", { exact: true }).waitFor();
+  // The project has a CLAUDE.md and no AGENTS.md, and the session is
+  // Claude-only, so the lesson goes to CLAUDE.md.
+  assert.ok(
+    (await readFile(join(project, "CLAUDE.md"), "utf8")).includes(
+      "<!-- preflight:begin reflect-lessons -->",
+    ),
+    "Accepting a lesson writes its managed block",
+  );
+  await page
+    .getByRole("button", {
+      name: "Helped: Document the right way to run `npm run e2e`",
+      exact: true,
+    })
+    .click();
+  await page.locator(".reflect .badge", { hasText: "Helped" }).waitFor();
+  await page.screenshot({ path: join(temporary, "reflect.png") });
   await navigate("Discover resources");
   await page
     .getByRole("button", { name: "Search online", exact: true })

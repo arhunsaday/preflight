@@ -4258,3 +4258,68 @@ pre.patch .hunk {
   color: var(--text-2);
   margin-top: 2px;
 }
+
+/* Usage: Reflect panel */
+.reflect-list {
+  display: grid;
+}
+.reflect-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.reflect-item:last-child {
+  border-bottom: 0;
+}
+.reflect-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.reflect-head > svg {
+  color: var(--text-3);
+}
+.reflect-head small {
+  overflow-wrap: anywhere;
+}
+.reflect-reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.reflect-text {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.reflect-rule code {
+  font: 12px/1.6 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reflect-rule {
+  margin: 0;
+}
+.reflect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.reflect-title {
+  margin: 20px 0 10px;
+  font-size: 14px;
+}
+.reflect-trajectory {
+  margin: 0;
+}
+.reflect-head code,
+.reflect-reasons code,
+.reflect-text code {
+  font: 12px var(--mono);
+  overflow-wrap: anywhere;
+}

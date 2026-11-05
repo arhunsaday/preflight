@@ -145,6 +145,7 @@ preview and apply.
 | --- | --- |
 | `usage [--by session\|skill\|project\|model\|day\|agent] [--since 30d] [--until day] [--agent claude-code\|codex\|all] [--project root]` | tokens, cache hit rate and cost estimate from local Claude Code and Codex transcripts; see [Usage](/docs/preflight/usage) |
 | `prune` | propose unused skills (never deletes) |
+| `reflect [--since 30d] [--top 5] [--project root] [--no-write]`, `reflect show <session>`, `reflect lessons`, `reflect lesson add\|verdict\|dismiss` | rank struggling sessions, write redacted trajectories and keep lessons; see [Reflect](/docs/preflight/reflect) |
 | `context [--mode potential\|catalogue] [--agent claude-code\|cursor\|codex] [--scope global\|project]` | estimated instruction size; see [Context map](/docs/preflight/context-map) |
 | `bench scaffold\|run\|compare\|arena` | local A/B runs of two configurations; see [Benchmarks](/docs/preflight/benchmarks) |
 

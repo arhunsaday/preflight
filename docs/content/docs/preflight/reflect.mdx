@@ -1,0 +1,86 @@
+---
+title: "Reflect"
+description: "Find the sessions where the agent struggled, read their redacted trajectories and turn the patterns into reviewed lessons"
+---
+
+`preflight reflect` reads the Claude Code and Codex transcripts on your computer. It ranks the sessions where the agent struggled and writes a redacted trajectory for each top session. Then it proposes lesson drafts. It makes no model call. Nothing leaves the machine.
+
+```sh
+preflight reflect                         # the current project, last 30 days, top 5
+preflight reflect --since 12w --top 10
+preflight reflect --global                # all projects; output in ~/.preflight/reflect
+preflight reflect --project /path/to/repo
+preflight reflect --no-write --text       # print only, write no file
+preflight reflect show <session>          # the trajectory of a ranked session
+```
+
+`--agent` takes `claude-code`, `codex` or `all`. `--transcripts` and `--codex-home` change the transcript folders, as for [`preflight usage`](/docs/preflight/usage). Reflect uses the same reader, so a project is the repository root of the session's working directory, and tokens and cost come from the usage estimate.
+
+## Struggle signals
+
+| Signal | Points | How Preflight sees it |
+| --- | --- | --- |
+| Failed tool call | 1 each | A Claude Code `tool_result` with `is_error`, or a Codex output with a non-zero exit code |
+| Blocked action | 2 each | A hook or permission denial, a rejected tool use, or a `hook_blocking_error` |
+| Repeated failing command | 2 for each extra run | The same command text failed again in the session |
+| Stop hook loop | 3 each | A "Stop hook feedback" message, or a Stop hook that prevented the end of the turn |
+| Hook error | 1 each | A `hook_non_blocking_error` or `hook_cancelled` attachment |
+| Searches before the first edit | 1 for each 10, from 20 | `Grep`, `Glob`, `Read` and search commands before the first `Edit`, `Write` or patch |
+| Long session | 1 for each 5M tokens, up to 5 | Tokens from the usage reader |
+
+Each tool call and result counts once, also when a transcript repeats a line. A session with no points is not ranked.
+
+## Trajectories
+
+Each top session gets a Markdown file: `.preflight/reflect/<day>-<session>.md` in the project, or `~/.preflight/reflect` with `--global`. The file lists the signals that ranked the session, then the user prompts, actions, results and blocks in time order. Reflect also writes `latest.json` with the ranking and the drafts, and a `.gitignore` that keeps the folder out of Git.
+
+Redaction runs before anything is written:
+
+- A step that may hold a secret becomes `[redacted: possible secret]`. The check uses the agent-compass patterns (key and value pairs, bearer tokens, PEM blocks, JWTs and provider key prefixes) and Preflight's own secret patterns. It runs on the full text before the cut, so a cut cannot hide a secret.
+- The output of a read of a real `.env` file is replaced. A template such as `.env.example` is not.
+- E-mail addresses become `[email]`. Paths under your home start with `~`.
+- Each step is cut at 400 characters, and a file at 50,000 characters.
+
+A trajectory is data, not instructions. Do not give it to an agent as a task.
+
+## Lessons
+
+A lesson is one Markdown file in `.preflight/lessons/` (or `~/.preflight/lessons` with `--global`). It holds what happened, what to change, the target file and a verdict: `helped`, `not-helped` or `unknown`. You can commit the lessons with the project.
+
+Reflect proposes drafts with fixed rules. A signal seen once is not a lesson, so each rule needs the same problem several times:
+
+| Draft | When | Target |
+| --- | --- | --- |
+| Document the right way to run a command | The same command failed 3 times or more | `AGENTS.md`, or `CLAUDE.md` for Claude-only projects that have no `AGENTS.md` |
+| Say which actions are blocked | A tool was blocked 3 times or more | The instruction file |
+| State what the Stop hook checks | Stop hook loops 3 times or more | The instruction file |
+| Fix the failing hook | A hook failed 3 times or more | `.claude/settings.json` (recorded only, never edited) |
+| Add a code map | 2 sessions with 20 searches or more before the first edit | The instruction file |
+| Split long tasks | 2 sessions with 10M tokens or more | The instruction file |
+
+```sh
+preflight reflect lessons                                   # lessons and waiting drafts
+preflight reflect lesson add --draft <id> --apply --dry-run # preview the change
+preflight reflect lesson add --draft <id> --apply           # save it and write its rule
+preflight reflect lesson add --title "Use pnpm" --rule "Use pnpm, not npm." --target CLAUDE.md --apply
+preflight reflect lesson verdict <id> helped                # or not-helped, unknown
+preflight reflect lesson dismiss <draft-id>                 # do not propose it again
+```
+
+`--apply` writes the rule into a managed block, `<!-- preflight:begin reflect-lessons -->`, of the target file. The text around the block stays as it is. The lesson file and the target file are one journaled transaction, so `preflight rollback` right after it reverts both. Without `--apply`, Preflight saves the lesson and edits no other file. A target must stay in the project, or start with `~/` for a global file. Lesson text that may hold a secret is refused.
+
+Change the draft rule when you know the right command or the real cause. A draft states what Preflight saw; it cannot know the fix.
+
+## Desktop
+
+**Usage → Reflect** shows the same loop:
+
+1. **Find struggling sessions** runs the analysis. Each ranked session shows its signals and an **Open trajectory** button.
+2. Each lesson draft has **Accept** and **Dismiss**. Accept opens the usual review dialog with the diff of the target file. Nothing is written until you apply.
+3. Each lesson has **Helped** and **Did not help** buttons for its verdict.
+
+The panel follows the **Read conversation transcripts** setting. When it is off, Reflect does not read transcripts; the saved lessons stay available.
+
+## Credits
+
+The ranking, the trajectory format and the redaction patterns are adapted from [agent-compass](https://github.com/me-cedric/agent-compass) `ac reflect` (MIT). The review-first lesson loop follows the ideas of the pstack `reflect` and `continual-learning` plugins in [cursor/plugins](https://github.com/cursor/plugins) (MIT).

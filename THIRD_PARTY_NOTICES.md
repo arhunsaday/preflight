@@ -15,6 +15,9 @@ license. Each adapted file names its source in a header comment.
     measurement, plugin and MCP budgets).
   - The listing-line estimate of `engine/tokens.mjs` informs `listingTokens`
     in `src/context-map.ts`.
+  - `engine/reflect.mjs` and `scripts/lib/redact.mjs` → `src/reflect.ts`
+    (session ranking by trouble signals, redacted trajectories, redaction
+    patterns).
 
 ```
 MIT License
@@ -51,6 +54,10 @@ SOFTWARE.
 - Adapted: the questions of the `benchmark-checklist` skill (repetitions,
   spread, limiter, did the work happen, same setup on both sides) became the
   result checklist in `src/bench-checklist.ts`.
+- The `reflect` skill of pstack and the `continual-learning` plugin
+  (cursor/plugins, MIT, Copyright (c) 2026 Cursor) inform the lesson loop of
+  `preflight reflect`: a one-off is not a lesson, and no lesson is applied
+  without review. No code copied.
 
 ```
 MIT License
