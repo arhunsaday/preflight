@@ -1,9 +1,12 @@
 import { z } from "zod";
 import { serviceUrl } from "./sharing.js";
-const id = z.string().min(1).max(200);
-const role = z.enum(["owner", "admin", "member"]);
+const id = z.string().min(1).max(200).regex(/^[A-Za-z0-9_:-]+$/);
+/** Clerk Organization roles: `admin` (org:admin) or `member` (org:member). */
+const role = z.enum(["admin", "member"]);
 export const CloudOperation = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("shares") }).strict(),
+  z.object({ action: z.literal("shares"), team: id.optional() }).strict(),
+  z.object({ action: z.literal("tokens") }).strict(),
+  z.object({ action: z.literal("revoke-token"), tokenId: z.uuid() }).strict(),
   z.object({ action: z.literal("organizations") }).strict(),
   z
     .object({
@@ -29,7 +32,11 @@ export const CloudOperation = z.discriminatedUnion("action", [
   z.object({ action: z.literal("accept"), invitationId: id }).strict(),
   z.object({ action: z.literal("reject"), invitationId: id }).strict(),
   z
-    .object({ action: z.literal("cancel-invitation"), invitationId: id })
+    .object({
+      action: z.literal("cancel-invitation"),
+      invitationId: id,
+      organizationId: id.optional(),
+    })
     .strict(),
   z
     .object({
@@ -49,81 +56,84 @@ export const CloudOperation = z.discriminatedUnion("action", [
   z.object({ action: z.literal("leave"), organizationId: id }).strict(),
 ]);
 export type CloudOperation = z.infer<typeof CloudOperation>;
+const e = encodeURIComponent;
+function route(operation: CloudOperation): {
+  method: "GET" | "POST" | "PATCH" | "DELETE";
+  path: string;
+  body?: unknown;
+} {
+  switch (operation.action) {
+    case "shares":
+      return {
+        method: "GET",
+        path: "/api/shares" + (operation.team ? `?team=${e(operation.team)}` : ""),
+      };
+    case "tokens":
+      return { method: "GET", path: "/api/tokens" };
+    case "revoke-token":
+      return { method: "DELETE", path: `/api/tokens/${e(operation.tokenId)}` };
+    case "organizations":
+      return { method: "GET", path: "/api/orgs" };
+    case "create-organization":
+      return {
+        method: "POST",
+        path: "/api/orgs",
+        body: { name: operation.name, slug: operation.slug },
+      };
+    case "organization":
+      return { method: "GET", path: `/api/orgs/${e(operation.organizationId)}` };
+    case "invite":
+      return {
+        method: "POST",
+        path: `/api/orgs/${e(operation.organizationId)}/invitations`,
+        body: { email: operation.email, role: operation.role },
+      };
+    case "invitations":
+      return {
+        method: "GET",
+        path: `/api/orgs/${e(operation.organizationId)}/invitations`,
+      };
+    case "incoming":
+      return { method: "GET", path: "/api/invitations" };
+    case "accept":
+    case "reject":
+      return {
+        method: "POST",
+        path: `/api/invitations/${e(operation.invitationId)}/${operation.action}`,
+      };
+    case "cancel-invitation":
+      return {
+        method: "DELETE",
+        path: operation.organizationId
+          ? `/api/orgs/${e(operation.organizationId)}/invitations/${e(operation.invitationId)}`
+          : `/api/invitations/${e(operation.invitationId)}`,
+      };
+    case "update-role":
+      return {
+        method: "PATCH",
+        path: `/api/orgs/${e(operation.organizationId)}/members/${e(operation.memberId)}`,
+        body: { role: operation.role },
+      };
+    case "remove-member":
+      return {
+        method: "DELETE",
+        path: `/api/orgs/${e(operation.organizationId)}/members/${e(operation.memberId)}`,
+      };
+    case "leave":
+      return {
+        method: "POST",
+        path: `/api/orgs/${e(operation.organizationId)}/leave`,
+      };
+  }
+}
 export async function cloudRequest(
   service: string,
   token: string,
   input: CloudOperation,
 ) {
-  const operation = CloudOperation.parse(input);
-  let path: string;
-  let body: unknown;
-  const prefix = "/api/auth/organization/";
-  switch (operation.action) {
-    case "shares":
-      path = "/api/shares";
-      break;
-    case "organizations":
-      path = prefix + "list";
-      break;
-    case "create-organization":
-      path = prefix + "create";
-      body = { name: operation.name, slug: operation.slug };
-      break;
-    case "organization":
-      path =
-        prefix +
-        "get-full-organization?organizationId=" +
-        encodeURIComponent(operation.organizationId);
-      break;
-    case "invite":
-      path = prefix + "invite-member";
-      body = {
-        organizationId: operation.organizationId,
-        email: operation.email,
-        role: operation.role,
-      };
-      break;
-    case "invitations":
-      path =
-        prefix +
-        "list-invitations?organizationId=" +
-        encodeURIComponent(operation.organizationId);
-      break;
-    case "incoming":
-      path = prefix + "list-user-invitations";
-      break;
-    case "accept":
-    case "reject":
-    case "cancel-invitation":
-      path =
-        prefix +
-        (operation.action === "cancel-invitation"
-          ? "cancel-invitation"
-          : operation.action + "-invitation");
-      body = { invitationId: operation.invitationId };
-      break;
-    case "update-role":
-      path = prefix + "update-member-role";
-      body = {
-        organizationId: operation.organizationId,
-        memberId: operation.memberId,
-        role: operation.role,
-      };
-      break;
-    case "remove-member":
-      path = prefix + "remove-member";
-      body = {
-        organizationId: operation.organizationId,
-        memberIdOrEmail: operation.memberId,
-      };
-      break;
-    case "leave":
-      path = prefix + "leave";
-      body = { organizationId: operation.organizationId };
-      break;
-  }
+  const { method, path, body } = route(CloudOperation.parse(input));
   const response = await fetch(`${serviceUrl(service)}${path}`, {
-    method: body ? "POST" : "GET",
+    method,
     headers: {
       Authorization: `Bearer ${token}`,
       ...(body ? { "Content-Type": "application/json" } : {}),
@@ -131,13 +141,12 @@ export async function cloudRequest(
     ...(body ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(15000),
   });
-  const value: unknown = await response.json();
+  const value: unknown =
+    response.status === 204 ? { ok: true } : await response.json().catch(() => null);
   if (!response.ok) {
-    const error = z
-      .object({ message: z.string().optional(), error: z.string().optional() })
-      .safeParse(value);
+    const error = z.object({ error: z.string() }).safeParse(value);
     throw new Error(
-      `Cloud operation failed (HTTP ${response.status}): ${error.success ? (error.data.message ?? error.data.error ?? "Request failed") : "Request failed"}`,
+      `Cloud operation failed (HTTP ${response.status}): ${error.success ? error.data.error : "Request failed"}`,
     );
   }
   return value;

@@ -38,7 +38,10 @@ const Settings = z.object({
       service: z.string(),
       ownerId: z.string(),
       encryptedToken: z.string().optional(),
-      authentication: z.enum(["session", "deployment-token"]).optional(),
+      // "session" and "deployment-token" are pre-Clerk values, never restored.
+      authentication: z
+        .enum(["token", "session", "deployment-token"])
+        .optional(),
       user: z
         .object({ id: z.string(), name: z.string(), email: z.string() })
         .optional(),
@@ -175,7 +178,7 @@ export class DesktopController {
         service: string;
         token: string;
         ownerId: string;
-        authentication?: "session" | "deployment-token";
+        authentication?: "token";
         user?: { id: string; name: string; email: string };
         expiresAt?: string;
       }
@@ -208,9 +211,7 @@ export class DesktopController {
         service: this.settings.account?.service ?? "",
         ownerId: this.settings.account?.ownerId ?? "",
         storage: this.storage,
-        authentication:
-          this.settings.account?.authentication ??
-          (this.auth ? "deployment-token" : "none"),
+        authentication: this.auth ? "token" : "none",
         ...(this.settings.account?.user
           ? { user: this.settings.account.user }
           : {}),
@@ -440,7 +441,7 @@ export class DesktopController {
         service: value.service,
         ownerId: value.ownerId,
         ...(encryptedToken ? { encryptedToken } : {}),
-        authentication: value.authentication ?? "deployment-token",
+        authentication: "token",
         ...(value.user ? { user: value.user } : {}),
         ...(value.expiresAt ? { expiresAt: value.expiresAt } : {}),
       };
@@ -452,15 +453,13 @@ export class DesktopController {
     const account = this.settings.account;
     if (account?.expiresAt && Date.parse(account.expiresAt) <= Date.now())
       return;
-    if (account?.encryptedToken) {
+    if (account?.encryptedToken && account.authentication === "token") {
       try {
         this.auth = {
           service: account.service,
           ownerId: account.ownerId,
           token: decrypt(account.encryptedToken),
-          ...(account.authentication
-            ? { authentication: account.authentication }
-            : {}),
+          authentication: "token",
           ...(account.user ? { user: account.user } : {}),
           ...(account.expiresAt ? { expiresAt: account.expiresAt } : {}),
         };

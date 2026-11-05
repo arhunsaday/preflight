@@ -26,6 +26,7 @@ export function makeShare(
     ownerId: string;
     visibility?: "public" | "unlisted";
     expiresAt?: string;
+    team?: string;
   },
 ) {
   return SharePayloadSchema.parse({

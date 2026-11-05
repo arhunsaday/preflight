@@ -11,13 +11,16 @@ import {
 import { installMenu } from "./menu.js";
 import { cloudRequest, CloudOperation } from "../../src/cloud-client.js";
 import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import {
-  beginDeviceSignIn,
-  pollDeviceSignIn,
+  AccountIdentity,
   accountIdentity,
+  loopback,
+  pkce,
+  redeemCode,
+  signInUrl,
   signOut,
 } from "../../src/auth-client.js";
-import type { DeviceAuthorization } from "../../src/auth-client.js";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -175,89 +178,110 @@ async function boot() {
   );
   handle("disconnect", async () => {
     const session = controller.session();
-    if (session?.authentication === "session")
-      await signOut(session.service, session.token);
+    if (session) await signOut(session.service, session.token).catch(() => {});
     return controller.disconnect();
   });
+  const secureStorage = () =>
+    safeStorage.isEncryptionAvailable() &&
+    (process.platform !== "linux" ||
+      safeStorage.getSelectedStorageBackend() !== "basic_text");
+  // Browser sign-in: loopback redirect on 127.0.0.1 with PKCE, then the code
+  // is redeemed here for a Preflight API token that never reaches the renderer.
   const pendingSignIns = new Map<
     string,
     {
       service: string;
-      device: DeviceAuthorization;
+      verifier: string;
+      server: Awaited<ReturnType<typeof loopback>>;
       expiresAt: number;
+      code?: string;
       token?: string;
-      sessionExpiresAt?: string;
     }
   >();
   handle("beginSignIn", async (input) => {
     const service = serviceUrl(z.string().max(2000).parse(input));
-    const device = await beginDeviceSignIn(service, "preflight-desktop");
-    const id = randomUUID(),
-      expiresAt = Date.now() + device.expires_in * 1000;
     for (const [key, pending] of pendingSignIns)
-      if (pending.expiresAt <= Date.now()) pendingSignIns.delete(key);
-    pendingSignIns.set(id, { service, device, expiresAt });
-    await shell.openExternal(device.verification_uri_complete);
-    return {
-      id,
-      userCode: device.user_code,
-      verificationUri: device.verification_uri_complete,
-      interval: device.interval,
-      expiresAt,
-    };
+      if (pending.expiresAt <= Date.now()) {
+        pending.server.close();
+        pendingSignIns.delete(key);
+      }
+    const { verifier, challenge, state } = pkce();
+    const expiresAt = Date.now() + 5 * 60_000;
+    const server = await loopback(state, 5 * 60_000);
+    const id = randomUUID();
+    const pending: {
+      service: string;
+      verifier: string;
+      server: typeof server;
+      expiresAt: number;
+      code?: string;
+    } = { service, verifier, server, expiresAt };
+    server.code.then(
+      (code) => {
+        pending.code = code;
+      },
+      () => {},
+    );
+    pendingSignIns.set(id, pending);
+    const verificationUri = signInUrl(service, {
+      redirectUri: server.redirectUri,
+      state,
+      challenge,
+      client: "desktop",
+    });
+    await shell.openExternal(verificationUri);
+    return { id, verificationUri, interval: 1, expiresAt };
   });
   handle("pollSignIn", async (input) => {
     const id = z.string().uuid().parse(input),
       pending = pendingSignIns.get(id);
     if (!pending || pending.expiresAt <= Date.now()) {
+      pending?.server.close();
       pendingSignIns.delete(id);
       throw new Error("Sign-in request expired; start again.");
     }
+    if (!pending.code) return { status: "pending" as const, interval: 1 };
     if (!pending.token) {
-      const reply = await pollDeviceSignIn(
-        pending.service,
-        "preflight-desktop",
-        pending.device,
-      );
-      if (reply.status === "pending") return reply;
-      pending.token = reply.token;
-      pending.sessionExpiresAt = reply.expiresAt;
+      const grant = await redeemCode(pending.service, {
+        code: pending.code,
+        verifier: pending.verifier,
+        redirectUri: pending.server.redirectUri,
+        label: `Preflight desktop on ${hostname()}`,
+      });
+      pending.token = grant.token;
     }
-    const identity = await accountIdentity(pending.service, pending.token);
+    const token = pending.token;
+    const identity = await accountIdentity(pending.service, token);
     if (pendingSignIns.get(id) !== pending) {
-      await signOut(pending.service, pending.token).catch(() => {});
+      await signOut(pending.service, token).catch(() => {});
       throw new Error("Sign-in was cancelled.");
     }
-    const secure =
-      safeStorage.isEncryptionAvailable() &&
-      (process.platform !== "linux" ||
-        safeStorage.getSelectedStorageBackend() !== "basic_text");
     await controller.setAccount(
       {
         service: pending.service,
-        token: pending.token,
+        token,
         ownerId: identity.ownerId,
-        authentication: identity.authentication,
+        authentication: "token",
         ...(identity.user ? { user: identity.user } : {}),
-        expiresAt: identity.expiresAt ?? pending.sessionExpiresAt!,
+        ...(identity.expiresAt ? { expiresAt: identity.expiresAt } : {}),
       },
-      secure
-        ? safeStorage.encryptString(pending.token).toString("base64")
+      secureStorage()
+        ? safeStorage.encryptString(token).toString("base64")
         : undefined,
     );
     if (pendingSignIns.get(id) !== pending) {
-      if (controller.session()?.token === pending.token)
-        await controller.disconnect();
-      await signOut(pending.service, pending.token).catch(() => {});
+      if (controller.session()?.token === token) await controller.disconnect();
+      await signOut(pending.service, token).catch(() => {});
       throw new Error("Sign-in was cancelled.");
     }
     pendingSignIns.delete(id);
-    return { status: "connected" };
+    return { status: "connected" as const };
   });
   handle("cancelSignIn", async (input) => {
     const id = z.string().uuid().parse(input);
     const pending = pendingSignIns.get(id);
     pendingSignIns.delete(id);
+    pending?.server.close();
     if (pending?.token)
       await signOut(pending.service, pending.token).catch(() => {});
   });
@@ -267,10 +291,8 @@ async function boot() {
   handle("cloud", async (input) => {
     const operation = CloudOperation.parse(input);
     const session = controller.session();
-    if (!session || session.authentication !== "session")
-      throw new Error(
-        "Sign in with your browser to manage cloud organizations.",
-      );
+    if (!session)
+      throw new Error("Sign in with your browser to manage cloud organizations.");
     const value = await cloudRequest(session.service, session.token, operation);
     if (controller.session()?.token !== session.token)
       throw new Error(
@@ -292,18 +314,19 @@ async function boot() {
     });
     if (!response.ok)
       throw new Error(
-        `Connection refused (HTTP ${response.status}). Check the service URL and owner token.`,
+        `Connection refused (HTTP ${response.status}). Check the service URL and API token.`,
       );
-    const { ownerId } = z
-      .object({ ownerId: z.string().min(1) })
-      .parse(await response.json());
-    const secure =
-      safeStorage.isEncryptionAvailable() &&
-      (process.platform !== "linux" ||
-        safeStorage.getSelectedStorageBackend() !== "basic_text");
+    const identity = AccountIdentity.parse(await response.json());
     return controller.setAccount(
-      { service, ownerId, token: value.token },
-      secure
+      {
+        service,
+        ownerId: identity.ownerId,
+        token: value.token,
+        authentication: "token",
+        ...(identity.user ? { user: identity.user } : {}),
+        ...(identity.expiresAt ? { expiresAt: identity.expiresAt } : {}),
+      },
+      secureStorage()
         ? safeStorage.encryptString(value.token).toString("base64")
         : undefined,
     );
