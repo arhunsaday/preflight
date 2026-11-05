@@ -620,6 +620,7 @@ const compact = (n: number) =>
       ? `${Math.round(n / 1e3)}k`
       : String(n);
 const times = (n: number) => (n === 1 ? "once" : `${n} times`);
+const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const SEARCH_LIMIT = 20;
 const LONG_TOKENS = 5_000_000;
 
@@ -650,12 +651,14 @@ export function scoreSession(
   for (const [command, c] of repeated)
     reasons.push(`\`${redact(command, homes, 80)}\` failed ${times(c.count)}`);
   const other = s.failed - repeated.reduce((n, [, c]) => n + c.count, 0);
-  if (other > 0) reasons.push(`${other} other tool calls failed`);
+  if (other > 0) reasons.push(`${count(other, "other tool call")} failed`);
   if (s.blocked)
-    reasons.push(`${s.blocked} actions blocked by a hook or a permission rule`);
+    reasons.push(
+      `${count(s.blocked, "action")} blocked by a hook or a permission rule`,
+    );
   if (s.stopLoops)
     reasons.push(`a Stop hook sent the work back ${times(s.stopLoops)}`);
-  if (s.hookErrors) reasons.push(`${s.hookErrors} hook errors`);
+  if (s.hookErrors) reasons.push(count(s.hookErrors, "hook error"));
   if (searchPoints)
     reasons.push(`${s.searchesBeforeEdit} searches before the first edit`);
   if (tokenPoints)

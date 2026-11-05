@@ -395,3 +395,40 @@ it("runs the lesson lifecycle: draft, preview, apply, verdict, dismiss", async (
     execute(["reflect", "lesson", "verdict", failure.id, "maybe"], context),
   ).rejects.toThrow(/Verdict/);
 });
+
+it("previews lesson writes in the desktop and respects the transcript setting", async () => {
+  const { DesktopController } = await import("../desktop/main/controller.js");
+  const f = await fixture();
+  const controller = new DesktopController(
+    join(f.root, "desktop-state.json"),
+    f.home,
+    async (args, context) => execute(args, context),
+  );
+  await controller.load();
+  await controller.addProject(f.project);
+  const run = await controller.prepare(["reflect"]);
+  expect(run.kind).toBe("result");
+  const draft = (run.value as ReflectReport).drafts.find(
+    (d) => d.kind === "repeated-failure",
+  )!;
+  const preview = await controller.prepare([
+    "reflect",
+    "lesson",
+    "add",
+    "--draft",
+    draft.id,
+    "--apply",
+  ]);
+  expect(preview.kind).toBe("preview");
+  await expect(
+    readFile(join(f.project, "AGENTS.md"), "utf8"),
+  ).rejects.toThrow();
+  await controller.confirm(preview.receipt!);
+  expect(await readFile(join(f.project, "AGENTS.md"), "utf8")).toContain(
+    "reflect-lessons",
+  );
+  await controller.setPreferences({ readTranscripts: false });
+  await expect(controller.prepare(["reflect"])).rejects.toThrow(/turned off/);
+  const listed = await controller.prepare(["reflect", "lessons"]);
+  expect((listed.value as { lessons: unknown[] }).lessons).toHaveLength(1);
+});

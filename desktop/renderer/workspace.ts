@@ -41,6 +41,7 @@ const describe = (args: string[]) => {
     rollback: "Last change rolled back",
     recover: "Interrupted operation recovered",
     apply: "Shared setup imported",
+    reflect: "Lesson saved",
     share: "Setup shared",
     revoke: "Share revoked",
     profiles: sub === "switch" ? "Profile switched" : "Profile created",
