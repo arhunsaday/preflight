@@ -168,14 +168,14 @@ try {
     .click();
   await page.locator('html[data-theme="light"]').waitFor();
   assert.ok(
-    (await page.locator('.nav-semantic-icon [opacity="0.2"]').count()) > 0,
-    "Navigation uses real duotone layers",
+    (await page.locator(".nav-item svg.lucide.nav-semantic-icon").count()) > 0,
+    "Navigation uses the monochrome Lucide set",
   );
   assert.ok((await page.locator(".resource-glyph .semantic-icon").count()) > 0);
   assert.ok((await page.locator(".row-harnesses .harness-badge").count()) > 0);
   await page.screenshot({ path: join(temporary, "skills.png") });
   await page.screenshot({
-    path: join(temporary, "duotone-light.png"),
+    path: join(temporary, "icons-light.png"),
     animations: "disabled",
   });
   await page
@@ -183,7 +183,7 @@ try {
     .click();
   await page.locator('html[data-theme="dark"]').waitFor();
   await page.screenshot({
-    path: join(temporary, "duotone-dark.png"),
+    path: join(temporary, "icons-dark.png"),
     animations: "disabled",
   });
   await page

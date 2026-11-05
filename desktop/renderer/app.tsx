@@ -16,7 +16,6 @@ import {
   Settings2,
   ArrowDownToLine,
   RefreshCw,
-  Circle,
   X,
   Search,
   Rocket,
@@ -31,11 +30,14 @@ import {
   RotateCw,
   ChevronRight,
   ChevronsUpDown,
+  CircleCheck,
+  TriangleAlert,
+  OctagonX,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useWorkspace, availableResources } from "./workspace";
 import { useTheme } from "./theme";
-import { initials, isTyping, plural } from "./format";
+import { initials, isTyping, plural, tildify } from "./format";
 import { Overview } from "./views/overview";
 import { Resources } from "./views/resources";
 import {
@@ -57,30 +59,46 @@ import { OutcomeDialog } from "./components/outcome";
 import { CommandPalette, type PaletteEntry } from "./components/palette";
 import type { DesktopCommand } from "../protocol";
 
-/** The app icon's plane, redrawn for 28px: cropped tight, heavier stroke, theme ink. */
+/**
+ * The Preflight mark (assets/brand/logo.svg): an attitude indicator whose
+ * horizon carries the checklist tick, with the beacon index at 12 o'clock.
+ */
 function BrandMark() {
   return (
     <svg
       className="brand-mark"
-      viewBox="100 100 824 824"
-      width={28}
-      height={28}
+      viewBox="88 24 848 896"
+      width={20}
+      height={21}
       aria-hidden="true"
     >
-      <rect x="100" y="100" width="824" height="824" rx="210" />
-      <g
+      <clipPath id="brand-dial">
+        <circle cx="512" cy="540" r="372" />
+      </clipPath>
+      <g clipPath="url(#brand-dial)">
+        <rect width="1024" height="1024" fill="#13707a" />
+        <path d="M0 676 L1024 500 L1024 1024 L0 1024Z" fill="#0a3b43" />
+      </g>
+      <path
+        d="M512 52 L570 134 L454 134Z"
+        fill="#f0a04a"
+        stroke="#f0a04a"
+        strokeWidth="24"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M296 566 L444 700 L768 364"
         fill="none"
-        strokeWidth="64"
-        transform="translate(512 512) scale(0.84) translate(-512 -512)"
+        stroke="#f3f1ea"
+        strokeWidth="112"
         strokeLinecap="round"
         strokeLinejoin="round"
-      >
-        <path d="M742,274 L670,474 L714,654 L656,712 L556,514 L444,626 L452,706 L406,752 L350,646 L244,590 L290,544 L370,552 L482,440 L284,340 L342,282 L522,326 L722,254 Z" />
-      </g>
+      />
     </svg>
   );
 }
-const mod = navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl+";
+const mac = navigator.platform.toLowerCase().includes("mac");
+const mod = mac ? "⌘" : "Ctrl+";
 
 interface NavItem {
   id: string;
@@ -115,6 +133,8 @@ export function App() {
   const resources = availableResources(w.snapshot);
   const errors =
     w.snapshot?.findings.filter((f) => f.severity === "error").length ?? 0;
+  const warnings =
+    w.snapshot?.findings.filter((f) => f.severity === "warning").length ?? 0;
   const groups: { label: string; items: NavItem[] }[] = [
     {
       label: "Configuration",
@@ -373,7 +393,9 @@ export function App() {
     e.startsWith("Configuration:"),
   );
   return (
-    <div className={`app-shell ${w.busy ? "is-busy" : ""}`}>
+    <div
+      className={`app-shell ${mac ? "mac" : ""} ${w.busy ? "is-busy" : ""}`}
+    >
       <aside className="sidebar">
         <div className="brand">
           <BrandMark />
@@ -417,7 +439,11 @@ export function App() {
             )}
           </select>
         </div>
-        <button className="sidebar-search" onClick={() => setPalette(true)}>
+        <button
+          className="sidebar-search"
+          title={`Search (${mod}K)`}
+          onClick={() => setPalette(true)}
+        >
           <Search size={14} />
           <span>Search</span>
           <kbd>{mod}K</kbd>
@@ -434,7 +460,7 @@ export function App() {
                   onClick={() => navigate(item.id)}
                   aria-current={view === item.id ? "page" : undefined}
                   title={
-                    item.key ? `${item.label} (${mod}${item.key})` : undefined
+                    item.key ? `${item.label} (${mod}${item.key})` : item.label
                   }
                 >
                   <NavigationIcon id={item.id} fallback={item.icon} />
@@ -457,6 +483,7 @@ export function App() {
             aria-label="Account"
             aria-current={view === "account" ? "page" : undefined}
             className="account-chip"
+            title="Account"
             disabled={!!w.busy}
             onClick={() => navigate("account")}
           >
@@ -494,6 +521,11 @@ export function App() {
             </span>
             <ChevronRight size={14} />
             <h1>{current.label}</h1>
+            {w.snapshot && (
+              <code className="toolbar-path" title={w.snapshot.root}>
+                {tildify(w.snapshot.root, w.snapshot.home)}
+              </code>
+            )}
           </nav>
           <div className="toolbar-actions">
             {w.busy ? (
@@ -623,16 +655,37 @@ export function App() {
             <Console workspace={w} />
           )}
         </div>
-        <footer className="statusbar">
-          <span>
-            <Circle size={8} fill="currentColor" />
-            {global
-              ? "Editing global configuration · all projects"
-              : `Editing project configuration · ${active?.name ?? ""}`}
+        <footer className="statusbar" aria-label="Workspace status">
+          <span className="status-scope">
+            {global ? <Globe size={12} /> : <FolderOpen size={12} />}
+            {global ? "global" : `project · ${active?.name ?? ""}`}
           </span>
+          {w.snapshot?.config && (
+            <span>profile {w.snapshot.config.activeProfile}</span>
+          )}
           <span>
             {plural(w.snapshot?.resources.length ?? 0, "managed resource")}
           </span>
+          {w.snapshot && (
+            <span
+              className={
+                errors ? "status-error" : warnings ? "status-warn" : "status-ok"
+              }
+            >
+              {errors ? (
+                <OctagonX size={12} />
+              ) : warnings ? (
+                <TriangleAlert size={12} />
+              ) : (
+                <CircleCheck size={12} />
+              )}
+              {errors
+                ? `doctor: ${plural(errors, "error")}`
+                : warnings
+                  ? `doctor: ${plural(warnings, "warning")}`
+                  : "doctor: clear"}
+            </span>
+          )}
           <button onClick={() => navigate("console")}>
             <Terminal size={12} />
             CLI parity
