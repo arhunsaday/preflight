@@ -10,7 +10,11 @@ CLI with an Ink terminal interface and an Electron [desktop app](/docs/preflight
 
 ## The core loop
 
+Preflight ships no skills, plugins or loadouts of its own. Point it at a
+content repository first, see [Sources](/docs/preflight/sources):
+
 ```sh
+preflight source add github:arhunsaday/agent-kit@main
 preflight search test                      # find a resource in the catalogue
 preflight catalog-inspect skill:ponytail   # read what it contains and asks for
 preflight catalog-add skill:ponytail --dry-run
@@ -19,10 +23,10 @@ preflight verify skill:ponytail            # check it is wired and healthy
 preflight rollback                         # reverse the latest transaction
 ```
 
-Nine resource types are managed: skills, MCP servers, subagents, hooks, slash
-commands, status lines, plugins, prompts and tools. Claude Code and Cursor have
-native adapters; everything else stays inspectable and is flagged as
-catalogued only.
+Ten resource types are managed: skills, MCP servers, subagents, hooks, slash
+commands, status lines, plugins, instructions, prompts and tools. Claude Code,
+Codex and Cursor have native adapters; everything else stays inspectable and is
+flagged as catalogued only.
 
 ## State
 

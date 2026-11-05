@@ -1,0 +1,109 @@
+---
+title: "Sources"
+description: "Where the catalogue, plugins and loadouts come from"
+---
+
+Preflight is the tool only. The npm package and the desktop app contain no
+skills, plugins, hooks, loadouts or instructions. They come from **content
+sources**: repositories you add once, which `search`, `catalog-add`,
+`loadouts` and the desktop Discover and Loadouts views then read.
+
+An example source is [agent-kit](https://github.com/arhunsaday/agent-kit): 51
+skills, 12 Claude Code plugins and mods, hooks, subagents, a status line, MCP
+templates, a global `CLAUDE.md` and six loadouts.
+
+## Add, list, update, remove
+
+```sh
+preflight source add github:arhunsaday/agent-kit@main   # pinned to main's commit today
+preflight source add github:arhunsaday/agent-kit@v1.0.0 --name kit
+preflight source add ~/Repos/agent-kit                  # a local folder, read in place
+preflight source list                                    # counts, and the commit in use
+preflight source show agent-kit                          # what one source provides
+preflight source update agent-kit                        # move to the ref's current commit
+preflight source update agent-kit --ref v1.1.0           # move to another ref
+preflight source remove agent-kit
+```
+
+Every command accepts `--dry-run`. In the desktop app, **Discover > Sources**
+does the same through the usual preview and confirmation.
+
+| Kind | Spec | How it is read |
+| --- | --- | --- |
+| GitHub | `github:owner/repo@ref` or `https://github.com/owner/repo` | The ref (branch, tag or commit; `main` by default) is resolved to a commit when you add the source. That commit's tarball is downloaded once into `~/.preflight/sources/<name>/<commit>/`. Nothing changes until you run `source update`. |
+| Local | `./path`, `~/path`, `/abs/path` | Read in place on every command, so edits show at once. |
+
+Sources are per user, stored in `~/.preflight/sources.json`, and shared by every
+project and the global workspace. Set `GITHUB_TOKEN` to raise GitHub's rate
+limit or to read a private repository.
+
+## What a source provides
+
+A source with a `catalog/index.json` is read from that file. Without one,
+Preflight scans the folder using the layout below. Each resource is tagged
+`source:<name>`, which the CLI output and the desktop show; when two sources
+have the same id, the source added first wins and the other is reported.
+
+| Path in the repository | Becomes |
+| --- | --- |
+| `skills/<category>/<name>/SKILL.md` (with its files) | `skill` |
+| `claude/agents/*.md`, `claude/commands/*.md` | `subagent`, `command` |
+| `claude/settings.base.json` hooks, with `claude/hooks/*.sh` | `hook` (Preflight writes the script) |
+| `claude/settings.base.json` statusLine, with `claude/statusline/*.sh` | `statusline` |
+| `claude/mcp.json` `mcpServers` | `mcp` templates (`${VAR}` placeholders) |
+| `claude/CLAUDE.md` | `instructions` for `~/.claude/CLAUDE.md` |
+| `prompts/*.md`, `**/instincts/*.md` | `prompt` |
+| `.claude-plugin/marketplace.json` | `plugin`, named `plugin@marketplace` |
+| `loadouts/loadouts.json` | loadouts and presets |
+
+Loadouts with the same name in two sources are picked as `source/name`, for
+example `preflight loadouts install agent-kit/base`.
+
+## Instructions
+
+An `instructions` resource is written as a marked block:
+
+```md
+<!-- preflight:begin instructions:claude-global -->
+...
+<!-- preflight:end instructions:claude-global -->
+```
+
+in `~/.claude/CLAUDE.md` or the project's `CLAUDE.md` for Claude Code, in
+`AGENTS.md` (`~/.codex/AGENTS.md` globally) for Codex, and as an always-applied
+rule file `.cursor/rules/<id>.mdc` for Cursor (project scope only: Cursor keeps
+user rules in its settings). Text you wrote outside the block is kept, and
+editing it is not reported as drift; removing the resource removes only the
+block.
+
+## Plugins from a marketplace
+
+A plugin from a source knows its marketplace. Adding it writes both
+`enabledPlugins` and `extraKnownMarketplaces` in `settings.json` (a
+marketplace you declared yourself is left as it is). `install` then runs two
+commands, shown first and run only with `--execute`:
+
+```sh
+preflight --global catalog-add plugin:where-am-i
+preflight --global install plugin:where-am-i            # shows the plan
+preflight --global install plugin:where-am-i --execute
+#   claude plugin marketplace add arhunsaday/agent-kit --scope user
+#   claude plugin install where-am-i@arhun-plugins --scope user
+```
+
+Adding a marketplace that is already known is a no-op. Preflight never passes
+`-y` on your behalf: a marketplace that declares an install command needs a
+terminal so that a person sees it.
+
+## Publishing a source
+
+Build the index with the Preflight version you pin, commit it, and check it in
+CI:
+
+```sh
+preflight catalog build . --repo owner/repo --ref main    # writes catalog/index.json
+preflight catalog build . --repo owner/repo --check       # fails when it is stale
+```
+
+The index has `"schema": 1`. Entries a Preflight version cannot read are
+skipped and counted, never fatal to the whole source.

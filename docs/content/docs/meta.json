@@ -1,4 +1,4 @@
 {
   "title": "Documentation",
-  "pages": ["index", "preflight", "setup", "claude-code", "mcp", "workflows", "stack", "tools", "other-agents", "ecosystem", "beyond-vibecoding"]
+  "pages": ["index", "preflight"]
 }
