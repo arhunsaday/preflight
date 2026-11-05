@@ -487,6 +487,21 @@ class FileAdapter implements HarnessAdapter {
       if (raw) {
         const doc = object(JSON.parse(raw));
         const servers = object(doc.mcpServers ?? {});
+        // Claude Code keeps the off switch of project servers in its settings.
+        const off = new Set<string>();
+        if (this.id === "claude-code" && scope === "project")
+          for (const file of ["settings.json", "settings.local.json"]) {
+            try {
+              const text = await readText(join(base, file));
+              const list = text
+                ? object(JSON.parse(text)).disabledMcpjsonServers
+                : undefined;
+              if (Array.isArray(list))
+                for (const n of list) if (typeof n === "string") off.add(n);
+            } catch {
+              /* unreadable settings are reported by the doctor */
+            }
+          }
         for (const [name, config] of Object.entries(servers))
           resources.push(
             ResourceSchema.parse({
@@ -496,6 +511,7 @@ class FileAdapter implements HarnessAdapter {
               source: `file://${mcpPath}`,
               scope,
               harnesses: [this.id],
+              enabled: !off.has(name),
               config: object(config),
             }),
           );

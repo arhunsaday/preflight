@@ -4,6 +4,7 @@ import { execute, catalogResources } from "../src/commands.js";
 import { PreflightService } from "../src/service.js";
 import { PreflightLockSchema } from "../src/schema.js";
 import { ConfigStore } from "../src/state.js";
+import { disabledResources } from "../src/toggle.js";
 import { BenchRun } from "../src/bench.js";
 import type { Context } from "../src/adapters.js";
 import type { Snapshot } from "./protocol.js";
@@ -169,6 +170,7 @@ export async function snapshot(
                 r.harnesses.some((h) => g.harnesses.includes(h)),
             ),
         ),
+    disabled: await safe("Disabled resources", () => disabledResources(context), []),
     catalogue: await safe("Sources", () => catalogResources(context.home), []),
     findings: report?.findings ?? [],
     doctor: report ? { skipped: report.skipped, facts: report.facts } : null,

@@ -208,6 +208,11 @@ export const findingCatalog: Record<
     explanation:
       "Listed on every session but not invoked in the measured window. Its listing tokens are paid each time and buy nothing.",
   },
+  "skill-manual-candidate": {
+    title: "Skill could be manual",
+    explanation:
+      "The skill was unused or rarely used in the measured window, yet its listing line is paid on every session. As a manual skill it costs 0 listing tokens and stays callable as /name.",
+  },
   "effort-default-high": {
     title: "High default effort",
     explanation:
@@ -564,6 +569,50 @@ export function unusedContext(
       explanation: findingCatalog["unused-context"]!.explanation,
       fix,
       ...(tokens !== undefined ? { tokens } : {}),
+      ...(path ? { path } : {}),
+    });
+  }
+  return findings.sort((a, b) => (b.tokens ?? -1) - (a.tokens ?? -1));
+}
+
+/** How often the invocations show a skill (a slash command counts as a use). */
+export function skillUseCount(r: Resource, invocations: Record<string, number>) {
+  let total = 0;
+  for (const [k, n] of Object.entries(invocations))
+    if (k === `skill:${r.name}` || k.endsWith(`:${r.name}`) || k === r.id)
+      total += n;
+  return total;
+}
+/**
+ * Skills that cost a listing line every session but were used at most
+ * `maxUses` times in the window, and are not manual yet. Setting
+ * `disable-model-invocation: true` recovers the listing tokens.
+ */
+export function skillManualCandidates(
+  resources: Resource[],
+  usage: UsageCounts,
+  days: number,
+  maxUses = 1,
+): Finding[] {
+  if (!usage.sessions) return [];
+  const findings: Finding[] = [];
+  for (const r of resources) {
+    if (r.type !== "skill" || !r.enabled) continue;
+    // The evidence comes from Claude Code transcripts only.
+    if (!r.harnesses.includes("claude-code")) continue;
+    const tokens = listingTokens(r);
+    if (!tokens) continue;
+    const uses = skillUseCount(r, usage.invocations);
+    if (uses > maxUses) continue;
+    const path = filePath(r);
+    findings.push({
+      code: "skill-manual-candidate",
+      severity: "info",
+      message: `Skill ${r.name} was ${uses === 0 ? "not used" : `used ${uses} time${uses === 1 ? "" : "s"}`} in the last ${days} days (${usage.sessions} session${usage.sessions === 1 ? "" : "s"}). As a manual skill it saves ~${tokens} tokens per session.`,
+      resourceId: r.id,
+      explanation: findingCatalog["skill-manual-candidate"]!.explanation,
+      fix: `Run \`preflight skill manual ${r.name}\`, or set \`disable-model-invocation: true\` in the frontmatter${path ? ` (${path})` : ""}. It stays callable as /${r.name}.`,
+      tokens,
       ...(path ? { path } : {}),
     });
   }

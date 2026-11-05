@@ -41,6 +41,11 @@ import {
   resourceAppearance,
 } from "../components/semantic-icons";
 import { ResourceForm } from "../components/resource-form";
+import {
+  ResourceSwitch,
+  switchable,
+  switchState,
+} from "../components/resource-switch";
 /** First free "<id>-copy", "<id>-copy-2", … so Duplicate never collides. */
 const copyId = (id: string, taken: Set<string>) => {
   let candidate = `${id}-copy`;
@@ -88,7 +93,7 @@ export function Resources({
     mode === "catalogue"
       ? (online ?? w.snapshot?.catalogue ?? [])
       : mode === "detected"
-        ? (w.snapshot?.detected ?? [])
+        ? [...(w.snapshot?.detected ?? []), ...(w.snapshot?.disabled ?? [])]
         : [
             ...(w.snapshot?.resources ?? []),
             ...(w.snapshot?.inherited ?? []).filter(
@@ -437,7 +442,11 @@ export function Resources({
                       <strong>
                         <Highlight text={r.name} query={query} />
                       </strong>
-                      {!r.enabled && <Badge>Disabled</Badge>}
+                      {mode === "detected" && switchState(r) === "manual" ? (
+                        <Badge>Manual</Badge>
+                      ) : (
+                        !r.enabled && <Badge>{mode === "detected" ? "Off" : "Disabled"}</Badge>
+                      )}
                     </div>
                     <p>
                       {r.description ||
@@ -628,14 +637,27 @@ export function Resources({
                     </Button>
                   </>
                 ) : mode === "detected" ? (
-                  <Button
-                    variant="primary"
-                    disabled={!!w.busy || !w.snapshot?.initialized}
-                    onClick={() => perform(["adopt", resource.id])}
-                  >
-                    <Check size={15} />
-                    Adopt resource
-                  </Button>
+                  <>
+                    {switchable(resource) && (
+                      <ResourceSwitch
+                        resource={resource}
+                        disabled={!!w.busy}
+                        onChange={perform}
+                      />
+                    )}
+                    <Button
+                      variant="primary"
+                      disabled={
+                        !!w.busy ||
+                        !w.snapshot?.initialized ||
+                        !!resource.config.preflightDisabled
+                      }
+                      onClick={() => perform(["adopt", resource.id])}
+                    >
+                      <Check size={15} />
+                      Adopt resource
+                    </Button>
+                  </>
                 ) : inherited ? (
                   <Button onClick={() => void w.switchGlobal()}>
                     <Globe size={15} />

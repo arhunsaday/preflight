@@ -68,6 +68,8 @@ export const DoctorSettingsSchema = z
   .object({
     /** A resource unused for this many days is reported as unused context. */
     unusedDays: z.number().int().min(1).max(3650).optional(),
+    /** A skill used at most this many times in the window is a manual-skill candidate. */
+    manualMaxUses: z.number().int().min(0).optional(),
     /** CLAUDE.md / AGENTS.md longer than this many lines is reported. */
     instructionsMaxLines: z.number().int().min(1).optional(),
     /** Jaccard similarity of skill descriptions that makes two skills overlap. */
@@ -98,6 +100,7 @@ export const DoctorSettingsSchema = z
 export type DoctorSettings = z.infer<typeof DoctorSettingsSchema>;
 export const doctorDefaults = {
   unusedDays: 30,
+  manualMaxUses: 1,
   instructionsMaxLines: 200,
   skillSimilarity: 0.5,
   skillTarget: { min: 60, max: 80 },

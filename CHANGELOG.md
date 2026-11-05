@@ -9,6 +9,7 @@ and the desktop application share one version.
 
 ### Added
 
+- Manual skills and one-click switches: `preflight skill manual|auto <name...>` sets or clears `disable-model-invocation` (a manual skill costs 0 listing tokens and runs as `/name`); `preflight disable|enable <resource...>` switches skills, MCP servers, plugins, hooks and subagents off and on, with a preview and the token cost. The doctor reports `skill-manual-candidate`. In Resources (Detected) and the Context map, each row has an On / Manual / Off switch.
 - `preflight` command line: `detect`, `doctor`, `init`, `list`, `search`, `add`, `remove`, `install`, `share`, `import`, `loadout`, `bench` and more. Commands print JSON by default; previews are required before anything is written.
 - Adapters for Claude Code, Codex and Cursor covering skills, MCP servers, subagents, hooks, plugins and instruction files, with `preflight.config.json` / lock file ownership and recovery.
 - Doctor: findings, drift between declared and installed state, observed usage, and the context cost of each resource. Context map showing what every harness loads into a session.

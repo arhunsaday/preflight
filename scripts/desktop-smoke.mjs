@@ -7,6 +7,7 @@ import {
   writeFile,
   realpath,
 } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -625,6 +626,44 @@ try {
   await page.screenshot({ path: join(temporary, "context-compact.png") });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await writeFile(contextConfigPath, contextConfigBefore);
+  // One-click switch: Manual, then Off, then On, each after a preview.
+  const switchSkill = join(home, ".claude", "skills", "smoke-switch");
+  const switchText =
+    "---\nname: smoke-switch\ndescription: Switch smoke fixture\n---\nBody\n";
+  await mkdir(switchSkill, { recursive: true });
+  await writeFile(join(switchSkill, "SKILL.md"), switchText);
+  await page
+    .getByRole("button", { name: "Refresh workspace", exact: true })
+    .click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  const switchFor = () =>
+    page.getByRole("group", { name: "Switch for smoke-switch" });
+  const flip = async (label) => {
+    await page.getByRole("button", { name: "List", exact: true }).click();
+    await page.getByRole("checkbox", { name: "Show disabled" }).check();
+    await switchFor().getByRole("button", { name: label, exact: true }).click();
+    await page.getByRole("heading", { name: "Review changes" }).waitFor();
+    await page.getByText("listing tokens per session", { exact: false }).waitFor();
+    await page
+      .getByRole("button", { name: "Apply changes", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+  };
+  await page.getByRole("checkbox", { name: "Show disabled" }).check();
+  await switchFor().waitFor();
+  await flip("Manual");
+  assert.match(
+    await readFile(join(switchSkill, "SKILL.md"), "utf8"),
+    /disable-model-invocation: true/,
+  );
+  await flip("Off");
+  assert.equal(existsSync(join(switchSkill, "SKILL.md")), false);
+  await page.getByRole("checkbox", { name: "Show disabled" }).check();
+  await flip("On");
+  assert.equal(
+    (await readFile(join(switchSkill, "SKILL.md"), "utf8")).includes("Body"),
+    true,
+  );
   await page
     .getByRole("button", { name: "Refresh workspace", exact: true })
     .click();
