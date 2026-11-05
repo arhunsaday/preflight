@@ -404,3 +404,27 @@ it("projects show inherited global resources without offering them for adoption 
   expect(result.inherited[0]?.id).toBe("mcp:shared");
   expect(result.detected.filter((r) => r.name === "shared")).toHaveLength(0);
 });
+it("previews an instructions draft before writing it and refuses a stale preview", async () => {
+  const { root, controller } = await setup();
+  await controller.addProject(root);
+  const { writeFile } = await import("node:fs/promises");
+  const path = join(root, "CLAUDE.md");
+  await writeFile(path, "# Mine\n- keep this rule\n");
+  expect((await controller.prepare(["instructions", "lint"])).kind).toBe("result");
+  expect((await controller.prepare(["doctor", "--processes"])).kind).toBe("result");
+  const measure = await controller.prepare(["doctor", "--measure"]);
+  expect(measure.kind).toBe("preview");
+  expect(measure.note).toMatch(/SessionStart/);
+  const args = ["instructions", "draft", "--scope", "project", "--write"];
+  const preview = await controller.prepare(args);
+  expect(preview.kind).toBe("preview");
+  expect((preview.value as { patch: string }).patch).toContain("+## Secrets");
+  expect(await readFile(path, "utf8")).toBe("# Mine\n- keep this rule\n");
+  await controller.confirm(preview.receipt!);
+  const written = await readFile(path, "utf8");
+  expect(written).toContain("- keep this rule");
+  expect(written).toContain("## Verification");
+  const stale = await controller.prepare(args);
+  await writeFile(path, "# Changed by hand\n");
+  await expect(controller.confirm(stale.receipt!)).rejects.toThrow(/changed/i);
+});

@@ -116,6 +116,8 @@ export function writes(argv: string[]): boolean {
   if (head === "git") return second === "pull" || second === "push";
   if (head === "install") return argv.includes("--execute");
   if (head === "share") return argv.includes("--out");
+  if (head === "instructions") return argv.includes("--write");
+  if (head === "doctor") return argv.includes("--measure");
   return writeCommands.has(head);
 }
 

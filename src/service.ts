@@ -24,7 +24,13 @@ import {
   rollback,
   type FileChange,
 } from "./transaction.js";
-import { analyze, analyzeSettings, type Finding } from "./analysis.js";
+import {
+  analyze,
+  analyzeSettings,
+  findingCatalog,
+  findingTitle,
+  type Finding,
+} from "./analysis.js";
 import { extendedChecks, type DoctorOptions } from "./doctor.js";
 const Lock = PreflightLockSchema;
 export type Policy = (
@@ -114,7 +120,14 @@ export class PreflightService {
       states.flatMap((s) => s.resources),
       options,
     );
-    return { ...extras, findings: [...findings, ...extras.findings] };
+    const all = [...findings, ...extras.findings].map((f): Finding => ({
+      ...f,
+      title: f.title ?? findingTitle(f.code),
+      ...(f.explanation || !findingCatalog[f.code]
+        ? {}
+        : { explanation: findingCatalog[f.code]!.explanation }),
+    }));
+    return { ...extras, findings: all };
   }
   async change(
     mutate: (config: PreflightConfig) => void,

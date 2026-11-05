@@ -2,6 +2,8 @@ import type { CloudOperation } from "../src/cloud-client.js";
 import type { PreflightConfig, PreflightLock, Resource } from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
+import type { DoctorExtras } from "../src/doctor.js";
+import type { InstructionsReport } from "../src/instructions.js";
 export interface Project {
   id: string;
   name: string;
@@ -42,6 +44,10 @@ export interface Snapshot {
   detected: Resource[];
   catalogue: Resource[];
   findings: Finding[];
+  /** Doctor checks that did not run, and the facts behind the findings. */
+  doctor: Pick<DoctorExtras, "skipped" | "facts"> | null;
+  /** Instruction files (CLAUDE.md, AGENTS.md) with their lint findings. */
+  instructions: InstructionsReport | null;
   usage: Usage | null;
   loadouts: string[];
   benches: BenchResult[];
@@ -62,6 +68,7 @@ export const desktopViews = [
   "resources",
   "catalogue",
   "doctor",
+  "instructions",
   "context",
   "console",
 ] as const;

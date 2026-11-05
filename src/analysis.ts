@@ -14,6 +14,8 @@ export interface Finding {
   severity: Severity;
   message: string;
   resourceId?: string;
+  /** Human title of the code (filled by the doctor). */
+  title?: string;
   /** Why this matters, in one or two sentences. */
   explanation?: string;
   /** The smallest change that resolves it. */

@@ -22,6 +22,7 @@ import {
   Rocket,
   LayoutDashboard,
   Map as MapIcon,
+  FileText,
   Package,
   Globe,
   Sun,
@@ -47,6 +48,7 @@ import {
   Activity,
 } from "./views/configuration";
 import { ContextMap } from "./views/context-map";
+import { Instructions } from "./views/instructions";
 import { Benchmarks } from "./views/benchmarks";
 import { Collaboration, Team, Account } from "./views/collaboration";
 import { Console } from "./views/console";
@@ -173,6 +175,7 @@ export function App() {
           alert: errors > 0,
         },
         { id: "context", label: "Context map", icon: MapIcon, key: "7" },
+        { id: "instructions", label: "Instructions", icon: FileText },
         { id: "usage", label: "Usage", icon: ActivityIcon },
         { id: "benchmarks", label: "Benchmarks", icon: FlaskConical },
       ],
@@ -605,6 +608,8 @@ export function App() {
             />
           ) : view === "doctor" ? (
             <Doctor workspace={w} />
+          ) : view === "instructions" ? (
+            <Instructions key={resourceKey} workspace={w} />
           ) : view === "usage" ? (
             <Usage workspace={w} />
           ) : view === "profiles" ? (

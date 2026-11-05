@@ -61,14 +61,22 @@ export async function snapshot(context: Context): Promise<Snapshot> {
             }),
         [],
       );
-  const [detected, findings, usage, loadouts, benches] = await Promise.all([
+  const [detected, report, instructions, usage, loadouts, benches] = await Promise.all([
     safe(
       "Detected resources",
       async () =>
         (await service.unmanaged(inherited)).map((entry) => entry.resource),
       [],
     ),
-    safe("Doctor", () => service.doctor(), []),
+    safe("Doctor", () => service.doctorReport(), null),
+    safe(
+      "Instructions",
+      () =>
+        execute(["instructions", "lint"], context) as Promise<
+          Snapshot["instructions"]
+        >,
+      null,
+    ),
     safe(
       "Usage",
       () => execute(["usage"], context) as Promise<Snapshot["usage"]>,
@@ -139,7 +147,9 @@ export async function snapshot(context: Context): Promise<Snapshot> {
             ),
         ),
     catalogue: catalogResources(),
-    findings,
+    findings: report?.findings ?? [],
+    doctor: report ? { skipped: report.skipped, facts: report.facts } : null,
+    instructions,
     usage,
     loadouts,
     benches,

@@ -53,6 +53,7 @@ export const allowedCommands = new Set([
   "detect",
   "verify",
   "doctor",
+  "instructions",
   "unmanaged",
   "adopt",
   "inspect",
@@ -114,7 +115,8 @@ const reads = new Set([
 function isRead(args: string[]) {
   if (reads.has(args[0]!)) return true;
   if (["doctor", "verify"].includes(args[0]!))
-    return !args.includes("--connect");
+    return !args.includes("--connect") && !args.includes("--measure");
+  if (args[0] === "instructions") return !args.includes("--write");
   if (args[0] === "profiles") return ["list", "diff"].includes(args[1] ?? "");
   if (args[0] === "loadouts") return ["list", "show"].includes(args[1] ?? "");
   if (args[0] === "bench") return args[1] === "compare";
@@ -384,6 +386,8 @@ export class DesktopController {
         receipt,
         note: args.includes("--connect")
           ? "Confirmation starts configured MCP programs or contacts servers."
+          : args.includes("--measure")
+            ? "Confirmation runs each SessionStart hook once in an empty temporary folder, with a time limit."
           : args[0] === "install" ||
               args[0] === "git" ||
               (args[0] === "bench" && args[1] === "run")

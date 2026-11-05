@@ -24,6 +24,7 @@ export const modelInvocable = (r: Resource) =>
 /**
  * Tokens of the listing line an agent shows for a skill or subagent on every
  * session: its name and description. Zero when it is not listed.
+ * Adapted from me-cedric/agent-compass engine/tokens.mjs `listingLine` (MIT).
  */
 export function listingTokens(r: Resource) {
   if (!["skill", "subagent"].includes(r.type) || !modelInvocable(r)) return 0;

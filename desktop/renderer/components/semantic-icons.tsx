@@ -48,6 +48,7 @@ const navigationAppearance = {
   doctor: { icon: ShieldCheckIcon, tone: "green" },
   usage: { icon: ChartLineIcon, tone: "teal" },
   context: { icon: MapTrifoldIcon, tone: "violet" },
+  instructions: resourceAppearance.prompt,
   profiles: { icon: SlidersHorizontalIcon, tone: "blue" },
   team: { icon: UsersThreeIcon, tone: "violet" },
   collaboration: { icon: ShareNetworkIcon, tone: "teal" },
