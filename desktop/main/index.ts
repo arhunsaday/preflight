@@ -35,9 +35,11 @@ const engine: Engine = (args, context, auth) =>
         ...Object.fromEntries(
           Object.entries(process.env).filter(
             ([key]) =>
-              !["PREFLIGHT_SHARE_TOKEN", "PREFLIGHT_SHARE_URL", "PREFLIGHT_OWNER_ID"].includes(
-                key,
-              ),
+              ![
+                "PREFLIGHT_SHARE_TOKEN",
+                "PREFLIGHT_SHARE_URL",
+                "PREFLIGHT_OWNER_ID",
+              ].includes(key),
           ),
         ),
         ELECTRON_RUN_AS_NODE: "1",
@@ -170,6 +172,7 @@ async function boot() {
       ? controller.addProject(selected.filePaths[0])
       : controller.publicState();
   });
+  handle("preferences", (value) => controller.setPreferences(value));
   handle("team", (value) =>
     controller.updateTeam(value as Parameters<typeof controller.updateTeam>[0]),
   );

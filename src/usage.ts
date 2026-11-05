@@ -1,6 +1,5 @@
 // Adapted from me-cedric/agent-compass engine/usage.mjs (MIT)
 // Copyright 2026 CGI. See THIRD_PARTY_NOTICES.md.
-// See THIRD_PARTY_NOTICES.md.
 //
 // Token, cache and cost usage from local agent transcripts:
 // - Claude Code: <home>/.claude/projects/**/*.jsonl. Streaming writes one line

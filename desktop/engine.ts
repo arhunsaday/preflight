@@ -7,7 +7,11 @@ import { ConfigStore } from "../src/state.js";
 import { BenchRun } from "../src/bench.js";
 import type { Context } from "../src/adapters.js";
 import type { Snapshot } from "./protocol.js";
-export async function snapshot(context: Context): Promise<Snapshot> {
+export async function snapshot(
+  context: Context,
+  options: { transcripts?: boolean } = {},
+): Promise<Snapshot> {
+  const transcripts = options.transcripts ?? true;
   const service = new PreflightService(context);
   const errors: string[] = [];
   const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T) => {
@@ -71,7 +75,13 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     safe("Doctor", () => service.doctor(), []),
     safe(
       "Usage",
-      () => execute(["usage"], context) as Promise<Snapshot["usage"]>,
+      async () =>
+        transcripts
+          ? ((await execute(
+              ["usage", "--since", "30d"],
+              context,
+            )) as Snapshot["usage"])
+          : null,
       null,
     ),
     safe(
@@ -141,6 +151,7 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     catalogue: catalogResources(),
     findings,
     usage,
+    ...(transcripts ? {} : { transcriptsOff: true }),
     loadouts,
     benches,
     errors,

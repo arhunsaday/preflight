@@ -1,5 +1,9 @@
 import type { CloudOperation } from "../src/cloud-client.js";
-import type { PreflightConfig, PreflightLock, Resource } from "../src/schema.js";
+import type {
+  PreflightConfig,
+  PreflightLock,
+  Resource,
+} from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
 export interface Project {
@@ -29,7 +33,12 @@ export interface DesktopState {
   activeProjectId: string | null;
   workspace: "global" | "project";
   team: Team;
+  preferences: Preferences;
   account: Account;
+}
+export interface Preferences {
+  /** Read local Claude Code and Codex transcripts for usage. Nothing is uploaded. */
+  readTranscripts: boolean;
 }
 export interface Snapshot {
   root: string;
@@ -43,6 +52,8 @@ export interface Snapshot {
   catalogue: Resource[];
   findings: Finding[];
   usage: Usage | null;
+  /** True when the person turned transcript reading off. */
+  transcriptsOff?: boolean;
   loadouts: string[];
   benches: BenchResult[];
   errors: string[];
@@ -82,6 +93,7 @@ export interface DesktopApi {
   prepare(args: string[]): Promise<Prepared>;
   confirm(receipt: string): Promise<unknown>;
   team(value: Team): Promise<DesktopState>;
+  preferences(value: Partial<Preferences>): Promise<DesktopState>;
   beginSignIn(service: string): Promise<{
     id: string;
     userCode: string;

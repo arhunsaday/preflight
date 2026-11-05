@@ -257,57 +257,267 @@ export function Doctor({ workspace: w }: { workspace: Workspace }) {
   );
 }
 
+const compact = (n: number) =>
+  n >= 1e9
+    ? `${(n / 1e9).toFixed(1)}B`
+    : n >= 1e6
+      ? `${(n / 1e6).toFixed(1)}M`
+      : n >= 1e4
+        ? `${Math.round(n / 1e3)}k`
+        : n.toLocaleString();
+const usd = (n: number) =>
+  n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: n < 10 ? 2 : 0,
+  });
+const percent = (n: number) => `${Math.round(n * 100)}%`;
+const agentName = (agent: string) =>
+  agent === "codex" ? "Codex" : agent === "claude-code" ? "Claude Code" : agent;
+
+/** Tokens per day over the window: a small inline bar chart, no library. */
+export function DailyBars({
+  days,
+  since,
+  until,
+}: {
+  days: { day: string; tokens: number; cost: number }[];
+  since: string | null;
+  until: string;
+}) {
+  const byDay = new Map(days.map((d) => [d.day, d]));
+  const first = since ?? days[0]?.day ?? until;
+  const series: { day: string; tokens: number; cost: number }[] = [];
+  const cursor = new Date(`${first}T00:00:00`);
+  for (let i = 0; i < 400; i++) {
+    const day = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+    if (day > until) break;
+    series.push(byDay.get(day) ?? { day, tokens: 0, cost: 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const max = Math.max(1, ...series.map((d) => d.tokens));
+  const width = 520,
+    height = 120,
+    gap = 2,
+    bar = Math.max(
+      2,
+      (width - gap * series.length) / Math.max(1, series.length),
+    );
+  return (
+    <figure className="usage-chart">
+      <svg
+        viewBox={`0 0 ${width} ${height + 18}`}
+        role="img"
+        aria-label={`Tokens per day from ${series[0]?.day ?? first} to ${until}`}
+      >
+        <line x1={0} x2={width} y1={height} y2={height} className="axis" />
+        {series.map((d, i) => {
+          const h = d.tokens ? Math.max(2, (d.tokens / max) * (height - 8)) : 0;
+          return (
+            <rect
+              key={d.day}
+              x={i * (bar + gap)}
+              y={height - h}
+              width={bar}
+              height={h}
+              rx={1.5}
+            >
+              <title>{`${d.day}: ${d.tokens.toLocaleString()} tokens, ${usd(d.cost)}`}</title>
+            </rect>
+          );
+        })}
+        <text x={0} y={height + 14}>
+          {series[0]?.day ?? first}
+        </text>
+        <text x={width} y={height + 14} textAnchor="end">
+          {until}
+        </text>
+      </svg>
+      <figcaption>
+        Tokens per day · peak {compact(max)} · hover a bar for its day
+      </figcaption>
+    </figure>
+  );
+}
+
 export function Usage({ workspace: w }: { workspace: Workspace }) {
   const usage = w.snapshot?.usage;
-  const entries = Object.entries(usage?.invocations ?? {}).sort(
-    (a, b) => b[1] - a[1],
-  );
+  const reading = w.state?.preferences?.readTranscripts ?? true;
+  const entries = Object.entries(usage?.invocations ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 25);
   const top = Math.max(1, ...entries.map(([, count]) => count));
+  const setReading = (readTranscripts: boolean) =>
+    void w.task(
+      readTranscripts ? "Reading transcripts…" : "Turning off…",
+      async () => {
+        w.setState(await window.preflight.preferences({ readTranscripts }));
+        await w.reload();
+      },
+    );
+  const measured = !!usage && (usage.totals.tokens > 0 || usage.sessions > 0);
   return (
     <div className="page-scroll">
       <div className="section-intro">
         <div>
           <h2>Evidence from your sessions</h2>
           <p>
-            Observed tool invocations from local Claude transcripts. Text
-            mentions are not counted.
+            Tokens, cache use and estimated cost over the last 30 days, from
+            local Claude Code and Codex transcripts. Text mentions are not
+            counted.
           </p>
         </div>
         <Button
-          disabled={!!w.busy || !usage?.sessions}
+          disabled={!!w.busy || !usage?.sessions || !reading}
           onClick={() => void w.run(["prune"])}
         >
           Review pruning proposals
         </Button>
       </div>
-      {!usage?.sessions ? (
+      <label className="checkbox usage-setting">
+        <input
+          type="checkbox"
+          checked={reading}
+          disabled={!!w.busy}
+          onChange={(e) => setReading(e.target.checked)}
+        />
+        <span>
+          <strong>Read conversation transcripts</strong>
+          <small>
+            Preflight reads ~/.claude/projects and ~/.codex/sessions on this
+            computer to count tokens, tool calls and skills. Transcripts are
+            read locally only; nothing leaves the machine. Turn this off to stop
+            reading them.
+          </small>
+        </span>
+      </label>
+      {!reading || w.snapshot?.transcriptsOff ? (
+        <Empty
+          icon={ActivityIcon}
+          title="Transcript reading is off"
+          description="Usage, skill utilisation and pruning proposals need transcripts. Turn the setting on to measure them."
+        />
+      ) : !usage || !measured ? (
         <Empty
           icon={ActivityIcon}
           title="Usage is unknown"
-          description="No readable transcripts were found. Use your skills and MCP servers in a session, then refresh to measure their use."
+          description="No readable transcripts were found in the last 30 days. Use your skills and MCP servers in a session, then refresh to measure their use."
         />
       ) : (
         <>
           <div className="metrics">
             <div>
-              <span>Transcript files</span>
-              <strong>{usage.sessions.toLocaleString()}</strong>
+              <span>Tokens</span>
+              <strong>{compact(usage.totals.tokens)}</strong>
+              <small>
+                {compact(usage.totals.input)} in ·{" "}
+                {compact(usage.totals.output)} out
+              </small>
             </div>
             <div>
-              <span>Skills used</span>
+              <span>Cache hit rate</span>
+              <strong>{percent(usage.cacheHitRate)}</strong>
+              <small>
+                {compact(usage.totals.cacheRead)} read ·{" "}
+                {compact(usage.totals.cacheWrite)} written
+              </small>
+            </div>
+            <div>
+              <span>Estimated cost</span>
               <strong>
-                {usage.skillsUsed} <small>/ {usage.skillsInstalled}</small>
+                {usd(usage.costEstimate.usd)}
+                {usage.costEstimate.complete ? "" : "+"}
               </strong>
+              <small>list price</small>
             </div>
             <div>
-              <span>Utilization</span>
-              <strong>{Math.round(usage.utilization * 100)}%</strong>
-            </div>
-            <div>
-              <span>Unreadable lines</span>
-              <strong>{usage.invalidLines.toLocaleString()}</strong>
+              <span>Sessions</span>
+              <strong>{usage.sessions.toLocaleString()}</strong>
+              <small>
+                {usage.byAgent
+                  .map((a) => `${agentName(a.agent)} ${compact(a.tokens)}`)
+                  .join(" · ")}
+              </small>
             </div>
           </div>
+          {!usage.costEstimate.complete && (
+            <Notice tone="info">
+              No price for {usage.costEstimate.unpricedModels.join(", ")}:{" "}
+              {compact(usage.totals.unpricedTokens)} tokens are not in the
+              estimate.
+            </Notice>
+          )}
+          <DailyBars
+            days={usage.byDay}
+            since={usage.window.since}
+            until={usage.window.until}
+          />
+          <p className="usage-note">
+            Estimate at Anthropic list prices (retrieved{" "}
+            {usage.costEstimate.prices.retrieved}); plans, batch and discounts
+            are not applied. Skills used: {usage.skillsUsed} of{" "}
+            {usage.skillsInstalled} ({percent(usage.utilization)}).
+            {usage.invalidLines
+              ? ` ${usage.invalidLines.toLocaleString()} unreadable lines skipped.`
+              : ""}
+          </p>
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Top sessions</th>
+                  <th>Agent</th>
+                  <th>Days</th>
+                  <th>Tokens</th>
+                  <th>Cache hit</th>
+                  <th>Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usage.bySession.slice(0, 8).map((s) => (
+                  <tr key={`${s.agent}:${s.session}`}>
+                    <td title={s.session}>
+                      <code>{tildify(s.project, w.snapshot?.home)}</code>
+                      <small className="muted"> · {s.model}</small>
+                    </td>
+                    <td>{agentName(s.agent)}</td>
+                    <td>
+                      {s.first === s.last ? s.first : `${s.first} – ${s.last}`}
+                    </td>
+                    <td>{compact(s.tokens)}</td>
+                    <td>{percent(s.cacheHitRate)}</td>
+                    <td>{s.unpricedTokens ? "—" : usd(s.cost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {usage.bySkill.length ? (
+            <div className="table-card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Top skills</th>
+                    <th>Calls</th>
+                    <th>Tokens after the call</th>
+                    <th>Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usage.bySkill.slice(0, 8).map((s) => (
+                    <tr key={s.skill}>
+                      <td>
+                        <code>{s.skill}</code>
+                      </td>
+                      <td>{s.calls.toLocaleString()}</td>
+                      <td>{compact(s.tokens)}</td>
+                      <td>{usd(s.cost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
           {entries.length ? (
             <div className="table-card">
               <table>
@@ -344,8 +554,7 @@ export function Usage({ workspace: w }: { workspace: Workspace }) {
             </div>
           ) : (
             <Notice tone="info">
-              Transcript files exist, but no supported tool invocations were
-              found.
+              Transcripts exist, but no supported tool invocations were found.
             </Notice>
           )}
         </>
@@ -700,8 +909,8 @@ export function Activity({ workspace: w }: { workspace: Workspace }) {
         <div>
           <h2>Local change history</h2>
           <p>
-            Every write Preflight makes is journaled here. Roll back the latest change
-            or recover an interrupted one; both open a preview.
+            Every write Preflight makes is journaled here. Roll back the latest
+            change or recover an interrupted one; both open a preview.
           </p>
         </div>
         <Button
