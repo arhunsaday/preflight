@@ -79,6 +79,11 @@ export function Resources({
     [inspected, setInspected] = useState<Resource | null>(null),
     [online, setOnline] = useState<Resource[] | null>(null),
     [sort, setSort] = useState("name");
+  const noSource =
+    mode === "catalogue" &&
+    !online &&
+    !!w.snapshot &&
+    !w.snapshot.sources.length;
   const base =
     mode === "catalogue"
       ? (online ?? w.snapshot?.catalogue ?? [])
@@ -97,8 +102,7 @@ export function Resources({
           (r) =>
             (kind === "all" || r.type === kind) &&
             (scope === "all" || r.scope === scope) &&
-            (harness === "all" ||
-              r.harnesses.includes(harness as HarnessId)) &&
+            (harness === "all" || r.harnesses.includes(harness as HarnessId)) &&
             `${r.name} ${r.id} ${r.description} ${r.tags.join(" ")}`
               .toLowerCase()
               .includes(query.toLowerCase()),
@@ -206,7 +210,7 @@ export function Resources({
           <div>
             <h2>Find your next skill or MCP server</h2>
             <p>
-              Browse the bundled library offline, or search an online source.
+              Browse your content sources offline, or search an online registry.
               Inspect and configure every resource before adding it.
             </p>
           </div>
@@ -219,7 +223,7 @@ export function Resources({
                 setSourceErrors([]);
               }}
             >
-              Bundled library
+              Your sources
             </button>
             <button
               className={channel === "online" ? "active" : ""}
@@ -363,8 +367,8 @@ export function Resources({
             <span>
               <Globe size={14} />{" "}
               {online
-                ? "Remote + bundled results"
-                : `${w.snapshot?.catalogue.length ?? 0} curated resources, ready to inspect`}
+                ? "Remote + source results"
+                : `${w.snapshot?.catalogue.length ?? 0} resources from ${plural(w.snapshot?.sources.length ?? 0, "source")}, ready to inspect`}
             </span>
             <select
               aria-label="Library resource type"
@@ -470,25 +474,37 @@ export function Resources({
                         : Layers
                 }
                 title={
-                  query || base.length
-                    ? "No matches"
-                    : mode === "detected"
-                      ? "Nothing to adopt"
-                      : type === "mcp"
-                        ? "No MCP servers yet"
-                        : type === "skill"
-                          ? "No skills yet"
-                          : "No resources yet"
+                  noSource
+                    ? "No content source yet"
+                    : query || base.length
+                      ? "No matches"
+                      : mode === "detected"
+                        ? "Nothing to adopt"
+                        : type === "mcp"
+                          ? "No MCP servers yet"
+                          : type === "skill"
+                            ? "No skills yet"
+                            : "No resources yet"
                 }
                 description={
-                  query || base.length
-                    ? "Try another search or clear your filters."
-                    : mode === "detected"
-                      ? "Every resource your agents can see is already managed here."
-                      : "Browse the catalogue to add a vetted resource, or write your own."
+                  noSource
+                    ? "Preflight ships no catalogue of its own. Add a content source, for example github:arhunsaday/agent-kit, to browse its skills, plugins, hooks and instructions here."
+                    : query || base.length
+                      ? "Try another search or clear your filters."
+                      : mode === "detected"
+                        ? "Every resource your agents can see is already managed here."
+                        : "Browse the catalogue to add a vetted resource, or write your own."
                 }
                 action={
-                  query || base.length ? (
+                  noSource && navigate ? (
+                    <Button
+                      variant="primary"
+                      onClick={() => navigate("sources")}
+                    >
+                      <Compass size={15} />
+                      Add a source
+                    </Button>
+                  ) : query || base.length ? (
                     <Button
                       onClick={() => {
                         setQuery("");
@@ -534,6 +550,13 @@ export function Resources({
                   <div className="detail-badges">
                     <ResourceBadge type={resource.type} />
                     <Badge>{resource.scope}</Badge>
+                    {resource.tags
+                      .filter((tag) => tag.startsWith("source:"))
+                      .map((tag) => (
+                        <Badge tone="info" key={tag}>
+                          from {tag.slice("source:".length)}
+                        </Badge>
+                      ))}
                     {mode === "installed" && (
                       <Badge
                         tone={inherited ? "info" : applied ? "green" : "amber"}

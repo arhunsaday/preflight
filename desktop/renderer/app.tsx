@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   Map as MapIcon,
   Package,
+  Library,
   Globe,
   Sun,
   Moon,
@@ -47,6 +48,7 @@ import {
   Activity,
 } from "./views/configuration";
 import { ContextMap } from "./views/context-map";
+import { Sources } from "./views/sources";
 import { Benchmarks } from "./views/benchmarks";
 import { Collaboration, Team, Account } from "./views/collaboration";
 import { Console } from "./views/console";
@@ -159,6 +161,12 @@ export function App() {
           key: "5",
         },
         { id: "loadouts", label: "Loadouts", icon: Package },
+        {
+          id: "sources",
+          label: "Sources",
+          icon: Library,
+          count: w.snapshot?.sources.length ?? 0,
+        },
       ],
     },
     {
@@ -610,7 +618,9 @@ export function App() {
           ) : view === "profiles" ? (
             <Profiles workspace={w} />
           ) : view === "loadouts" ? (
-            <Loadouts workspace={w} />
+            <Loadouts workspace={w} navigate={navigate} />
+          ) : view === "sources" ? (
+            <Sources workspace={w} />
           ) : view === "context" ? (
             <ContextMap key={resourceKey} workspace={w} />
           ) : view === "benchmarks" ? (

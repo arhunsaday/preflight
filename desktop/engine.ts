@@ -61,63 +61,71 @@ export async function snapshot(context: Context): Promise<Snapshot> {
             }),
         [],
       );
-  const [detected, findings, usage, loadouts, benches] = await Promise.all([
-    safe(
-      "Detected resources",
-      async () =>
-        (await service.unmanaged(inherited)).map((entry) => entry.resource),
-      [],
-    ),
-    safe("Doctor", () => service.doctor(), []),
-    safe(
-      "Usage",
-      () => execute(["usage"], context) as Promise<Snapshot["usage"]>,
-      null,
-    ),
-    safe(
-      "Loadouts",
-      async () =>
-        (
+  const [detected, findings, usage, loadoutList, sourceList, benches] =
+    await Promise.all([
+      safe(
+        "Detected resources",
+        async () =>
+          (await service.unmanaged(inherited)).map((entry) => entry.resource),
+        [],
+      ),
+      safe("Doctor", () => service.doctor(), []),
+      safe(
+        "Usage",
+        () => execute(["usage"], context) as Promise<Snapshot["usage"]>,
+        null,
+      ),
+      safe(
+        "Loadouts",
+        async () =>
           (await execute(["loadouts", "list"], context)) as {
             loadouts: string[];
-          }
-        ).loadouts,
-      [],
-    ),
-    safe(
-      "Benchmarks",
-      async () => {
-        let files: string[];
-        try {
-          files = await readdir(join(context.root, ".preflight", "bench"));
-        } catch (e) {
-          if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
-          throw e;
-        }
-        const results = [];
-        for (const name of files
-          .filter((f) => /^[a-z0-9_-]+\.json$/i.test(f))
-          .slice(0, 100)) {
+          } & Snapshot["loadoutCatalog"],
+        { loadouts: [], details: {}, presets: {} },
+      ),
+      safe(
+        "Sources",
+        async () =>
+          (await execute(["source", "list"], context)) as {
+            sources: Snapshot["sources"];
+            errors: string[];
+          },
+        { sources: [], errors: [] },
+      ),
+      safe(
+        "Benchmarks",
+        async () => {
+          let files: string[];
           try {
-            results.push(
-              BenchRun.parse(
-                JSON.parse(
-                  await readFile(
-                    join(context.root, ".preflight", "bench", name),
-                    "utf8",
+            files = await readdir(join(context.root, ".preflight", "bench"));
+          } catch (e) {
+            if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+            throw e;
+          }
+          const results = [];
+          for (const name of files
+            .filter((f) => /^[a-z0-9_-]+\.json$/i.test(f))
+            .slice(0, 100)) {
+            try {
+              results.push(
+                BenchRun.parse(
+                  JSON.parse(
+                    await readFile(
+                      join(context.root, ".preflight", "bench", name),
+                      "utf8",
+                    ),
                   ),
                 ),
-              ),
-            );
-          } catch (e) {
-            errors.push(`Benchmark ${name}: ${String(e)}`);
+              );
+            } catch (e) {
+              errors.push(`Benchmark ${name}: ${String(e)}`);
+            }
           }
-        }
-        return results;
-      },
-      [],
-    ),
-  ]);
+          return results;
+        },
+        [],
+      ),
+    ]);
   return {
     root: context.root,
     home: context.home,
@@ -141,8 +149,22 @@ export async function snapshot(context: Context): Promise<Snapshot> {
     catalogue: await safe("Sources", () => catalogResources(context.home), []),
     findings,
     usage,
-    loadouts,
+    loadouts: loadoutList.loadouts,
+    loadoutCatalog: {
+      details: loadoutList.details ?? {},
+      presets: loadoutList.presets ?? {},
+    },
+    sources: sourceList.sources.map((s) => ({
+      name: s.name,
+      kind: s.kind,
+      ...(s.repo ? { repo: s.repo } : {}),
+      ...(s.ref ? { ref: s.ref } : {}),
+      ...(s.commit ? { commit: s.commit } : {}),
+      ...(s.path ? { path: s.path } : {}),
+      resources: s.resources,
+      loadouts: s.loadouts,
+    })),
     benches,
-    errors,
+    errors: [...errors, ...sourceList.errors.map((e) => `Source ${e}`)],
   };
 }

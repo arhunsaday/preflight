@@ -150,7 +150,7 @@ it("searches the catalogue and adds the selected result only after preview confi
   try {
     await ui.until("Browse");
     await ui.press("2");
-    await ui.untilGone("loading the bundled catalogue");
+    await ui.untilGone("loading the catalogue from your sources");
     await ui.press("/");
     await ui.until("search ▸");
     await ui.press("ponytail");

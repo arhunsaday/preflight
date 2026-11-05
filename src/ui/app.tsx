@@ -238,7 +238,7 @@ export function App({ context }: { context: Context }) {
     })();
   }, []); // Context is fixed for the lifetime of this interface.
 
-  // The bundled catalogue loads once, the first time the view is opened.
+  // The catalogue from configured sources loads once, the first time the view is opened.
   useEffect(() => {
     if (view !== "catalogue" || catalogueLoaded.current || busy) return;
     catalogueLoaded.current = true;
@@ -1057,11 +1057,11 @@ export function App({ context }: { context: Context }) {
     } else if (view === "catalogue") {
       parts.push(
         catalogue === null
-          ? "loading the bundled catalogue…"
+          ? "loading the catalogue from your sources…"
           : `${listLength ? index + 1 : 0} of ${catalogueVisible.length}`,
       );
       if (search) parts.push(`query "${search}"`);
-      parts.push(`sources ${online ? "bundled + remote" : "bundled"}`);
+      parts.push(`sources ${online ? "configured + remote" : "configured"}`);
       parts.push(`type ${typeFilter}`);
     } else if (view === "detected") {
       parts.push(

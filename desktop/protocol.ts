@@ -1,5 +1,9 @@
 import type { CloudOperation } from "../src/cloud-client.js";
-import type { PreflightConfig, PreflightLock, Resource } from "../src/schema.js";
+import type {
+  PreflightConfig,
+  PreflightLock,
+  Resource,
+} from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
 export interface Project {
@@ -31,6 +35,24 @@ export interface DesktopState {
   team: Team;
   account: Account;
 }
+/** A content source the catalogue and loadouts come from. */
+export interface SourceSummary {
+  name: string;
+  kind: "github" | "local";
+  repo?: string;
+  ref?: string;
+  commit?: string;
+  path?: string;
+  resources: number;
+  loadouts: number;
+}
+export interface LoadoutCatalog {
+  details: Record<
+    string,
+    { description?: string; extends?: string; source?: string }
+  >;
+  presets: Record<string, string[]>;
+}
 export interface Snapshot {
   root: string;
   home: string;
@@ -44,6 +66,8 @@ export interface Snapshot {
   findings: Finding[];
   usage: Usage | null;
   loadouts: string[];
+  loadoutCatalog: LoadoutCatalog;
+  sources: SourceSummary[];
   benches: BenchResult[];
   errors: string[];
 }

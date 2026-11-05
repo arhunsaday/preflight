@@ -21,6 +21,7 @@ const project = join(temporary, "project"),
   home = join(temporary, "home"),
   data = join(temporary, "app");
 await Promise.all([mkdir(project), mkdir(home), mkdir(data)]);
+const fixtureSource = resolve("tests/fixtures/catalog");
 const env = {
   ...process.env,
   PREFLIGHT_DESKTOP_TEST_ROOT: project,
@@ -130,6 +131,35 @@ try {
       .activeProfile,
     "default",
   );
+  // Preflight ships no catalogue: Discover explains how to add a source.
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Discover resources", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "No content source yet" })
+    .waitFor();
+  await page.getByRole("button", { name: "Add a source", exact: true }).click();
+  await page.getByRole("heading", { name: "Content sources" }).waitFor();
+  await page
+    .getByRole("textbox", { name: "Source", exact: true })
+    .fill(fixtureSource);
+  await page
+    .getByRole("button", { name: "Preview adding", exact: true })
+    .click();
+  await page.getByRole("heading", { name: "Review changes" }).waitFor();
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  assert.equal(
+    JSON.parse(
+      await readFile(join(home, ".preflight", "sources.json"), "utf8"),
+    ).sources[0].path,
+    fixtureSource,
+  );
+  await page.locator(".source-row").first().waitFor();
+  await page.screenshot({ path: join(temporary, "sources.png") });
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("button", { name: "Discover resources", exact: true })
@@ -503,7 +533,7 @@ try {
   await page.getByText(/skills.sh: Error: Set VERCEL_OIDC_TOKEN/).waitFor();
   await page.screenshot({ path: join(temporary, "online-search.png") });
   await page
-    .getByRole("button", { name: "Bundled library", exact: true })
+    .getByRole("button", { name: "Your sources", exact: true })
     .click();
   await page
     .getByRole("navigation", { name: "Main navigation" })
