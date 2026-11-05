@@ -38,6 +38,19 @@ check the exact paths in the preview before confirming.
 | `/` | filter the current list |
 | `?` | list every shortcut |
 
+## Window layout
+
+The bar at the top shows the workspace, the current view and the project path.
+The status strip at the bottom shows the scope, the active profile, the number
+of managed resources and the doctor state (clear, warnings or errors). Below
+1040 px the sidebar becomes an icon rail; hover an icon to see its label. The
+theme button in the top bar cycles through system, light and dark.
+
+To regenerate the app icons after a change to `assets/brand/icon.svg`, run
+`node scripts/create-desktop-icon.mjs`. To take review screenshots of both
+themes, run `npm run desktop:build`, then
+`xvfb-run -a node scripts/desktop-captures.mjs <folder>`.
+
 ## Security model
 
 - The renderer has no Node access; a sandboxed preload exposes explicit methods.

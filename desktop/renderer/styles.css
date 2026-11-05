@@ -3680,6 +3680,9 @@ mark {
   .account-chip {
     height: 36px;
   }
+  .sidebar nav {
+    scrollbar-width: none;
+  }
 }
 @media (max-width: 960px) {
   .resource-workspace {

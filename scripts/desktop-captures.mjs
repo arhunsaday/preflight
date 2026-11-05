@@ -104,6 +104,13 @@ try {
       shots.push(path);
     }
   }
+  // The icon rail below 1040 px.
+  await page.setViewportSize({ width: 960, height: 700 });
+  await nav.getByRole("button", { name: /^Doctor/ }).click();
+  await page.waitForTimeout(400);
+  const rail = join(out, "doctor-rail-dark.png");
+  await page.screenshot({ path: rail, animations: "disabled" });
+  shots.push(rail);
   console.log(JSON.stringify({ out, shots }, null, 2));
 } finally {
   await Promise.race([
