@@ -1,6 +1,6 @@
 # Preflight desktop, CLI and terminal interface
 
-Preflight manages declarative AI development setups with a scriptable CLI and an Ink terminal interface. Requires Node.js 22 or newer. The existing shell/Python development kit remains available.
+Preflight manages declarative AI development setups with a scriptable CLI and an Ink terminal interface. Requires Node.js 22 or newer. The package is the tool only: skills, plugins, hooks, loadouts and instructions come from content sources you add (for example [agent-kit](https://github.com/arhunsaday/agent-kit), which also holds the former shell/Python kit).
 
 ## Run locally
 
@@ -77,6 +77,7 @@ External package managers and Git remotes have their own side effects. `install`
 ## Core loop
 
 ```sh
+preflight source add github:arhunsaday/agent-kit@main
 preflight search test
 preflight search react --type skill --online
 preflight search testing --github vercel-labs/skills
@@ -91,7 +92,7 @@ preflight delete skill:ponytail --dry-run
 preflight rollback --dry-run
 ```
 
-The bundled catalogue contains this repository's skills and support files, subagents, prompts, instincts, hook scripts, MCP templates and tool references. `npm run catalog:seed` refreshes it. No third-party catalogue content is silently downloaded or executed at startup.
+Preflight ships no catalogue. `preflight source add github:owner/repo@ref` pins a content repository to the commit the ref names and caches its tarball under `~/.preflight/sources/`; `preflight source add ./folder` reads a local folder in place; `source list|show|update|remove` manage them (stored in `~/.preflight/sources.json`). Search, `catalog-inspect`, `catalog-add` and loadouts read every configured source and tag results `source:<name>`. A source is read from its `catalog/index.json`, which `preflight catalog build <dir> [--repo owner/repo] [--check]` writes from the repository's layout, or scanned directly when it has none. With no source, commands say how to add one. Nothing is downloaded or executed at startup. See [sources](docs/content/docs/preflight/sources.mdx).
 
 Online search connects to the official MCP registry and the documented skills.sh API. The registry publishes one record per server version: Preflight keeps the record the registry marks current, skips records it marks withdrawn, and an entry whose shape this version cannot read is counted and reported rather than removing the whole source from the results. Registry results retain HTTP/SSE transport and required headers; pinned npm and PyPI stdio packages become `npx`/`uvx` launch configurations with required environment references. Unsupported package formats remain inspectable and are rejected during apply rather than wired as broken servers. The latter requires `VERCEL_OIDC_TOKEN`. GitHub discovery uses pinned commit URLs and optionally `GITHUB_TOKEN` to increase rate limits. A source failure is reported alongside successful results. Remote results are bounded to 100 per source; results can be narrowed with another query. GitHub search matches file paths; it is not a full-text code-search engine.
 
@@ -103,15 +104,15 @@ CRUD applies to all ten resource types. Native adapter wiring is intentionally e
 | --- | --- | --- | --- |
 | Skills and support files | `.claude/skills` | `.cursor/skills` | `~/.agents/skills`, project `.agents/skills` |
 | MCP | project `.mcp.json`; user `~/.claude.json` | `.cursor/mcp.json` | `[mcp_servers.<name>]` in `.codex/config.toml` (user `~/.codex`, project `.codex`); stdio and streamable HTTP |
-| Instructions | catalogued only | catalogued only | managed block in `~/.codex/AGENTS.md` and project `AGENTS.md` |
+| Instructions | managed block in `~/.claude/CLAUDE.md` or project `CLAUDE.md`; text outside it is kept | project `.cursor/rules/<id>.mdc` (always applied) | managed block in `~/.codex/AGENTS.md` and project `AGENTS.md` |
 | Subagents | `.claude/agents` | catalogued only | catalogued only |
 | Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only | catalogued only |
 | Commands | `.claude/commands` | `.cursor/commands` | catalogued only |
 | Statusline | `.claude/settings.json`; managed script in `.claude/statusline` | catalogued only | catalogued only |
-| Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only | catalogued only |
+| Plugins | `.claude/settings.json` `enabledPlugins` and, for a plugin from a source, `extraKnownMarketplaces`; `install --execute` runs `claude plugin marketplace add` then `claude plugin install` | catalogued only | catalogued only |
 | Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers | catalogued; Codex removed custom prompts in 0.117 and the doctor flags `~/.codex/prompts` |
 
-Codex's `config.toml` and `AGENTS.md` are shared with the person: Preflight edits only its own `[mcp_servers.<name>]` tables and marker-delimited blocks, keeps every other byte, and its lockfile digest covers only those parts, so edits around them are not drift. `CODEX_HOME` moves the Codex home. Skills in `~/.agents/skills` are the shared store Codex reads; Claude Code and Cursor still get their own copies, not links. See [Codex](docs/content/docs/preflight/codex.mdx).
+Codex's `config.toml` and `AGENTS.md`, and Claude Code's `CLAUDE.md`, are shared with the person: Preflight edits only its own `[mcp_servers.<name>]` tables and marker-delimited blocks, keeps every other byte, and its lockfile digest covers only those parts, so edits around them are not drift. `CODEX_HOME` moves the Codex home. Skills in `~/.agents/skills` are the shared store Codex reads; Claude Code and Cursor still get their own copies, not links. See [Codex](docs/content/docs/preflight/codex.mdx).
 
 Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; Preflight does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue.
 
@@ -215,7 +216,7 @@ preflight git status
 preflight git pull --dry-run
 ```
 
-Loadouts compose the existing `claude-code/loadouts.json`, with later layers overriding reasons and prerequisite checks before installation. A loadout item that is not vendored in this repository declares the repository it comes from with `"external": "owner/repo"`, which `scripts/loadouts.py check` validates against `skills/install-third-party.sh`; those skills are absent from the bundled catalogue and are reported with the command that installs them. Missing resources and prerequisites are reported together, and installation does not partially apply them. Use `--catalog /path/to/a/complete/local/kit` when supplying additional resources. Retrofit reads manifests and script names without executing repository code, and generates `AGENTS.md` plus `.preflight/commands.json`. It refuses to replace an existing contract.
+Loadouts come from each source's `loadouts/loadouts.json` (`source/name` picks one when two sources share a name), with later layers overriding reasons and prerequisite checks before installation. A loadout item that a source does not vendor declares the repository it comes from with `"external": "owner/repo"`; it is reported with the command that installs it. Missing resources and prerequisites are reported together, and installation does not partially apply them. Use `--catalog /path/to/a/content/folder` to resolve loadouts from a folder that is not a configured source. Retrofit reads manifests and script names without executing repository code, and generates `AGENTS.md` plus `.preflight/commands.json`. It refuses to replace an existing contract.
 
 ## Local configuration benchmarks
 

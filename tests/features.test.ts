@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { useFixtureSource } from "./support/sources.js";
 import { ResourceSchema } from "../src/schema.js";
 import { searchSources } from "../src/catalog.js";
 import { materializeLoadout, resolveLoadout } from "../src/loadouts.js";
@@ -108,8 +109,11 @@ it("counts observed invocations without inventing usage from plain mentions", as
 });
 
 it("shares a loadout and a project drop-in, and refuses an empty selection", async () => {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-share-"));
+  const root = await mkdtemp(
+    join(await realpath(tmpdir()), "preflight-share-"),
+  );
   const context = { root, home: join(root, "home") };
+  await useFixtureSource(context.home);
   await execute(["init"], context);
   const project = ResourceSchema.parse({
     ...resource,
@@ -142,6 +146,9 @@ it("shares a loadout and a project drop-in, and refuses an empty selection", asy
     execute(["share", "--loadout", "junior", "--dry-run"], context),
   ).rejects.toThrow(/not shareable until it resolves/);
   await expect(
-    execute(["share", "--id", "skill:project-only", "--scope", "global"], context),
+    execute(
+      ["share", "--id", "skill:project-only", "--scope", "global"],
+      context,
+    ),
   ).rejects.toThrow(/Nothing to share/);
 });

@@ -57,6 +57,8 @@ export function materializeLoadout(
     instincts: "prompt",
     workflows: "prompt",
     tools: "tool",
+    plugins: "plugin",
+    instructions: "instructions",
   };
   for (const item of resolveLoadout(input, target)) {
     const resource = catalog.find(

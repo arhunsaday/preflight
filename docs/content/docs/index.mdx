@@ -1,50 +1,25 @@
 ---
 title: "Intro"
 ---
-My AI development setup, versioned. Skills, hooks, slash commands, subagents,
-MCP configuration, and the workflows around them — installed onto a machine with
-one script, dropped into a project with another.
+This site documents [Preflight](/docs/preflight), the tool: a CLI, a terminal
+interface and a desktop app that keep an AI coding setup (Claude Code, Codex,
+Cursor) declared, previewed, reversible and checked.
 
-## The idea
-
-Three kinds of thing, three different lifecycles, and mixing them is what makes
-a setup rot:
-
-|                         | Lives in                          | Updated by                        |
-| ----------------------- | --------------------------------- | --------------------------------- |
-| **What I own**          | this repo, in git                 | me                                |
-| **What others own**     | `~/.claude/` via the `skills` CLI | `npx skills update`               |
-| **What a project owns** | the project's own repo            | copied in once, then edited there |
-
-The first fifteen skills here arrived by copy-paste and froze at a version two
-releases behind upstream, with nothing recording that a newer one existed. The
-split above exists so that cannot happen again.
+Preflight ships no content. Skills, plugins, hooks, subagents, loadouts and the
+global `CLAUDE.md` live in a content repository that Preflight reads as a
+[source](/docs/preflight/sources). Mine is
+[arhunsaday/agent-kit](https://github.com/arhunsaday/agent-kit); its guides
+(skills, hooks, MCP servers, workflows, other agents) are in its
+[`guides/`](https://github.com/arhunsaday/agent-kit/tree/main/guides) folder.
 
 ## Start here
 
-- **[Preflight](/docs/preflight)** — the CLI and terminal interface that manage all of this
-- **[Install](/docs/setup/install)** — get it onto a machine
-- **[What lands where](/docs/setup/what-lands-where)** — the map
-- **[Claude Code fundamentals](/docs/claude-code/fundamentals)** — models, context, the mechanisms
-- **[Beyond vibecoding](/docs/beyond-vibecoding)** — what you still have to know
-
-## What is in it
-
-| Area                                                 | Contents                                                                               |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [Skills](/docs/claude-code/skills)                         | 24, in 6 categories, each with recorded provenance                                     |
-| [Hooks](/docs/claude-code/hooks)                           | 9 — secret blocking, dangerous-command blocking, format, lint, test, audit log, sounds |
-| [Commands & agents](/docs/claude-code/commands-and-agents) | 3 slash commands, 3 subagents                                                          |
-| [MCP](/docs/mcp)                                          | My servers, plus the ones worth adding                                                 |
-| [Workflows](/docs/workflows/planning)                      | Planning, architecture, coding, debugging, review, devops, observability               |
-| [Stack notes](/docs/stack/frontend)                        | Frontend, backend, devops, AI — what to use with each                                  |
+- **[Install](/docs/preflight/install)**: get the CLI and the desktop app
+- **[Sources](/docs/preflight/sources)**: add a content repository
+- **[CLI](/docs/preflight/cli)**: every command
+- **[Desktop](/docs/preflight/desktop)**: the app
 
 ## Official documentation
 
-This site is deliberately thin. Where Anthropic documents something, it links
-there rather than paraphrasing it into staleness.
-
 - [Claude Code docs](https://code.claude.com/docs/en/overview)
-- [Best practices](https://code.claude.com/docs/en/best-practices)
-- [Prompt engineering](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview)
 - [Model Context Protocol](https://modelcontextprotocol.io)

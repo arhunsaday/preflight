@@ -1,8 +1,11 @@
 import { spawn } from "node:child_process";
 import type { Resource } from "./schema.js";
+import { pluginMarketplace } from "./adapters.js";
 export interface Command {
   command: string;
   args: string[];
+  /** Commands that must succeed first, such as adding a plugin marketplace. */
+  before?: Command[];
 }
 export function installationPlan(resource: Resource): Command {
   if (resource.type === "skill") {
@@ -41,15 +44,32 @@ export function installationPlan(resource: Resource): Command {
       );
     if (!/^[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*$/i.test(resource.name))
       throw new Error("Plugin name must be name@marketplace");
+    const scope = resource.scope === "global" ? "user" : "project";
+    const marketplace = pluginMarketplace(resource);
+    const where = !marketplace
+      ? undefined
+      : marketplace.source.source === "github"
+        ? marketplace.source.repo
+        : marketplace.source.source === "directory"
+          ? marketplace.source.path
+          : marketplace.source.url;
+    if (where?.startsWith("-"))
+      throw new Error("Invalid plugin marketplace source");
     return {
       command: "claude",
-      args: [
-        "plugin",
-        "install",
-        resource.name,
-        "--scope",
-        resource.scope === "global" ? "user" : "project",
-      ],
+      args: ["plugin", "install", resource.name, "--scope", scope],
+      // `marketplace add` is idempotent: an already known marketplace is
+      // reported and left as it is.
+      ...(where
+        ? {
+            before: [
+              {
+                command: "claude",
+                args: ["plugin", "marketplace", "add", where, "--scope", scope],
+              },
+            ],
+          }
+        : {}),
     };
   }
   if (resource.type === "mcp")

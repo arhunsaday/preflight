@@ -24,7 +24,11 @@ What you get:
 
 ## The core loop
 
+Preflight ships no skills, plugins or loadouts of its own. Point it at a
+content repository first, see [Sources](/docs/preflight/sources):
+
 ```sh
+preflight source add github:arhunsaday/agent-kit@main
 preflight search test                      # find a resource in the catalogue
 preflight catalog-inspect skill:ponytail   # read what it contains and asks for
 preflight catalog-add skill:ponytail --dry-run

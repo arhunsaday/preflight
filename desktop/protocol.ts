@@ -43,6 +43,24 @@ export interface Preferences {
   /** Read local Claude Code and Codex transcripts for usage. Nothing is uploaded. */
   readTranscripts: boolean;
 }
+/** A content source the catalogue and loadouts come from. */
+export interface SourceSummary {
+  name: string;
+  kind: "github" | "local";
+  repo?: string;
+  ref?: string;
+  commit?: string;
+  path?: string;
+  resources: number;
+  loadouts: number;
+}
+export interface LoadoutCatalog {
+  details: Record<
+    string,
+    { description?: string; extends?: string; source?: string }
+  >;
+  presets: Record<string, string[]>;
+}
 export interface Snapshot {
   root: string;
   home: string;
@@ -62,6 +80,8 @@ export interface Snapshot {
   /** True when the person turned transcript reading off. */
   transcriptsOff?: boolean;
   loadouts: string[];
+  loadoutCatalog: LoadoutCatalog;
+  sources: SourceSummary[];
   benches: BenchResult[];
   errors: string[];
 }

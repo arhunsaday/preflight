@@ -1,6 +1,6 @@
 import { Command, Option } from "commander";
-import { readFile, realpath } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { verifyResource } from "./verify.js";
 import { ConfigStore } from "./state.js";
@@ -27,7 +27,6 @@ import {
 import {
   type CatalogSource,
   searchSources,
-  localCatalog,
   mcpRegistry,
   skillsSource,
   githubSource,
@@ -55,9 +54,44 @@ import { applyFiles, readText, jsonText, recover } from "./transaction.js";
 import { defaultService } from "./auth-client.js";
 import packageJson from "../package.json" with { type: "json" };
 const packageVersion: string = packageJson.version;
-import bundled from "../catalog/resources.json" with { type: "json" };
-import loadouts from "../catalog/loadouts.json" with { type: "json" };
-export const catalogResources = () => z.array(ResourceSchema).parse(bundled);
+import { buildCatalog, CatalogIndexSchema } from "./catalog-build.js";
+import {
+  addSource,
+  allSourceCatalogs,
+  loadoutIndex,
+  NO_SOURCE_HINT,
+  readSources,
+  removeSource,
+  sourceCatalog,
+  sourcesPath,
+  updateSource,
+  type SourceCatalog,
+} from "./sources.js";
+/** Resources from every configured content source (none by default). */
+export const catalogResources = async (home: string) =>
+  (await allSourceCatalogs(home)).resources;
+/** A content directory read directly: its catalog/index.json, or its files. */
+async function directoryCatalog(path: string): Promise<SourceCatalog> {
+  let index;
+  try {
+    index = CatalogIndexSchema.parse(
+      JSON.parse(await readFile(join(path, "catalog", "index.json"), "utf8")),
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    index = await buildCatalog(path);
+  }
+  const resources = index.resources.flatMap((r) => {
+    const parsed = ResourceSchema.safeParse(r);
+    return parsed.success ? [parsed.data] : [];
+  });
+  return {
+    source: index.name,
+    resources,
+    ...(index.loadouts ? { loadouts: index.loadouts } : {}),
+    errors: [],
+  };
+}
 export async function execute(
   args: string[],
   context: Context,
@@ -116,8 +150,29 @@ export async function execute(
       });
   const input = async (path: string) =>
     JSON.parse(await readFile(resolve(ctx().root, path), "utf8"));
+  const catalogs = async (path?: string) =>
+    path
+      ? {
+          catalogs: [await directoryCatalog(resolve(ctx().root, path))],
+          errors: [] as string[],
+        }
+      : allSourceCatalogs(ctx().home);
   const catalog = async (path?: string) =>
-    path ? localCatalog(resolve(ctx().root, path)) : catalogResources();
+    (await catalogs(path)).catalogs.flatMap((c) => c.resources);
+  const findCatalogue = async (id: string) => {
+    const r = (await catalogResources(ctx().home)).find((r) => r.id === id);
+    if (!r)
+      throw new Error(
+        (await readSources(ctx().home)).length
+          ? "Catalogue resource not found"
+          : `Catalogue resource not found. ${NO_SOURCE_HINT}`,
+      );
+    return r;
+  };
+  const loadoutsFor = async (path?: string) => {
+    const found = await catalogs(path);
+    return loadoutIndex(found.catalogs);
+  };
   const shareBase = (value?: string) =>
     value ?? process.env.PREFLIGHT_SHARE_URL ?? defaultService();
   command("init", "Create a project configuration", async () =>
@@ -382,14 +437,24 @@ export async function execute(
     "search [query]",
     "Search the typed catalogue and optional remote sources",
     async (query = "", options) => {
-      const local = await catalog(options.catalog);
       const selected = z
-        .enum(["all", "bundled", "mcp-registry", "skills.sh", "github"])
+        .enum([
+          "all",
+          "sources",
+          "bundled",
+          "mcp-registry",
+          "skills.sh",
+          "github",
+        ])
         .parse(options.source ?? "all");
-      const sources: CatalogSource[] =
-        selected === "all" || selected === "bundled"
-          ? [{ id: "catalog", search: async () => local }]
-          : [];
+      const configured =
+        selected === "all" || selected === "sources" || selected === "bundled"
+          ? await catalogs(options.catalog)
+          : { catalogs: [], errors: [] };
+      const sources: CatalogSource[] = configured.catalogs.map((c) => ({
+        id: c.source,
+        search: async () => c.resources,
+      }));
       if (options.online || ["mcp-registry", "skills.sh"].includes(selected)) {
         if (
           ["all", "mcp-registry"].includes(selected) &&
@@ -408,17 +473,26 @@ export async function execute(
             options.type ? ResourceTypeSchema.parse(options.type) : "skill",
           ),
         );
-      return searchSources(
+      const found = await searchSources(
         query,
         sources,
         options.type ? ResourceTypeSchema.parse(options.type) : undefined,
       );
+      found.errors.unshift(...configured.errors);
+      return {
+        ...found,
+        ...(!options.catalog &&
+        ["all", "sources", "bundled"].includes(selected) &&
+        !configured.catalogs.length
+          ? { hint: NO_SOURCE_HINT }
+          : {}),
+      };
     },
   );
   search
     .option(
       "--source <source>",
-      "all, bundled, mcp-registry, skills.sh or github",
+      "all, sources (configured content sources), mcp-registry, skills.sh or github",
     )
     .option("--online")
     .option("--github <owner/repo>")
@@ -431,22 +505,134 @@ export async function execute(
   );
   command(
     "catalog-inspect <id>",
-    "Inspect a bundled catalogue item",
-    async (id) => {
-      const r = catalogResources().find((r) => r.id === id);
-      if (!r) throw new Error("Catalogue resource not found");
-      return inspectRemote(r);
-    },
+    "Inspect an item from a configured source",
+    async (id) => inspectRemote(await findCatalogue(id)),
   );
   command(
     "catalog-add <id>",
-    "Add an inspected bundled resource",
-    async (id) => {
-      const r = catalogResources().find((r) => r.id === id);
-      if (!r) throw new Error("Catalogue resource not found");
-      return service().create(r, dry());
-    },
+    "Add an inspected resource from a configured source",
+    async (id) => service().create(await findCatalogue(id), dry()),
   );
+  const catalogCommand = program
+    .command("catalog")
+    .description("Build the catalogue of a content repository");
+  catalogCommand
+    .command("build <directory>")
+    .description(
+      "Scan a content repository and write catalog/index.json (resources and loadouts)",
+    )
+    .option("--repo <owner/repo>", "GitHub repository the sources link to")
+    .option("--ref <ref>", "branch, tag or commit the links use", "main")
+    .option(
+      "--out <path>",
+      "output file (default <directory>/catalog/index.json)",
+    )
+    .option("--check", "fail when the file on disk is not up to date")
+    .action(async (directory, options) => {
+      const dir = resolve(ctx().root, directory);
+      const index = await buildCatalog(dir, {
+        ...(options.repo ? { repo: options.repo } : {}),
+        ref: options.ref,
+      });
+      const out = resolve(
+        ctx().root,
+        options.out ?? join(dir, "catalog", "index.json"),
+      );
+      const text = JSON.stringify(index, null, 2) + "\n";
+      const summary = {
+        path: out,
+        resources: index.resources.length,
+        byType: index.resources.reduce<Record<string, number>>((acc, r) => {
+          const type = (r as { type: string }).type;
+          acc[type] = (acc[type] ?? 0) + 1;
+          return acc;
+        }, {}),
+        loadouts: Object.keys(index.loadouts?.loadouts ?? {}).length,
+      };
+      if (options.check) {
+        const current = await readFile(out, "utf8").catch(() => null);
+        if (current !== text)
+          throw new Error(
+            `${out} is out of date; run preflight catalog build ${directory}`,
+          );
+        result = { ...summary, upToDate: true };
+        return;
+      }
+      if (dry()) {
+        result = { ...summary, dryRun: true };
+        return;
+      }
+      await mkdir(dirname(out), { recursive: true });
+      await writeFile(out, text);
+      result = summary;
+    });
+  const source = program
+    .command("source")
+    .description("Content sources the catalogue and loadouts come from");
+  source
+    .command("add <spec>")
+    .description(
+      "Add github:owner/repo@ref (pinned to its commit) or a local directory",
+    )
+    .option("--name <name>")
+    .action(async (spec, options) => {
+      result = await addSource(ctx().home, ctx().root, spec, {
+        ...(options.name ? { name: options.name } : {}),
+        dryRun: dry(),
+      });
+    });
+  source.command("list").action(async () => {
+    const sources = await readSources(ctx().home);
+    const found = await allSourceCatalogs(ctx().home);
+    result = {
+      file: sourcesPath(ctx().home),
+      sources: sources.map((s) => {
+        const c = found.catalogs.find((c) => c.source === s.name);
+        return {
+          ...s,
+          resources: c?.resources.length ?? 0,
+          loadouts: Object.keys(c?.loadouts?.loadouts ?? {}).length,
+        };
+      }),
+      errors: found.errors,
+      ...(sources.length ? {} : { hint: NO_SOURCE_HINT }),
+    };
+  });
+  source.command("remove <name>").action(async (name) => {
+    result = await removeSource(ctx().home, name, dry());
+  });
+  source
+    .command("update [name]")
+    .description(
+      "Fetch the commit a source's ref names now, or move it with --ref",
+    )
+    .option("--ref <ref>")
+    .action(async (name, options) => {
+      result = await updateSource(ctx().home, name, {
+        ...(options.ref ? { ref: options.ref } : {}),
+        dryRun: dry(),
+      });
+    });
+  source
+    .command("show <name>")
+    .description("List what one source provides")
+    .action(async (name) => {
+      const found = (await readSources(ctx().home)).find(
+        (s) => s.name === name,
+      );
+      if (!found) throw new Error(`No source named ${name}`);
+      const c = await sourceCatalog(ctx().home, found);
+      result = {
+        source: found,
+        resources: c.resources.map((r) => ({
+          id: r.id,
+          type: r.type,
+          name: r.name,
+        })),
+        loadouts: Object.keys(c.loadouts?.loadouts ?? {}),
+        errors: c.errors,
+      };
+    });
   command(
     "install <id>",
     "Preview or execute a delegated package-manager installation",
@@ -463,16 +649,31 @@ export async function execute(
               ? " A plugin whose marketplace declares an install command needs a terminal: that confirmation shows the command to a person, and Preflight does not accept it on your behalf."
               : ""),
         };
-      const output = await runCommand(plan, ctx().root, 120000, {
+      const env = {
         ...process.env,
         HOME: ctx().home,
         ...(resource.type === "plugin"
           ? { CLAUDE_CONFIG_DIR: join(ctx().home, ".claude") }
           : {}),
-      });
+      };
+      const steps = [];
+      for (const step of plan.before ?? []) {
+        const output = await runCommand(step, ctx().root, 120000, env);
+        if (output.code)
+          throw new Error(
+            `${step.command} ${step.args.slice(0, 3).join(" ")} exited ${output.code}: ${output.stderr}`,
+          );
+        steps.push(output);
+      }
+      const output = await runCommand(plan, ctx().root, 120000, env);
       if (output.code)
         throw new Error(`Installer exited ${output.code}: ${output.stderr}`);
-      return { plan, output, detected: await service().detect() };
+      return {
+        plan,
+        ...(steps.length ? { before: steps } : {}),
+        output,
+        detected: await service().detect(),
+      };
     },
   ).option("--execute", "run the package manager");
   command(
@@ -577,9 +778,12 @@ export async function execute(
       let resources: Resource[];
       if (options.id) resources = [await service().inspect(options.id)];
       else if (options.loadout) {
-        const plan = materializeLoadout(
-          loadouts,
+        const entry = (await loadoutsFor(options.catalog)).find(
           options.loadout,
+        );
+        const plan = materializeLoadout(
+          entry.data,
+          entry.name,
           await catalog(options.catalog),
         );
         if (plan.missing.length)
@@ -672,26 +876,59 @@ export async function execute(
     if (!response.ok) throw new Error(`Revoke failed: HTTP ${response.status}`);
     return { revoked: code };
   }).option("--service <url>");
-  const loadout = program.command("loadouts");
-  loadout.command("list").action(() => {
-    result = {
-      loadouts: Object.keys(loadouts.loadouts),
-      presets: loadouts.presets,
-    };
-  });
+  const loadout = program
+    .command("loadouts")
+    .description("Loadouts from configured sources (or --catalog <directory>)");
+  loadout
+    .command("list")
+    .option("--catalog <directory>")
+    .action(async (options) => {
+      const index = await loadoutsFor(options.catalog);
+      const loadouts = index.entries.filter((e) => !e.preset);
+      result = {
+        loadouts: loadouts.map((e) => e.name),
+        presets: Object.fromEntries(
+          index.entries
+            .filter((e) => e.preset)
+            .map((e) => [e.name, e.data.presets?.[e.name] ?? []]),
+        ),
+        details: Object.fromEntries(
+          loadouts.map((e) => {
+            const value = e.data.loadouts[e.name] as {
+              description?: string;
+              extends?: string;
+            };
+            return [
+              e.name,
+              {
+                source: e.source,
+                ...(value?.description
+                  ? { description: value.description }
+                  : {}),
+                ...(value?.extends ? { extends: value.extends } : {}),
+              },
+            ];
+          }),
+        ),
+        ...(index.entries.length ? {} : { hint: NO_SOURCE_HINT }),
+      };
+    });
   loadout
     .command("show <name>")
     .option("--explain")
-    .action((name) => {
-      result = resolveLoadout(loadouts, name);
+    .option("--catalog <directory>")
+    .action(async (name, options) => {
+      const entry = (await loadoutsFor(options.catalog)).find(name);
+      result = resolveLoadout(entry.data, entry.name);
     });
   loadout
     .command("install <name>")
     .option("--catalog <directory>")
     .action(async (name, options) => {
+      const entry = (await loadoutsFor(options.catalog)).find(name);
       const plan = materializeLoadout(
-        loadouts,
-        name,
+        entry.data,
+        entry.name,
         await catalog(options.catalog),
       );
       if (plan.missing.length) {

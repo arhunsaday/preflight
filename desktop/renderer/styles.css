@@ -4124,3 +4124,45 @@ pre.patch .del {
 pre.patch .hunk {
   color: var(--text-3);
 }
+/* Content sources */
+.source-add {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.source-add input {
+  flex: 1;
+  min-width: 0;
+}
+.source-list {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.source-row + .source-row {
+  border-top: 1px solid var(--border-soft);
+}
+.source-detail {
+  flex: 1;
+  min-width: 0;
+}
+.source-detail strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.source-detail small {
+  display: block;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 1px 0 6px;
+}

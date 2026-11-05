@@ -1,4 +1,61 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/docs/setup/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/setup/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/claude-code/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/claude-code/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/mcp/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/mcp/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/workflows/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/workflows/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/other-agents/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/other-agents/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/mcp",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/mcp/index.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/stack/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/notes/stack/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/tools/:page",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/notes/tools/:page.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/tools",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/notes/tools/index.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/ecosystem",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/notes/ecosystem.md",
+      "permanent": true
+    },
+    {
+      "source": "/docs/beyond-vibecoding",
+      "destination": "https://github.com/arhunsaday/agent-kit/blob/main/guides/notes/beyond-vibecoding.md",
+      "permanent": true
+    }
+  ]
 }

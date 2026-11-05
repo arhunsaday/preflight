@@ -1,7 +1,7 @@
 {
   "name": "@arhunsaday/preflight",
   "version": "0.1.0",
-  "description": "Search, inspect, scope, share, and verify AI development configurations",
+  "description": "Search, inspect, scope, share, and verify AI development configurations. Ships no content: add a source such as github:arhunsaday/agent-kit.",
   "keywords": [
     "ai",
     "claude-code",
@@ -44,13 +44,12 @@
     "build": "tsup",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "dev": "tsx src/cli.ts",
-    "lint": "eslint src tests desktop *.ts *.js scripts/seed-catalog.ts",
+    "lint": "eslint src tests desktop *.ts *.js",
     "start": "node dist/cli.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests/*.ts tests/*.tsx",
-    "catalog:seed": "tsx scripts/seed-catalog.ts",
     "prepack": "npm run build",
     "build:worker": "esbuild src/worker.ts --bundle --platform=browser --external:node:* --format=esm --outfile=dist/worker.js",
     "smoke:worker": "bash scripts/worker-smoke.sh",

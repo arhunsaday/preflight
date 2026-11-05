@@ -27,7 +27,6 @@ import {
   Check,
   Circle,
 } from "lucide-react";
-import loadoutCatalog from "../../../catalog/loadouts.json";
 import type { Workspace } from "../workspace";
 import { humanize, plural, relativeTime, tildify } from "../format";
 import { Badge, Button, Empty, Json, Notice } from "../components/ui";
@@ -818,13 +817,36 @@ interface LoadoutItem {
   blocking?: boolean;
   external?: string;
 }
-const catalogue = loadoutCatalog as {
-  loadouts: Record<string, { description?: string; extends?: string }>;
-  presets?: Record<string, string[]>;
-};
-export function Loadouts({ workspace: w }: { workspace: Workspace }) {
+export function Loadouts({
+  workspace: w,
+  navigate,
+}: {
+  workspace: Workspace;
+  navigate?: (view: string) => void;
+}) {
   const [selected, setSelected] = useState(""),
     [detail, setDetail] = useState<unknown>(null);
+  const catalogue = {
+    loadouts: w.snapshot?.loadoutCatalog.details ?? {},
+    presets: w.snapshot?.loadoutCatalog.presets ?? {},
+  };
+  if (w.snapshot && !w.snapshot.loadouts.length)
+    return (
+      <div className="page-scroll">
+        <Empty
+          icon={Package}
+          title="No loadouts yet"
+          description="Loadouts come from content sources. Add one, such as github:arhunsaday/agent-kit, to list its role and stack bundles here."
+          action={
+            navigate ? (
+              <Button variant="primary" onClick={() => navigate("sources")}>
+                Add a source
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
+    );
   const presets = Object.entries(catalogue.presets ?? {});
   const open = async (name: string) => {
     setSelected(name);
@@ -854,6 +876,8 @@ export function Loadouts({ workspace: w }: { workspace: Workspace }) {
               <small>
                 {catalogue.loadouts[name]?.description ??
                   "Curated skills and configuration"}
+                {catalogue.loadouts[name]?.source &&
+                  ` · ${catalogue.loadouts[name]?.source}`}
               </small>
             </div>
           </button>

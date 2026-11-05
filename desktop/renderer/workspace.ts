@@ -45,6 +45,12 @@ const describe = (args: string[]) => {
     revoke: "Share revoked",
     profiles: sub === "switch" ? "Profile switched" : "Profile created",
     loadouts: "Loadout installed",
+    source:
+      sub === "remove"
+        ? "Source removed"
+        : sub === "update"
+          ? "Source updated"
+          : "Source added",
   };
   return names[command] ?? "Operation completed";
 };

@@ -46,8 +46,10 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 
 | Command | Purpose |
 | --- | --- |
+| `source add\|list\|show\|update\|remove` | content sources the catalogue and loadouts come from; see [Sources](/docs/preflight/sources) |
 | `search [query]` | catalogue search; `--source`, `--type`, `--online`, `--github <owner/repo>`, `--catalog <dir>` choose and add sources |
-| `catalog-inspect <id>`, `catalog-add <id>` | inspect, then add a bundled item |
+| `catalog-inspect <id>`, `catalog-add <id>` | inspect, then add an item from a source |
+| `catalog build <dir>` | write a content repository's `catalog/index.json`; `--check` in CI |
 | `inspect-file <file>` | validate a catalogue resource file |
 | `install <id>` | print the package-manager plan; `--execute` runs it |
 
@@ -65,7 +67,7 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 | Command | Purpose |
 | --- | --- |
 | `share`, `apply`, `revoke` | see [Sharing](/docs/preflight/sharing) |
-| `loadouts list\|show\|install` | composed sets of resources |
+| `loadouts list\|show\|install` | composed sets of resources from your sources (`source/name` when names collide) |
 | `retrofit` | detect the stack and generate a project contract |
 | `git status\|pull\|push` | delegated Git (fast-forward pull, never force push) |
 

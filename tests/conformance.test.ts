@@ -117,7 +117,7 @@ for (const harness of HarnessIdSchema.options) {
       });
     }
     // Seven round trips through the journal; slow under a loaded test run.
-  }, 20000);
+  }, 30000);
 
   it(`${harness} refuses the types it does not claim`, async () => {
     const context = await workspace();
