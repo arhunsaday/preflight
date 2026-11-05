@@ -613,9 +613,14 @@ try {
   const transcripts = page.getByRole("checkbox", {
     name: /Read conversation transcripts/,
   });
-  await transcripts.uncheck();
+  // The toggle saves the setting before it re-renders, so click and wait for
+  // the result instead of asserting the state right after the click.
+  await transcripts.click();
   await page.getByText("Transcript reading is off", { exact: true }).waitFor();
-  await transcripts.check();
+  await page.waitForFunction(
+    () => !document.querySelector(".usage-setting input")?.checked,
+  );
+  await transcripts.click();
   await page.getByText("Cache hit rate", { exact: true }).waitFor();
   await navigate("Discover resources");
   await page
