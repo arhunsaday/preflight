@@ -12,6 +12,9 @@ preflight apply https://YOUR_BACKEND/s/abc234 --dry-run  # by link or code
 preflight revoke abc234
 ```
 
+`share` also takes `--id <id>` to share one resource, `--loadout <name>` to share a
+resolved loadout, `--scope global|project` and `--public`.
+
 The payload schema rejects credentials: recognisable secret patterns, secret
 keys, authorization headers and credential-bearing URLs. `${VARIABLE}`
 references are accepted, and the landing page names the variables a recipient

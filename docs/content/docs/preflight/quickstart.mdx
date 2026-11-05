@@ -1,0 +1,85 @@
+---
+title: "Quickstart"
+description: "Install Preflight, run Doctor, read the context map, adopt what it found and share the result"
+---
+
+Five steps, about ten minutes. Steps 1 to 3 only read files. Nothing is written
+until step 4, and every write shows a preview first.
+
+## 1. Install
+
+Run it once without installing (Node.js 22 or newer):
+
+```sh
+npx @arhunsaday/preflight --help
+```
+
+Or install the command line globally, or the desktop app (macOS, Windows, Linux):
+
+```sh
+npm install -g @arhunsaday/preflight
+brew install --cask preflight        # desktop app, macOS
+```
+
+The desktop installers are on the
+[latest release](https://github.com/arhunsaday/preflight/releases/latest). More
+in [Install](/docs/preflight/install).
+
+## 2. Run Doctor
+
+From the project you work on:
+
+```sh
+npx @arhunsaday/preflight doctor
+```
+
+Doctor reads what Claude Code, Codex and Cursor hold for this project and your
+home folder, and reports findings: drift, MCP servers that are not wired,
+instruction problems and context cost. Add `--connect` to start each MCP server
+and test it. That runs programs, so it is opt-in. In the desktop app, open
+**Health → Doctor**.
+
+## 3. Open the context map
+
+```sh
+preflight context
+```
+
+This prints an estimate of the instruction text your setup can put in front of
+the model, resource by resource. In the desktop app, **Health → Context map**
+shows it as a treemap. Large blocks are the first place to look. Numbers are
+estimates (`characters / 4`), not tokenizer output: see
+[Context map](/docs/preflight/context-map).
+
+## 4. Adopt what was detected
+
+Preflight never adopts anything silently. List what your agents already hold and
+bring one resource under management where it lives:
+
+```sh
+preflight init                          # create preflight.config.json
+preflight unmanaged                     # what is installed but not managed
+preflight adopt <id> --dry-run          # preview the change
+preflight adopt <id>
+```
+
+`adopt` does not move the file. It records the resource in your profile, so
+drift is detected from then on. `preflight rollback` reverses the latest change.
+In the desktop app, open **Detected** and choose **Adopt**.
+
+## 5. Share
+
+```sh
+preflight share --out setup.share.json  # export locally, no account needed
+preflight apply setup.share.json --dry-run
+```
+
+To publish a link, sign in with `preflight auth login` and run `preflight share`.
+Anyone with the link can read the share, and payloads that contain credentials
+are rejected. See [Sharing](/docs/preflight/sharing).
+
+## Next
+
+- [CLI reference](/docs/preflight/cli) lists every command.
+- [Usage](/docs/preflight/usage) shows tokens, cache hit rate and cost from local transcripts.
+- [Codex](/docs/preflight/codex) explains how Preflight edits `config.toml` and `AGENTS.md`.

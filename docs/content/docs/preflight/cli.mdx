@@ -6,7 +6,7 @@ description: "Every command, grouped by what it does"
 Commands print JSON on stdout; errors go to stderr with a nonzero exit code.
 Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 `--global` to target the shared global configuration at `~/.preflight/global`.
-`preflight <command> --help` is authoritative.
+`preflight <command> --help` is authoritative. New here? Follow the [Quickstart](/docs/preflight/quickstart).
 
 ## Setup and state
 
@@ -26,7 +26,7 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 | `detect` | read installed harness resources |
 | `unmanaged` | what a harness holds that the profile does not manage |
 | `adopt <id>` | manage a detected resource where it already lives |
-| `inspect <id>` | content, permissions, configuration, provenance |
+| `inspect <id>`, `inspect-json <json>` | content, permissions, configuration, provenance |
 | `doctor [--connect]` | findings, drift, context cost; `--connect` tests MCP servers |
 | `verify <id> [--connect]` | static check, or initialise the MCP server and list tools |
 
@@ -45,7 +45,7 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 
 | Command | Purpose |
 | --- | --- |
-| `search [query]` | catalogue search; `--online`, `--github`, `--catalog` add sources |
+| `search [query]` | catalogue search; `--source`, `--type`, `--online`, `--github <owner/repo>`, `--catalog <dir>` choose and add sources |
 | `catalog-inspect <id>`, `catalog-add <id>` | inspect, then add a bundled item |
 | `inspect-file <file>` | validate a catalogue resource file |
 | `install <id>` | print the package-manager plan; `--execute` runs it |
@@ -54,9 +54,9 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 
 | Command | Purpose |
 | --- | --- |
-| `usage [--by session\|skill\|project\|model\|day\|agent] [--since 30d] [--agent]` | tokens, cache hit rate and cost estimate from local Claude Code and Codex transcripts; see [Usage](/docs/preflight/usage) |
+| `usage [--by session\|skill\|project\|model\|day\|agent] [--since 30d] [--until day] [--agent claude-code\|codex\|all] [--project root]` | tokens, cache hit rate and cost estimate from local Claude Code and Codex transcripts; see [Usage](/docs/preflight/usage) |
 | `prune` | propose unused skills (never deletes) |
-| `context [--mode potential\|catalogue]` | estimated instruction size; see [Context map](/docs/preflight/context-map) |
+| `context [--mode potential\|catalogue] [--agent claude-code\|cursor\|codex] [--scope global\|project]` | estimated instruction size; see [Context map](/docs/preflight/context-map) |
 | `bench scaffold\|run\|compare` | local A/B runs of two configurations |
 
 ## Share, project and Git
