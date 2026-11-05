@@ -81,12 +81,26 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
     setLoaded(true);
   };
   const open = async (organizationId: string) => {
-    const [details, pending] = await Promise.all([
-      window.preflight.cloud({ action: "organization", organizationId }),
-      window.preflight.cloud({ action: "invitations", organizationId }),
-    ]);
-    setSelected(Details.parse(details));
-    setInvitations(z.array(Invitation).parse(pending));
+    const details = Details.parse(
+      await window.preflight.cloud({ action: "organization", organizationId }),
+    );
+    // Only admins can see an organization's invitations.
+    const admin =
+      details.members.find((m) => m.userId === w.state?.account.user?.id)
+        ?.role === "admin";
+    setSelected(details);
+    setInvitations(
+      admin
+        ? z
+            .array(Invitation)
+            .parse(
+              await window.preflight.cloud({
+                action: "invitations",
+                organizationId,
+              }),
+            )
+        : [],
+    );
   };
   useEffect(() => {
     setSelected(null);
