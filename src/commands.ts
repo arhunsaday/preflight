@@ -53,6 +53,8 @@ import { runBench, compareRuns, BenchRun } from "./bench.js";
 import { retrofit } from "./retrofit.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
 import { defaultService } from "./auth-client.js";
+import packageJson from "../package.json" with { type: "json" };
+const packageVersion: string = packageJson.version;
 import bundled from "../catalog/resources.json" with { type: "json" };
 import loadouts from "../catalog/loadouts.json" with { type: "json" };
 export const catalogResources = () => z.array(ResourceSchema).parse(bundled);
@@ -64,15 +66,17 @@ export async function execute(
   const program = new Command();
   program.addHelpText(
     "after",
-    "\nAccount commands:\n  preflight auth login --service <url> [--no-browser]\n  preflight auth status\n  preflight auth logout\n  preflight team list|create|members\n",
+    "\nAccount commands:\n  preflight auth login [--service <url>] [--no-browser]\n  preflight auth status | tokens | revoke <id> | logout\n  preflight team list | create | members | invite | invitations | role | remove | leave | shares\n  preflight inbox\n",
   );
   program
     .name("preflight")
     .description("Inspect, manage, scope, share and verify your AI setup")
+    .version(packageVersion, "-v, --version")
     .exitOverride()
     .configureOutput({
       writeOut: (text) => {
-        result = text;
+        // Commander writes the help body and the "after" text separately.
+        result = (typeof result === "string" ? result : "") + text;
       },
       writeErr: () => {},
     })
@@ -134,7 +138,9 @@ export async function execute(
     "Analyze installed setup, context cost and managed-file drift; --connect tests MCP servers",
     async (options) => {
       const days =
-        options.days === undefined ? undefined : z.coerce.number().int().min(1).max(3650).parse(options.days);
+        options.days === undefined
+          ? undefined
+          : z.coerce.number().int().min(1).max(3650).parse(options.days);
       const report = await service().doctorReport({
         ...(days ? { days } : {}),
         ...(typeof options.transcripts === "string"
@@ -231,7 +237,9 @@ export async function execute(
       "Propose a concise instructions file as a diff; --write applies it after review",
     )
     .addOption(
-      new Option("--scope <scope>").choices(["global", "project"]).default("global"),
+      new Option("--scope <scope>")
+        .choices(["global", "project"])
+        .default("global"),
     )
     .addOption(
       new Option("--agent <agent>")
@@ -251,7 +259,10 @@ export async function execute(
       if (!options.write) {
         result = options.text
           ? formatDraft(draft, false)
-          : { ...draft, next: "Run again with --write to apply; add --dry-run to preview." };
+          : {
+              ...draft,
+              next: "Run again with --write to apply; add --dry-run to preview.",
+            };
         return;
       }
       const { before, after, ...rest } = draft;
@@ -616,7 +627,10 @@ export async function execute(
     .option("--owner <owner>")
     .option("--public")
     .option("--expires <ISO-date>")
-    .option("--team <organization-id>", "list the share for that team's members")
+    .option(
+      "--team <organization-id>",
+      "list the share for that team's members",
+    )
     .option("--out <path>")
     .option("--service <url>");
   command(
@@ -758,7 +772,8 @@ export async function execute(
   try {
     await program.parseAsync(args, { from: "user" });
   } catch (error) {
-    if ((error as { code?: string }).code !== "commander.helpDisplayed")
+    const code = (error as { code?: string }).code;
+    if (code !== "commander.helpDisplayed" && code !== "commander.version")
       throw error;
   }
   return result;
