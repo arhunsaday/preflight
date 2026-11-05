@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import './global.css';
 import { Inter } from 'next/font/google';
@@ -7,11 +7,32 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
+const title = 'Preflight — see and fix your AI coding setup';
+const description =
+  'Preflight inventories your Claude Code, Codex and Cursor setup, shows what it costs in context, and fixes it with a preview first. CLI and desktop app, local first.';
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://ai.arhun.fr'),
-  title: { default: 'Preflight', template: '%s | Preflight' },
-  description: 'Preflight, the Claude Code kit, and the workflows around them',
+  metadataBase: new URL('https://preflight.arhun.fr'),
+  title: { default: title, template: '%s | Preflight' },
+  description,
+  applicationName: 'Preflight',
+  openGraph: {
+    type: 'website',
+    siteName: 'Preflight',
+    title,
+    description,
+    url: '/',
+    // The image comes from app/opengraph-image.tsx.
+  },
+  twitter: { card: 'summary_large_image', title, description },
   // Favicon and touch icon come from app/icon.svg and app/apple-icon.png.
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f3f1ea' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c1217' },
+  ],
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

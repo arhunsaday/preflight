@@ -1,1 +1,21 @@
-{ "title": "Preflight", "defaultOpen": true, "pages": ["index", "install", "cli", "tui", "desktop", "sharing", "cloudflare-backend", "doctor", "context-map", "codex", "usage"] }
+{
+  "title": "Preflight",
+  "defaultOpen": true,
+  "pages": [
+    "---Getting started---",
+    "index",
+    "quickstart",
+    "install",
+    "---Using---",
+    "desktop",
+    "cli",
+    "doctor",
+    "context-map",
+    "usage",
+    "codex",
+    "sharing",
+    "---Operating---",
+    "cloudflare-backend",
+    "tui"
+  ]
+}
