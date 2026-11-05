@@ -25,7 +25,7 @@
       "binding": "DB",
       "database_name": "preflight",
       // Paste the id printed by `wrangler d1 create preflight`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "58c54fe3-18eb-4c3a-a344-a2e37127485b",
       "migrations_dir": "migrations"
     }
   ],
@@ -33,7 +33,7 @@
     {
       "binding": "SHARES",
       // Paste the id printed by `wrangler kv namespace create SHARES`.
-      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+      "id": "eea55d771941440e8822e8e2c82b2187"
     }
   ],
   "r2_buckets": [
