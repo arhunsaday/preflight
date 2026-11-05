@@ -19,17 +19,26 @@ must set. Inspect a payload before you publish it.
 
 ## Hosted service
 
-A Hono Cloudflare Worker (`src/worker.ts`, configured by `wrangler.jsonc` with
-D1, a KV namespace and an R2 bucket) serves the codes: 16 random characters, with
-older six-character codes still accepted. Unlisted means not listed, not
-private: anyone with a code can read it. Publishing and revoking need the signed-in
-owner (`preflight auth login`); deployments without D1 fall back to the legacy
-owner token. Setup: [Cloudflare backend and accounts](/docs/preflight/cloudflare-backend).
+The Preflight API at `https://api.preflight.arhun.fr` (a Cloudflare Worker
+with D1, KV and R2) serves the codes: 16 random characters, with older
+six-character codes still accepted. Sign in with `preflight auth login` to
+publish; the signed-in account owns each share.
 
-<Callout type="info">
-Nothing is deployed, and the public share domain is still to be chosen. Docs
-use `share.example.com` as a placeholder. Point clients at a deployment with
-`PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN` and `PREFLIGHT_OWNER_ID`.
+```sh
+preflight share                         # publish, owned by you
+preflight share --team ORGANIZATION_ID  # also list it for that team
+preflight team shares ORGANIZATION_ID   # shares published to a team
+preflight revoke CODE
+```
+
+<Callout type="warn">
+Every share link is readable by anyone who has it. `unlisted` means the code
+is not listed anywhere; `public` marks it as meant for wide sharing.
+`--team` adds the share to the team's list for its members; it does not
+restrict who can open the link.
 </Callout>
 
-Deployment steps and limits: [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md).
+The owner can revoke a share, and so can an admin of its team. Shares with
+`--expires` stop opening at that time and are purged every hour. Set
+`PREFLIGHT_API_URL` to use another deployment. Setup and limits:
+[Cloudflare backend and accounts](/docs/preflight/cloudflare-backend).

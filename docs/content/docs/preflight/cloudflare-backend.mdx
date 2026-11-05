@@ -1,69 +1,177 @@
 ---
 title: "Cloudflare backend and accounts"
-description: "Better Auth accounts, organizations and owned shares on Workers, D1, KV and R2"
+description: "Deploy the Preflight API on Cloudflare Workers with Clerk sign-in, teams and shares"
 ---
 
-Preflight uses Better Auth for user accounts, OAuth providers, sessions, device authorization and organization membership. Cloudflare Workers runs the API, D1 stores authentication and share ownership, KV stores share lookup metadata, and R2 stores configuration payloads. Local configuration management works offline without this backend.
+The Preflight API is one Cloudflare Worker (`src/worker.ts`, configured by
+`wrangler.jsonc`). It serves the browser sign-in page, issues Preflight API
+tokens, manages teams and stores shares.
 
-## Configure a deployment
+| Part | Holds |
+| --- | --- |
+| Clerk | user accounts, GitHub and Google sign-in, teams (Clerk Organizations) and invitation emails |
+| D1 `preflight` | hashed API tokens, one-time sign-in codes, share metadata, rate-limit counters |
+| KV `SHARES` | the public pointer from a share code to its payload, with a TTL for expiring shares |
+| R2 `preflight-shares` | share payloads |
 
-Create a Cloudflare D1 database named `preflight-auth`, a KV namespace and an R2 bucket. Put their identifiers in `wrangler.jsonc`; the committed identifiers are placeholders. Set `BASE_URL` to the canonical HTTPS origin. Set `BETTER_AUTH_SECRET` using `wrangler secret put BETTER_AUTH_SECRET`, with a cryptographically generated secret of at least 32 characters.
+Local configuration management works offline without this backend. The
+hosted service is `https://api.preflight.arhun.fr`; the CLI and the desktop
+use it unless `PREFLIGHT_API_URL` or the desktop's Backend URL says otherwise.
 
-Register a GitHub OAuth application and/or a Google OAuth client. Callback URLs are `https://YOUR_ORIGIN/api/auth/callback/github` and `https://YOUR_ORIGIN/api/auth/callback/google`. Store `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` as Worker secrets for the providers you enable. The browser sign-in page only offers configured providers.
+## Deploy, step by step
 
-Apply the committed migrations with `npm run backend:migrate`. Deploy the Worker with Wrangler after reviewing the bindings and production origin. No deployment or provider registration happens automatically during local builds.
+### 1. Create the Clerk application
 
-Never enable `AUTH_LOCAL_TEST` in production. Password signup exists solely for the loopback smoke test and is disabled on non-loopback origins even if that flag is set. Production login uses the configured OAuth providers.
+1. In the [Clerk dashboard](https://dashboard.clerk.com), create an application
+   named Preflight.
+2. Under **Configure → SSO connections**, enable **GitHub** and **Google**.
+   For the production instance, give each one your own OAuth credentials:
+   create a GitHub OAuth app and a Google OAuth client, and paste the
+   redirect URI that Clerk shows for each provider.
+3. Under **Configure → Organizations**, enable Organizations. Keep the default
+   roles `org:admin` and `org:member`; Preflight shows them as admin and
+   member.
+4. Under **Configure → Paths**, set the sign-in page to
+   `https://api.preflight.arhun.fr/auth/sign-in`. Invitation emails then bring
+   people to the Preflight page.
+5. Create the production instance with the domain `preflight.arhun.fr` and
+   add the DNS records that Clerk lists (the `clerk.` frontend API record and
+   the email records). Wait until Clerk shows every record as verified.
+6. Under **Configure → API keys**, copy three values from the production
+   instance:
+   - the publishable key (`pk_live_…`), which is public;
+   - the secret key (`sk_live_…`);
+   - the JWT public key, in PEM format, for networkless verification.
 
-## Desktop and CLI login
+### 2. Create the Cloudflare resources
 
-In Account, enter the backend origin and choose **Sign in with browser**. Compare the device code and approve the device in your browser. The desktop keeps the session credential in its main process, using operating-system encryption when available; otherwise it lasts for the app session. Credentials are never returned to the renderer.
+Sign in once with `npx wrangler login`, then run from the repository root:
 
 ```sh
-preflight auth login --service https://YOUR_ORIGIN
-preflight auth status
-preflight share
-preflight auth logout
-preflight team list
-preflight team create "My team" --slug my-team
-preflight team members ORGANIZATION_ID
+npx wrangler d1 create preflight
+npx wrangler kv namespace create SHARES
+npx wrangler r2 bucket create preflight-shares
 ```
 
-CLI credentials use macOS Keychain, Windows Credential Manager or Linux Secret Service/keyring. Only public account metadata is written to `~/.preflight/account.json`. There is no plaintext credential fallback. `--no-browser` displays the verification URL instead of opening it. Sign in to the selected backend before changing `--service`; credentials are never automatically sent to a different backend.
+Put the D1 `database_id` and the KV `id` that these commands print into
+`wrangler.jsonc`. The committed values are placeholders.
 
-## Sharing
+### 3. Set the variables and secrets
 
-Publication returns a hosted inspection URL such as `https://YOUR_ORIGIN/s/abc234`. Import that URL with `preflight apply URL --dry-run`, review its changes, then apply it. New links use randomly generated 16-character codes; existing six-character links remain compatible. Share payloads reject literal secrets and preserve environment-variable references. The authenticated user owns each share; another account cannot revoke it. `GET /api/shares` lists the signed-in user's shares. Public and unlisted links are accessible to anyone who has the link; unlisted does not mean private or restricted to an organization.
+In `wrangler.jsonc`, set `CLERK_PUBLISHABLE_KEY` to the `pk_live_…` key. Keep
+`PREFLIGHT_PUBLIC_URL` at `https://api.preflight.arhun.fr`. Then store the
+secrets:
 
-Better Auth's organization endpoints under `/api/auth/organization/*` manage real organization membership. The desktop Team screen can list/create cloud organizations and inspect membership. Its separate local roster remains an offline coordination feature and does not grant backend access or send invitations. The desktop provides invitation links, recipient acceptance/decline, cancellation, role changes, member removal and leaving. Access changes require confirmation and are checked server-side; the last owner cannot be removed or demoted. No invitation email is sent automatically: copy the generated `/invite/UUID` URL for the recipient. Their signed-in email must match the invitation and be verified.
+```sh
+npx wrangler secret put CLERK_SECRET_KEY   # sk_live_…
+npx wrangler secret put CLERK_JWT_KEY      # the PEM public key, optional
+```
 
-Legacy deployments without `AUTH_DB` retain deployment-token compatibility. When `AUTH_DB` is present, legacy write tokens are rejected and user sessions are required.
+Without `CLERK_JWT_KEY`, the Worker verifies sessions against Clerk's JWKS
+endpoint. Never set `PREFLIGHT_DEV_AUTH` in production: it exists for local
+tests, and the Worker ignores it on any host other than loopback.
+
+If Clerk keys are missing, the Worker fails closed: `/api/health` reports
+`"authentication": "unconfigured"` and sign-in, accounts and publishing
+answer HTTP 503. Existing share links still open.
+
+### 4. Apply the migration and deploy
+
+```sh
+npm run backend:migrate   # wrangler d1 migrations apply preflight --remote
+npm run backend:deploy    # wrangler deploy
+```
+
+### 5. Attach the custom domain
+
+The `arhun.fr` zone must be on the same Cloudflare account. In
+`wrangler.jsonc`, uncomment the `routes` entry for `api.preflight.arhun.fr`
+and run `npm run backend:deploy` again. Wrangler creates the DNS record and
+the certificate. Then check:
+
+```sh
+curl https://api.preflight.arhun.fr/api/health
+# {"service":"preflight","authentication":"clerk"}
+```
+
+### 6. Rate limits
+
+`wrangler.jsonc` declares three [Workers Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+bindings, per client IP:
+
+| Binding | Routes | Limit |
+| --- | --- | --- |
+| `RL_AUTH` | `/auth/*`, `/api/auth/*` | 30 per minute |
+| `RL_SHARES` | `/api/shares*` | 60 per minute |
+| `RL_PUBLIC` | `/s/*` | 120 per minute |
+
+Without these bindings, the Worker counts in D1 with the same limits. For a
+second layer, add a rule in **Security → WAF → Rate limiting rules** for the
+zone, for example: URI path starts with `/auth/`, 100 requests per 10 seconds
+per IP, action Block.
+
+### 7. Scheduled purge
+
+The cron trigger in `wrangler.jsonc` (`17 * * * *`) runs every hour. It
+deletes expired shares (R2 payload, then KV pointer, then D1 row), expired
+sign-in codes, expired tokens and old rate-limit counters. Expired shares are
+also removed when someone opens them, and KV drops their pointer by TTL.
+
+## How sign-in works
+
+1. `preflight auth login` (or **Sign in with browser** in the desktop) starts
+   an HTTP listener on `127.0.0.1` on a random port. It opens
+   `/auth/sign-in` with `redirect_uri=http://127.0.0.1:PORT/callback`, a
+   random `state` and a PKCE `code_challenge` (S256).
+2. The page loads Clerk's sign-in component. After sign-in, the person
+   confirms the connection. The page sends the Clerk session token, the
+   challenge and the state to `/auth/exchange`.
+3. The Worker verifies the session, stores a one-time code (five minutes,
+   single use) and redirects the browser to the loopback address with `code`
+   and `state`. The Worker accepts no other redirect address.
+4. The client sends the code and its `code_verifier` to `/auth/token` and
+   receives a Preflight API token: `pfk_` plus 32 random bytes. The Worker
+   stores only its SHA-256 hash, with the user, a label and dates. The token
+   expires after 90 days without use; each use extends it.
+
+The CLI keeps the token in the OS keychain (macOS Keychain, Windows
+Credential Manager, Linux Secret Service). The desktop keeps it in its main
+process, encrypted with the OS when possible; it never reaches the renderer.
+`preflight auth login --no-browser` prints the URL instead, and you paste the
+code that the page shows.
+
+## API
+
+All `/api` routes except share reads take `Authorization: Bearer pfk_…`. A
+Clerk session JWT is also accepted, for web pages.
+
+| Route | Purpose |
+| --- | --- |
+| `GET /api/account` | the signed-in user |
+| `GET /api/tokens`, `DELETE /api/tokens/:id` | list or revoke your API tokens |
+| `POST /api/auth/logout` | revoke the token in the request |
+| `GET /api/orgs`, `POST /api/orgs`, `GET /api/orgs/:id` | your teams, create one, members |
+| `GET\|POST /api/orgs/:id/invitations`, `DELETE /api/orgs/:id/invitations/:inv` | invitations (admins) |
+| `PATCH\|DELETE /api/orgs/:id/members/:user`, `POST /api/orgs/:id/leave` | roles, removal, leaving |
+| `GET /api/invitations`, `POST /api/invitations/:id/accept\|reject` | invitations for you |
+| `GET /api/shares[?team=ORG]`, `POST /api/shares`, `DELETE /api/shares/:code` | your shares or a team's |
+| `GET /api/shares/:code`, `GET /s/:code` | read a share (no sign-in) |
+
+Admins manage members, roles and invitations. A team always keeps one admin:
+the last admin cannot leave, be removed or be demoted. Clerk sends the
+invitation email. Errors are JSON: 400 for invalid input, 401, 403, 404, 429,
+503 when not configured, and 500 with a generic message for server faults.
 
 ## Local verification
 
 ```sh
 npm run check
-npm run desktop:check
-node scripts/backend-smoke.mjs
-npm run smoke:worker
+npm run backend:smoke   # local Wrangler, D1/KV/R2, PREFLIGHT_DEV_AUTH=1
+npm run smoke:worker    # production config without secrets: fails closed
 ```
 
-The backend smoke test creates isolated local D1/KV/R2 storage, applies real migrations and exercises sessions, device authorization, organization creation and logout in Wrangler's Cloudflare runtime. It does not deploy or contact OAuth providers.
-
-## Organization commands
-
-```sh
-preflight team invite ORGANIZATION_ID teammate@example.com --role member
-preflight team invitations ORGANIZATION_ID
-preflight team inbox
-preflight team accept INVITATION_ID
-preflight team reject INVITATION_ID
-preflight team cancel-invitation INVITATION_ID
-preflight team role ORGANIZATION_ID MEMBER_ID admin
-preflight team remove ORGANIZATION_ID MEMBER_ID
-preflight team leave ORGANIZATION_ID
-```
-
-Members can view their organizations. Administrators manage members and invitations. Only owners can assign or change owners. Better Auth enforces these rules and the last-owner constraint. Public/unlisted shares keep their existing link visibility; joining an organization does not make them private or grant another user the right to revoke the owner's share.
-
-Cloudflare's `CF-Connecting-IP` supplies the trusted client address for Better Auth rate limiting. Do not put this Worker behind a gateway that forwards an arbitrary client-supplied value for that header.
+`backend:smoke` applies the migration to a local D1 database. It signs in
+with the dev identity through the same PKCE exchange, then checks tokens,
+teams, invitations, roles, shares, the scheduled purge and logout. With
+`PREFLIGHT_DEV_AUTH=1` on a loopback host, `/auth/sign-in` shows a name and
+email form instead of Clerk. No Clerk account and no deployment are needed.
