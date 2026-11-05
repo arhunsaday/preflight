@@ -17,6 +17,7 @@ publish:
   repo: preflight
   releaseType: draft
 mac:
+  icon: desktop/assets/icon.icns
   category: public.app-category.developer-tools
   target: [dmg, zip]
   # Signing needs CSC_LINK / CSC_KEY_PASSWORD, notarization needs APPLE_ID,
@@ -28,8 +29,10 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: true
 win:
+  icon: desktop/assets/icon.ico
   target: [nsis]
 linux:
+  icon: desktop/assets/icons
   executableName: preflight
   maintainer: Preflight contributors
   synopsis: Manage AI development setups

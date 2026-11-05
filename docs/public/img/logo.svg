@@ -1,3 +1,11 @@
-<svg width="28" height="28" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo">
-  <path d="M16 4.138L11.52 11.8621L7.04 4.138H16ZM0 11.8621L4.48 4.138L8.96 11.8621H0Z" fill="#b473ff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="88 24 848 896">
+  <title>Preflight</title>
+  <!-- The mark without its tile, for light and dark backgrounds alike. -->
+  <clipPath id="dial"><circle cx="512" cy="540" r="372"/></clipPath>
+  <g clip-path="url(#dial)">
+    <rect width="1024" height="1024" fill="#13707a"/>
+    <path d="M0 676 L1024 500 L1024 1024 L0 1024Z" fill="#0a3b43"/>
+  </g>
+  <path d="M512 52 L570 134 L454 134Z" fill="#f0a04a" stroke="#f0a04a" stroke-width="24" stroke-linejoin="round"/>
+  <path d="M296 566 L444 700 L768 364" fill="none" stroke="#f3f1ea" stroke-width="112" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

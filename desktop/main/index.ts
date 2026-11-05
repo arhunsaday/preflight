@@ -116,7 +116,7 @@ async function createWindow() {
     minWidth: 840,
     minHeight: 620,
     title: "Preflight",
-    backgroundColor: nativeTheme.shouldUseDarkColors ? "#111113" : "#f6f6f7",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0c1217" : "#f3f1ea",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
       preload: join(directory, "../preload/index.cjs"),

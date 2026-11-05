@@ -1,3 +1,13 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M16 4.138L11.52 11.8621L7.04 4.138H16ZM0 11.8621L4.48 4.138L8.96 11.8621H0Z" fill="#b473ff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Preflight</title>
+  <!-- App icon. An attitude indicator (sky over ground, banked horizon, beacon
+       index at 12 o'clock) with the checklist tick as its flight path. -->
+  <rect width="1024" height="1024" rx="232" fill="#0e1b23"/>
+  <clipPath id="dial"><circle cx="512" cy="540" r="372"/></clipPath>
+  <g clip-path="url(#dial)">
+    <rect width="1024" height="1024" fill="#13707a"/>
+    <path d="M0 676 L1024 500 L1024 1024 L0 1024Z" fill="#0a3b43"/>
+  </g>
+  <path d="M512 74 L566 150 L458 150Z" fill="#f0a04a" stroke="#f0a04a" stroke-width="24" stroke-linejoin="round"/>
+  <path d="M296 566 L444 700 L768 364" fill="none" stroke="#f3f1ea" stroke-width="112" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
