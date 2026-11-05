@@ -37,6 +37,17 @@ Sources are per user, stored in `~/.preflight/sources.json`, and shared by every
 project and the global workspace. Set `GITHUB_TOKEN` to raise GitHub's rate
 limit or to read a private repository.
 
+## A repository without a source
+
+To install a few resources from a repository once, you do not need to add it as
+a source. `preflight install owner/repo` scans any repository, with or without
+a `catalog/index.json`, previews what it would install into each agent, and
+writes only with `--apply`. Each resource records the repository and commit it
+came from. See [Install from a repository](/docs/preflight/cli#install-from-a-repository).
+
+Add a source when you want to search a repository, use its loadouts, or follow
+its updates with `source update`.
+
 ## What a source provides
 
 A source with a `catalog/index.json` is read from that file. Without one,

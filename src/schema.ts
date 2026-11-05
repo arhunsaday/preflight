@@ -31,6 +31,30 @@ const jsonValue: z.ZodType<unknown> = z.lazy(() =>
   ]),
 );
 
+/**
+ * Where an installed resource came from: `preflight install owner/repo`
+ * records the repository, the commit it read and the file's path there.
+ */
+export const OriginSchema = z
+  .object({
+    kind: z.enum(["github", "local"]),
+    repo: z
+      .string()
+      .regex(/^[\w.-]+\/[\w.-]+$/)
+      .optional(),
+    ref: z.string().optional(),
+    commit: z
+      .string()
+      .regex(/^[0-9a-f]{40}$/)
+      .optional(),
+    /** Local kind: the directory that was read. */
+    root: z.string().optional(),
+    /** The resource's file or folder, relative to the repository root. */
+    path: z.string(),
+  })
+  .strict();
+export type Origin = z.infer<typeof OriginSchema>;
+
 export const ResourceSchema = z
   .object({
     id: z
@@ -48,6 +72,7 @@ export const ResourceSchema = z
     content: z.string().optional(),
     tags: z.array(z.string()).default([]),
     updatedAt: z.string().datetime().optional(),
+    origin: OriginSchema.optional(),
   })
   .strict();
 export type Resource = z.infer<typeof ResourceSchema>;

@@ -132,6 +132,9 @@ function isRead(args: string[]) {
   if (args[0] === "loadouts") return ["list", "show"].includes(args[1] ?? "");
   if (args[0] === "source") return ["list", "show"].includes(args[1] ?? "");
   if (args[0] === "bench") return args[1] === "compare";
+  // Scanning a repository writes nothing; --apply and --execute do.
+  if (args[0] === "install")
+    return !args.includes("--apply") && !args.includes("--execute");
   return args[0] === "git" && args[1] === "status";
 }
 export type Engine = (
@@ -436,7 +439,7 @@ export class DesktopController {
           ? "Confirmation starts configured MCP programs or contacts servers."
           : args.includes("--measure")
             ? "Confirmation runs each SessionStart hook once in an empty temporary folder, with a time limit."
-          : args[0] === "install" ||
+          : (args[0] === "install" && !args.includes("--apply")) ||
               args[0] === "git" ||
               (args[0] === "bench" &&
                 (args[1] === "run" || args[1] === "arena"))

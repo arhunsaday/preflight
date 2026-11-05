@@ -77,7 +77,67 @@ and suggests this command.
 | `catalog-inspect <id>`, `catalog-add <id>` | inspect, then add an item from a source |
 | `catalog build <dir>` | write a content repository's `catalog/index.json`; `--check` in CI |
 | `inspect-file <file>` | validate a catalogue resource file |
+| `install <owner/repo>` | scan any repository and install what it holds; see [Install from a repository](#install-from-a-repository) |
 | `install <id>` | print the package-manager plan; `--execute` runs it |
+
+### Install from a repository
+
+`preflight install` reads any GitHub repository, or a local folder. The
+repository needs no `catalog/index.json`.
+
+```sh
+preflight install anthropics/skills                      # preview: what it holds, where it would go
+preflight install anthropics/skills --select pdf,docx    # preview two resources
+preflight install anthropics/skills --select pdf --apply # write them
+preflight install github:acme/tools@v2/skills/pdf        # one folder at a tag
+preflight install https://github.com/acme/tools --all --harness claude-code,codex --apply
+preflight install ./my-repo --all --scope global --apply
+```
+
+| Argument or option | Effect |
+| --- | --- |
+| `owner/repo`, `owner/repo@ref`, `github:owner/repo[@ref][/folder]` | A GitHub repository. Without a ref, Preflight reads the default branch. The ref is resolved to a commit, and that commit's tarball is cached in `~/.preflight/sources/_install/`. A ref with a slash is not accepted; use a tag or a commit. |
+| `https://github.com/owner/repo[/tree/<ref>/<folder>]` | The same, as a URL. |
+| `./folder`, `~/folder`, `/abs/folder` | A local folder, read in place. |
+| (no option) | Preview only. The JSON lists the resources found by type, the agents detected on this machine, the agents that can take each resource and the reason for each that cannot, and the file changes to install all of them. Nothing is written. |
+| `--select <id,...>` or `--all` | Choose resources by id (`skill:pdf`) or name. |
+| `--harness claude-code,codex,cursor` | The agents to install into. The default is every agent detected here. |
+| `--scope global\|project` | The default is project, or global in the global workspace. |
+| `--apply` | Write the files. `--apply` needs `--select` or `--all`. `--dry-run` overrides it. |
+
+Preflight finds these files. The agent-kit layout of [Sources](/docs/preflight/sources#what-a-source-provides) is also read.
+
+| In the repository | Becomes |
+| --- | --- |
+| every `SKILL.md`, with the other text files in its folder | `skill` |
+| `*.md` in an `agents/` folder | `subagent` |
+| `*.md` in a `commands/` folder | `command` |
+| `.mcp.json` or `mcp.json` (`mcpServers`, or a bare map of servers) | `mcp` |
+| `.claude-plugin/marketplace.json` | `plugin` |
+
+Each agent receives the resource in its own format, through the same adapters
+as every other resource: Claude Code JSON, Codex `config.toml` tables, Cursor
+`mcp.json`. When an agent has no equivalent, the preview names the resource,
+the agent and the reason. Examples: Codex has no subagents or commands, and no
+SSE MCP servers; plugins, hooks and the status line are Claude Code only.
+These resources are never installed:
+
+- An MCP server that runs a file from the repository (`./server.js`), because Preflight copies the configuration, not the server.
+- A configuration that holds a literal secret.
+- A skill folder with a binary file, or more than 200 files or 2 MB.
+
+A skill inside a plugin folder goes to Codex and Cursor one by one. For Claude
+Code it comes with the plugin when you select the plugin too.
+
+Each installed resource records its `origin`: the repository, the commit and
+the file's path. `preflight list` shows it, `doctor` reports a changed file as
+drift, and `preflight delete <id>` removes the resource and its files. To update
+a resource, install it again from the same repository; Preflight replaces it.
+Preflight refuses to replace a resource with the same id from another place.
+
+In the desktop app, **Discover > Discover resources > From GitHub** does the
+same: enter the repository, choose the resources and agents, then review the
+preview and apply.
 
 ## Measure
 

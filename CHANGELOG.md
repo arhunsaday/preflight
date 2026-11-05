@@ -29,5 +29,6 @@ and the desktop application share one version.
 - Automatic updates in the desktop application for signed macOS builds, Windows and Linux AppImage, with a non-intrusive banner and a Help menu item (Check for Updates).
 - Homebrew formula and cask templates under `packaging/homebrew`.
 - One-tag releases: `npm run release -- <patch|minor|major|X.Y.Z> --apply` and `.github/workflows/release.yml` (npm provenance through trusted publishing, GitHub Release, notarized macOS builds when the signing secrets are set).
+- Install from any repository: `preflight install owner/repo` scans a GitHub repository or a local folder with no `catalog/index.json`, previews what goes to each agent (and why an agent cannot take a resource), and writes with `--select` or `--all` and `--apply`. Each resource records its repository, commit and path. In the desktop, **Discover > From GitHub** does the same.
 
 [Unreleased]: https://github.com/arhunsaday/preflight/commits/main

@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "docs": { "command": "npx", "args": ["-y", "docs-mcp"] },
+    "events": { "type": "sse", "url": "https://example.com/sse" },
+    "local-server": { "command": "node", "args": ["./server.js"] }
+  }
+}

@@ -46,6 +46,7 @@ import {
   switchable,
   switchState,
 } from "../components/resource-switch";
+import { GithubInstall } from "./github-install";
 /** First free "<id>-copy", "<id>-copy-2", … so Duplicate never collides. */
 const copyId = (id: string, taken: Set<string>) => {
   let candidate = `${id}-copy`;
@@ -208,9 +209,7 @@ export function Resources({
     w.setError("");
     setForm("new");
   };
-  return (
-    <>
-      {mode === "catalogue" && (
+  const header = mode === "catalogue" && (
         <div className="discovery-header">
           <div>
             <h2>Find your next skill or MCP server</h2>
@@ -240,9 +239,29 @@ export function Resources({
             >
               Search online
             </button>
+            <button
+              className={channel === "github" ? "active" : ""}
+              onClick={() => {
+                setChannel("github");
+                setOnline(null);
+                setSourceErrors([]);
+              }}
+            >
+              From GitHub
+            </button>
           </div>
         </div>
-      )}
+      );
+  if (mode === "catalogue" && channel === "github")
+    return (
+      <>
+        {header}
+        <GithubInstall workspace={w} />
+      </>
+    );
+  return (
+    <>
+      {header}
       <div className="collection-tools">
         <div className="search-field">
           <Search size={16} />

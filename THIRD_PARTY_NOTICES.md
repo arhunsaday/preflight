@@ -59,3 +59,14 @@ Copyright (c) 2026 Lauren Tan
 ```
 
 The full MIT text above applies to pstack as well.
+
+## Bridle
+
+- Source: https://github.com/neiii/bridle, commit `b46d66828b7c5fdb45698283baecbd7d6dcc13d3`
+- License: MIT, Copyright (c) 2025 d0
+- Adapted: the discovery rules of `crates/bridle/src/install/discovery.rs`
+  (every `SKILL.md`, `.md` files in `agents/` and `commands/` folders, and
+  `.mcp.json` files) → `scanRepository` in `src/repo-install.ts`. No code is
+  copied; the rules are written again in TypeScript.
+
+The full MIT text above applies to Bridle as well.

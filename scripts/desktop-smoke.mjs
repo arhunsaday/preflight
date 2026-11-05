@@ -709,6 +709,49 @@ try {
     .click();
   await page.getByText(/skills.sh: Error: Set VERCEL_OIDC_TOKEN/).waitFor();
   await page.screenshot({ path: join(temporary, "online-search.png") });
+  // Install from a repository with no catalogue: scan, choose, preview, apply.
+  await page.getByRole("button", { name: "From GitHub", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Repository to install from" })
+    .fill(resolve("tests/fixtures/repo-install"));
+  await page
+    .getByRole("button", { name: "Scan repository", exact: true })
+    .click();
+  await page.getByRole("checkbox", { name: "Install pdf-tools" }).waitFor();
+  assert.equal(
+    await page
+      .getByRole("checkbox", { name: "Install local-server" })
+      .isDisabled(),
+    true,
+  );
+  await page.getByText(/runs \.\/server\.js from the repository/).first().waitFor();
+  await page.screenshot({ path: join(temporary, "install-from-github.png") });
+  await page
+    .getByRole("button", { name: /^Preview installation of \d+ resources$/ })
+    .click();
+  await page.getByRole("heading", { name: "Review changes" }).waitFor();
+  await assert.rejects(readFile(join(project, ".mcp.json")));
+  await page
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  const installedRepo = JSON.parse(
+    await readFile(join(project, "preflight.config.json"), "utf8"),
+  );
+  assert.deepEqual(
+    installedRepo.profiles[installedRepo.activeProfile].resources.find(
+      (r) => r.id === "skill:pdf-tools",
+    ).origin,
+    {
+      kind: "local",
+      root: resolve("tests/fixtures/repo-install"),
+      path: "skills/pdf-tools/SKILL.md",
+    },
+  );
+  assert.ok(
+    JSON.parse(await readFile(join(project, ".mcp.json"), "utf8")).mcpServers
+      .docs,
+  );
   await page
     .getByRole("button", { name: "Your sources", exact: true })
     .click();
