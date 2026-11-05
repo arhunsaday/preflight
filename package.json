@@ -1,7 +1,29 @@
 {
   "name": "@arhunsaday/preflight",
   "version": "0.1.0",
-  "description": "Search, inspect, scope, share, and verify AI development configurations",
+  "description": "Search, inspect, scope, share, and verify AI development configurations. Ships no content: add a source such as github:arhunsaday/agent-kit.",
+  "keywords": [
+    "ai",
+    "claude-code",
+    "codex",
+    "cursor",
+    "mcp",
+    "skills",
+    "agents",
+    "doctor",
+    "developer-tools",
+    "cli"
+  ],
+  "author": "Arhun Saday",
+  "license": "MIT",
+  "homepage": "https://preflight.arhun.fr",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arhunsaday/preflight.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arhunsaday/preflight/issues"
+  },
   "type": "module",
   "bin": {
     "preflight": "dist/cli.js"
@@ -11,8 +33,9 @@
   },
   "files": [
     "dist",
-    "catalog",
-    "PREFLIGHT.md"
+    "PREFLIGHT.md",
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
     "node": ">=22"
@@ -21,45 +44,85 @@
     "build": "tsup",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "dev": "tsx src/cli.ts",
-    "lint": "eslint src tests *.ts *.js scripts/seed-catalog.ts",
+    "lint": "eslint src tests desktop *.ts *.js",
     "start": "node dist/cli.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests/*.ts tests/*.tsx",
-    "catalog:seed": "tsx scripts/seed-catalog.ts",
     "prepack": "npm run build",
-    "build:worker": "esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=dist/worker.js",
-    "smoke:worker": "bash scripts/worker-smoke.sh"
+    "build:worker": "esbuild src/worker.ts --bundle --platform=browser --external:node:* --format=esm --outfile=dist/worker.js",
+    "smoke:worker": "bash scripts/worker-smoke.sh",
+    "desktop:dev": "electron-vite dev",
+    "desktop:build": "electron-vite build && node scripts/build-desktop-worker.mjs",
+    "desktop:start": "electron .",
+    "desktop:typecheck": "tsc -p desktop/tsconfig.json",
+    "desktop:check": "npm run desktop:tools:test && npm run desktop:typecheck && npm run desktop:build",
+    "desktop:pack": "npm run desktop:build && electron-builder --dir",
+    "desktop:dist": "npm run desktop:build && electron-builder --publish never",
+    "desktop:smoke": "node scripts/desktop-smoke.mjs",
+    "desktop:smoke:packaged": "node scripts/desktop-smoke.mjs --packaged",
+    "desktop:manifest": "node scripts/desktop-artifacts.mjs",
+    "desktop:tools:test": "node --test scripts/desktop-artifacts.node-test.mjs scripts/release.node-test.mjs",
+    "backend:migrate:local": "wrangler d1 migrations apply preflight --local",
+    "backend:migrate": "wrangler d1 migrations apply preflight --remote",
+    "backend:smoke": "node scripts/backend-smoke.mjs",
+    "backend:deploy": "wrangler deploy",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
+    "@clerk/backend": "^3.26.6",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
     "@modelcontextprotocol/sdk": "^1.30.1",
+    "@napi-rs/keyring": "^2.1.0",
+    "@radix-ui/react-dialog": "^1.1.23",
     "commander": "^14.0.1",
+    "electron-updater": "^6.8.11",
     "hono": "^4.13.8",
     "ink": "^6.3.1",
     "ink-text-input": "^6.0.0",
+    "lucide-react": "^1.52.0",
+    "open": "^11.0.4",
     "react": "^19.1.1",
+    "smol-toml": "^1.9.1",
     "yaml": "^2.8.1",
     "zod": "^4.1.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260923.1",
     "@eslint/js": "^9.36.0",
+    "@playwright/test": "^1.63.0",
+    "@resvg/resvg-js": "^2.6.2",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "ink-testing-library": "^4.0.0",
+    "jsdom": "^29.1.1",
+    "png2icons": "^2.0.1",
     "prettier": "^3.9.9",
     "tsup": "^8.5.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.1",
-    "vitest": "^4.1.11"
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
   },
   "overrides": {
     "esbuild": "^0.28.2"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "main": "desktop-out/main/index.mjs"
 }

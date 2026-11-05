@@ -1,6 +1,6 @@
-# Preflight CLI and terminal interface
+# Preflight desktop, CLI and terminal interface
 
-Preflight manages declarative AI development setups with a scriptable CLI and an Ink terminal interface. Requires Node.js 22 or newer. The existing shell/Python development kit remains available.
+Preflight manages declarative AI development setups with a scriptable CLI and an Ink terminal interface. Requires Node.js 22 or newer. The package is the tool only: skills, plugins, hooks, loadouts and instructions come from content sources you add (for example [agent-kit](https://github.com/arhunsaday/agent-kit), which also holds the former shell/Python kit).
 
 ## Run locally
 
@@ -17,6 +17,28 @@ node dist/cli.js ui
 Use `npm link` to expose the `preflight` executable locally. This package has not been published to npm. Commands emit JSON by default; errors go to stderr and exit nonzero. Use `--root /absolute/project` and `--home /absolute/test-home` to target another project or an isolated harness home. Both paths should be real directories, not symlink aliases. `PREFLIGHT_HOME` changes the CLI's default harness home.
 
 Detection and doctor are read-only and do not require `init`.
+
+## Desktop application
+
+Preflight is an Electron application over the same command engine and resource schemas. Its sidebar covers skills, MCPs, other resources, detected installations, catalogue, projects, profiles, loadouts, doctor, usage, benchmarks, sharing, team, account and activity. The command console exposes the remaining CLI operations without executing a shell. Dedicated forms use the same validation as CLI; edits, installations, connected checks and benchmark runs require a preview and confirmation.
+
+```sh
+npm ci
+npm run desktop:dev            # development with hot reload
+npm run desktop:check          # types and production bundles
+npm run desktop:start          # run the previously built application
+npm run desktop:pack           # native directory under desktop-release/
+npm run desktop:dist           # platform installers
+npm run desktop:smoke          # real Electron; disposable project, home and settings
+```
+
+Use the workspace selector to manage Global configuration without opening a project, or select a project through the native folder picker. The global desired configuration lives at `HOME/.preflight/global/preflight.config.json`; projects show inherited global resources and link back to their editor. Opening a folder does not initialize it or change its harness configuration. The selected project determines project scope; global scope targets your actual home directory. Review the exact paths in the preview before confirming. Cmd/Ctrl+K opens a palette of views, actions and workspaces; Cmd/Ctrl+R refreshes the workspace (it no longer reloads the page); Cmd/Ctrl+O opens a project; Cmd/Ctrl+1–8 jump to the main views; `/` filters the current list and `↑`/`↓` move through it; `?` lists every shortcut. The same commands are in the native menu bar, which no longer ships developer tools in packaged builds. The theme follows the system and can be pinned to light or dark from the sidebar or the palette. Operations serialize in the main process; project/account changes invalidate pending previews, and confirmation rechecks files and imported inputs. Normal quit is blocked while an engine operation is supervising subprocesses; there is no cancellation button yet.
+
+The renderer has no Node access and uses an isolated, sandboxed preload with explicit methods. Account tokens are kept in the main process, encrypted with Electron safeStorage when available, otherwise session-only; they are not included in renderer snapshots, project config, or installer/agent environments. HTTPS is required except for loopback development. Browser sign-in goes through Clerk (GitHub or Google) on the Worker's `/auth/sign-in` page, with a loopback redirect and PKCE; the result is a Preflight API token (`pfk_…`) that stays outside the renderer. See `docs/content/docs/preflight/cloudflare-backend.mdx` for migrations, provider setup and login.
+
+Sharing supports local JSON export/import and authenticated publish/revoke against the existing Worker. The Team page lists and creates teams (Clerk Organizations) and shows their members. Clerk emails invitations; recipient acceptance, cancellation, admin/member roles, member removal and leaving are available. The Worker authorizes every change and keeps at least one admin per team. A separate local coordination roster remains available offline and does not grant backend access. Benchmark views show saved real runs and scaffold/preview/run/compare manifests; an empty workspace has no fabricated results. External installers and agents retain their CLI boundaries and costs.
+
+The macOS Apple Silicon directory build and packaged app are exercised locally; CI checks Node 22/24 and builds/tests native macOS, Windows NSIS and Linux AppImage/deb packages. Each platform has passed the real Electron and installer workflow. Builds are currently unsigned and not notarized; release signing, automatic updates and public installer distribution remain separate work. Tests may set `PREFLIGHT_DESKTOP_TEST_ROOT`, `PREFLIGHT_DESKTOP_TEST_HOME`, `PREFLIGHT_DESKTOP_TEST_DATA` to disposable paths. For packaged smoke, set `PREFLIGHT_DESKTOP_EXECUTABLE` to the native executable.
 
 ## Terminal interface
 
@@ -55,6 +77,7 @@ External package managers and Git remotes have their own side effects. `install`
 ## Core loop
 
 ```sh
+preflight source add github:arhunsaday/agent-kit@main
 preflight search test
 preflight search react --type skill --online
 preflight search testing --github vercel-labs/skills
@@ -69,24 +92,27 @@ preflight delete skill:ponytail --dry-run
 preflight rollback --dry-run
 ```
 
-The bundled catalogue contains this repository's skills and support files, subagents, prompts, instincts, hook scripts, MCP templates and tool references. `npm run catalog:seed` refreshes it. No third-party catalogue content is silently downloaded or executed at startup.
+Preflight ships no catalogue. `preflight source add github:owner/repo@ref` pins a content repository to the commit the ref names and caches its tarball under `~/.preflight/sources/`; `preflight source add ./folder` reads a local folder in place; `source list|show|update|remove` manage them (stored in `~/.preflight/sources.json`). Search, `catalog-inspect`, `catalog-add` and loadouts read every configured source and tag results `source:<name>`. A source is read from its `catalog/index.json`, which `preflight catalog build <dir> [--repo owner/repo] [--check]` writes from the repository's layout, or scanned directly when it has none. With no source, commands say how to add one. Nothing is downloaded or executed at startup. See [sources](docs/content/docs/preflight/sources.mdx).
 
 Online search connects to the official MCP registry and the documented skills.sh API. The registry publishes one record per server version: Preflight keeps the record the registry marks current, skips records it marks withdrawn, and an entry whose shape this version cannot read is counted and reported rather than removing the whole source from the results. Registry results retain HTTP/SSE transport and required headers; pinned npm and PyPI stdio packages become `npx`/`uvx` launch configurations with required environment references. Unsupported package formats remain inspectable and are rejected during apply rather than wired as broken servers. The latter requires `VERCEL_OIDC_TOKEN`. GitHub discovery uses pinned commit URLs and optionally `GITHUB_TOKEN` to increase rate limits. A source failure is reported alongside successful results. Remote results are bounded to 100 per source; results can be narrowed with another query. GitHub search matches file paths; it is not a full-text code-search engine.
 
 To install a remote result, save one resource object from search output into a JSON file, then run `inspect-file resource.json` and `create resource.json --dry-run`. `create` materializes remote skill content and bounded text support files before applying. Inspect reports source, pinned commit when available, raw content and configuration, including requested tools. Binary or oversized skill assets require the upstream installer.
 
-CRUD applies to all nine resource types. Native adapter wiring is intentionally explicit:
+CRUD applies to all ten resource types. Native adapter wiring is intentionally explicit:
 
-| Resource | Claude Code | Cursor |
-| --- | --- | --- |
-| Skills and support files | `.claude/skills` | `.cursor/skills` |
-| MCP | project `.mcp.json`; user `~/.claude.json` | `.cursor/mcp.json` |
-| Subagents | `.claude/agents` | catalogued only |
-| Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only |
-| Commands | `.claude/commands` | `.cursor/commands` |
-| Statusline | `.claude/settings.json`; managed script in `.claude/statusline` | catalogued only |
-| Plugins | `.claude/settings.json` `enabledPlugins`; native CLI installs packages | catalogued only |
-| Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers |
+| Resource | Claude Code | Cursor | Codex |
+| --- | --- | --- | --- |
+| Skills and support files | `.claude/skills` | `.cursor/skills` | `~/.agents/skills`, project `.agents/skills` |
+| MCP | project `.mcp.json`; user `~/.claude.json` | `.cursor/mcp.json` | `[mcp_servers.<name>]` in `.codex/config.toml` (user `~/.codex`, project `.codex`); stdio and streamable HTTP |
+| Instructions | managed block in `~/.claude/CLAUDE.md` or project `CLAUDE.md`; text outside it is kept | project `.cursor/rules/<id>.mdc` (always applied) | managed block in `~/.codex/AGENTS.md` and project `AGENTS.md` |
+| Subagents | `.claude/agents` | catalogued only | catalogued only |
+| Hooks | `.claude/settings.json`; managed scripts in `.claude/hooks` | catalogued only | catalogued only |
+| Commands | `.claude/commands` | `.cursor/commands` | catalogued only |
+| Statusline | `.claude/settings.json`; managed script in `.claude/statusline` | catalogued only | catalogued only |
+| Plugins | `.claude/settings.json` `enabledPlugins` and, for a plugin from a source, `extraKnownMarketplaces`; `install --execute` runs `claude plugin marketplace add` then `claude plugin install` | catalogued only | catalogued only |
+| Prompts and plain tools | catalogued; tools use delegated installers | catalogued; tools use delegated installers | catalogued; Codex removed custom prompts in 0.117 and the doctor flags `~/.codex/prompts` |
+
+Codex's `config.toml` and `AGENTS.md`, and Claude Code's `CLAUDE.md`, are shared with the person: Preflight edits only its own `[mcp_servers.<name>]` tables and marker-delimited blocks, keeps every other byte, and its lockfile digest covers only those parts, so edits around them are not drift. `CODEX_HOME` moves the Codex home. Skills in `~/.agents/skills` are the shared store Codex reads; Claude Code and Cursor still get their own copies, not links. See [Codex](docs/content/docs/preflight/codex.mdx).
 
 Project and user scopes use the same relative harness layout. Unsupported types remain inspectable/editable in desired state and produce explicit warnings; Preflight does not claim they are active in the target harness. An unreadable adapter is reported as “unsupported today” while healthy adapters continue.
 
@@ -136,13 +162,15 @@ Delegated skill installation passes every target agent in the single `--agent <a
 `doctor` reports broken/missing skill files, parse failures, managed-file drift, approximate context cost, identical trigger descriptions, broad permissions, possible credentials and missing wiring. It also reads Claude user/project `settings.json` and `settings.local.json`, reporting credential locations and possible shell access around Read denials without printing credential values. Context cost is a character-based estimate, not a tokenizer measurement. Trigger conflicts are exact-description matches, not semantic analysis. These checks are useful evidence, not a comprehensive security audit.
 
 ```sh
+preflight usage --since 30d --by session
+preflight usage --agent codex --by day
 preflight usage --transcripts /path/to/claude/jsonl/transcripts
 preflight prune --transcripts /path/to/claude/jsonl/transcripts
 preflight verify mcp:example
 preflight verify mcp:example --connect
 ```
 
-Usage streams Claude-style JSONL transcript files and counts structured `tool_use` entries, including `Skill` and MCP tool names. Text mentions do not count. No transcripts means unknown usage; prune makes no proposal in that case. Prune proposes IDs only and never deletes automatically. Transcript files are counted, not deduplicated conversational sessions; unsupported transcript formats do not constitute evidence of nonuse.
+Usage reads Claude Code transcripts (`~/.claude/projects`) and Codex rollouts (`~/.codex/sessions`, plain or zstd) locally; nothing leaves the machine. Claude messages count once per `message.id:requestId`; Codex sessions count each change of their cumulative token totals. It reports input, output, cache read and cache write tokens, the cache hit rate, and a list-price cost estimate from `src/data/prices.json` (dated, with its source), grouped `--by session|skill|project|model|day|agent`. Codex models have no price in the table: their tokens are reported as unpriced and the estimate is marked incomplete. Tool calls count once per tool-use id, including `Skill` and MCP tool names; text mentions do not count. No transcripts means unknown usage; prune makes no proposal in that case. Prune uses Claude Code skill calls only, proposes IDs and never deletes automatically; unsupported transcript formats do not constitute evidence of nonuse. The desktop's "Read conversation transcripts" setting (on by default) turns all of this off. See [Usage](docs/content/docs/preflight/usage.mdx). The usage reader is adapted from agent-compass (MIT); see `THIRD_PARTY_NOTICES.md`.
 
 `verify --connect` explicitly starts the configured MCP process or connects to its HTTP/SSE endpoint, initializes it and lists tools with bounded request timeouts. It invokes no tools. Environment references must resolve before connecting. `doctor --connect` does the same for every enabled MCP server in the active profile and folds the result into the findings, replacing “configured; connection not tested” with what actually happened. Without that flag the doctor never starts a configured program.
 
@@ -157,24 +185,25 @@ preflight share --id skill:ponytail --dry-run
 
 The schema rejects recognizable credential patterns, secret-key literals, authorization headers, credential-bearing URLs and secret argv pairs. It accepts `${VARIABLE}` references, including `Bearer ${VARIABLE}`. It does not silently redact or transform source content. Heuristic scanning cannot identify every arbitrary secret; inspect exported payloads before publishing. Required variable names appear on the share page. Use resource descriptions to explain where credentials come from.
 
-The Worker implements six-character case-insensitive codes without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
+The Worker implements 16-character random case-insensitive codes (with compatibility for existing six-character codes) without ambiguous glyphs, public/unlisted metadata, optional expiry, revocation, escaped read-only landing pages and pre-apply comparison. Unlisted means no discovery listing, not access control; anyone with a code can read it. The service currently has no public directory.
 
-`npm run smoke:worker` exercises the Worker against a real Wrangler runtime with local KV and R2: a missing share, publishing with and without the write token, the landing page naming the required variables without carrying their values, reading the share back, and revoking it with and without the token. It downloads Wrangler through `npx` rather than carrying it as a dependency, creates a throwaway `.dev.vars`, and removes it again. Nothing leaves the machine and no Cloudflare account is involved.
+`npm run backend:smoke` exercises real local Cloudflare D1/KV/R2: migrations, sessions, device approval, organizations, owned publication/listing/revocation and logout. `npm run smoke:worker` separately verifies legacy token deployments without D1. Wrangler is pinned in the lockfile. Tests create isolated storage and do not deploy.
 
-To run the supplied Hono Worker:
-
-1. Install/run Wrangler 4 and configure `wrangler.jsonc` with your Cloudflare KV namespace and R2 bucket. `OWNER_ID` identifies the deployment owner.
-2. Set `WRITE_TOKEN` using `wrangler secret put WRITE_TOKEN` (or a local `.dev.vars` file for development).
-3. Run `npx wrangler dev` locally, or deploy using your configured account.
-4. Set client `PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN`, and `PREFLIGHT_OWNER_ID` to match.
+Configure D1, KV and R2 bindings, the canonical HTTPS `BASE_URL`, a `BETTER_AUTH_SECRET` and GitHub/Google OAuth provider secrets. Apply D1 migrations, then deploy with Wrangler under your configured Cloudflare account. Full setup instructions: [Cloudflare backend and accounts](docs/content/docs/preflight/cloudflare-backend.mdx).
 
 ```sh
+preflight auth login --service https://YOUR_BACKEND
+preflight auth status
 preflight share --expires 2027-01-01T00:00:00.000Z
-preflight apply abc234 --dry-run
+preflight apply https://YOUR_BACKEND/s/abc234 --dry-run
 preflight revoke abc234 --dry-run
+preflight team list
+preflight team create "My team" --slug my-team
+preflight team members ORGANIZATION_ID
+preflight auth logout
 ```
 
-The code includes tenant ownership in both lookup records and storage keys. This release uses a deployment-level write token; OIDC, organization administration and a public multi-user service remain deferred. Production deployment should apply request quotas at the Cloudflare boundary. Nothing is deployed by this repository. `share.example.com` is a placeholder: the public share domain is still to be chosen, and clients point at it with `PREFLIGHT_SHARE_URL`. Public share reads are unauthenticated; publishing and revoking require the owner token. Revocation/expiry are not recoverable local file transactions. Exported local payloads can be rolled back like other Preflight writes.
+CLI credentials use the operating system's credential store; public metadata alone is saved in `HOME/.preflight/account.json`. Publishing and revoking require the authenticated owner's session. Public/unlisted reads are unauthenticated; organization membership does not make share links private. The Worker rate-limits sign-in, share and link routes per IP. The default backend is `https://api.preflight.arhun.fr`; set `PREFLIGHT_API_URL` to use another one. Revocation/expiry are not recoverable local file transactions; exported local payloads use the normal transaction pipeline.
 
 ## Loadouts, retrofit and Git
 
@@ -187,7 +216,7 @@ preflight git status
 preflight git pull --dry-run
 ```
 
-Loadouts compose the existing `claude-code/loadouts.json`, with later layers overriding reasons and prerequisite checks before installation. A loadout item that is not vendored in this repository declares the repository it comes from with `"external": "owner/repo"`, which `scripts/loadouts.py check` validates against `skills/install-third-party.sh`; those skills are absent from the bundled catalogue and are reported with the command that installs them. Missing resources and prerequisites are reported together, and installation does not partially apply them. Use `--catalog /path/to/a/complete/local/kit` when supplying additional resources. Retrofit reads manifests and script names without executing repository code, and generates `AGENTS.md` plus `.preflight/commands.json`. It refuses to replace an existing contract.
+Loadouts come from each source's `loadouts/loadouts.json` (`source/name` picks one when two sources share a name), with later layers overriding reasons and prerequisite checks before installation. A loadout item that a source does not vendor declares the repository it comes from with `"external": "owner/repo"`; it is reported with the command that installs it. Missing resources and prerequisites are reported together, and installation does not partially apply them. Use `--catalog /path/to/a/content/folder` to resolve loadouts from a folder that is not a configured source. Retrofit reads manifests and script names without executing repository code, and generates `AGENTS.md` plus `.preflight/commands.json`. It refuses to replace an existing contract.
 
 ## Local configuration benchmarks
 
@@ -211,6 +240,24 @@ The separate checkout/home prevents changes leaking between tasks but is **not a
 
 `npm run check` runs ESLint, strict application type checking, Vitest integration/unit/TUI tests, and the packaged build. The SDK has an upstream optional-property declaration mismatch; vendor declarations are skipped, with a narrow documented transport cast at the integration boundary. Application code remains strict. Existing Python and shell checks continue in CI.
 
-The delivered local product includes the CLI/TUI, two adapters, transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
+The delivered local product includes the CLI/TUI, three adapters (Claude Code, Cursor, Codex), transactional desired-state management, a seeded catalogue and remote providers, static/connected verification, usage proposals, share Worker, loadout resolution, retrofit, Git delegation and local A/B runner. Direct MCP.Directory ingestion, hosted multi-user auth/policy/catalogue, cloud sync, workflow maturity analytics, billing and marketplace features are not implemented. Those require the evidence or service setup described in `PLAN.md`; warnings and this support matrix make current limits explicit.
 
-Adapter/source references: [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
+Adapter/source references: [Codex configuration](https://developers.openai.com/codex/config-reference), [Codex skills](https://developers.openai.com/codex/skills), [Codex AGENTS.md](https://developers.openai.com/codex/guides/agents-md), [Claude Code MCP scopes](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://prod.cursor.com/help/customization/mcp), [Cursor skills](https://prod.cursor.com/help/customization/skills), [MCP registry API](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md), [skills.sh API](https://www.skills.sh/docs/api).
+
+## Shared global configuration and discovery
+
+```sh
+preflight --global init --dry-run
+preflight --global init
+preflight --global list
+preflight --global create resource.json --dry-run
+preflight search filesystem --source mcp-registry --type mcp
+preflight search react --source github --github vercel-labs/agent-skills --type skill
+preflight ui --global
+```
+
+Resources created in the global workspace must use `scope: global`. Project resources remain in their own stores. Online discovery is separate from the bundled catalogue in desktop, with explicit sources, errors and a configuration step before installation.
+
+### Context map
+
+The desktop **Improve → Context map** shows a proportional treemap of available instructions, with category zoom, resource details, agent/scope filters and a sorted list. `preflight context [--mode potential|catalogue] [--agent claude-code|cursor|codex] [--scope global|project]` produces the same local character estimates. Unknown MCP/runtime contributions remain explicit; this does not measure a live conversation. See [context map](docs/content/docs/preflight/context-map.mdx).

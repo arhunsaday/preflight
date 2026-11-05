@@ -12,7 +12,6 @@ import {
 import {
   createAdapters,
   detectAll,
-  digest,
   safeRelative,
   type Context,
 } from "./adapters.js";
@@ -24,7 +23,15 @@ import {
   rollback,
   type FileChange,
 } from "./transaction.js";
-import { analyze, analyzeSettings, type Finding } from "./analysis.js";
+import {
+  analyze,
+  analyzeSettings,
+  findingCatalog,
+  findingTitle,
+  type Finding,
+} from "./analysis.js";
+import { partDigest } from "./adapters/parts.js";
+import { extendedChecks, type DoctorOptions } from "./doctor.js";
 const Lock = PreflightLockSchema;
 export type Policy = (
   desired: Resource[],
@@ -42,12 +49,12 @@ export class PreflightService {
     const before = await readText(this.store.configPath);
     if (before !== null) return PreflightConfigSchema.parse(JSON.parse(before));
     const config = defaultConfig();
-    await applyFiles(
+    const plan = await applyFiles(
       this.context.root,
       [{ path: this.store.configPath, before: null, after: jsonText(config) }],
       { actor: process.env.USER ?? "local", dryRun },
     );
-    return config;
+    return dryRun ? { ...config, ...plan } : config;
   }
   list() {
     return this.store.resources();
@@ -58,7 +65,11 @@ export class PreflightService {
   detect() {
     return detectAll(createAdapters(this.context));
   }
-  async doctor() {
+  async doctor(options: DoctorOptions = {}) {
+    return (await this.doctorReport(options)).findings;
+  }
+  /** Doctor findings plus the checks that were skipped and the facts behind them. */
+  async doctorReport(options: DoctorOptions = {}) {
     const states = await this.detect();
     const findings: Finding[] = states.flatMap((s) =>
       s.error
@@ -69,11 +80,14 @@ export class PreflightService {
               message: `${s.id}: ${s.error}`,
             },
           ]
-        : s.issues.map((message) => ({
-            code: "broken-resource",
-            severity: "error" as const,
-            message,
-          })),
+        : [
+            ...s.issues.map((message) => ({
+              code: "broken-resource",
+              severity: "error" as const,
+              message,
+            })),
+            ...(s.notes ?? []),
+          ],
     );
     findings.push(...analyze(states.flatMap((s) => s.resources)));
     for (const base of [this.context.home, this.context.root])
@@ -96,7 +110,7 @@ export class PreflightService {
       const lock = Lock.parse(JSON.parse(raw));
       for (const f of lock.files) {
         const text = await readText(f.path);
-        if ((text === null ? null : digest(text)) !== f.digest)
+        if (partDigest(f.part, text) !== f.digest)
           findings.push({
             code: "drift",
             severity: "error",
@@ -104,7 +118,19 @@ export class PreflightService {
           });
       }
     }
-    return findings;
+    const extras = await extendedChecks(
+      this.context,
+      states.flatMap((s) => s.resources),
+      options,
+    );
+    const all = [...findings, ...extras.findings].map((f): Finding => ({
+      ...f,
+      title: f.title ?? findingTitle(f.code),
+      ...(f.explanation || !findingCatalog[f.code]
+        ? {}
+        : { explanation: findingCatalog[f.code]!.explanation }),
+    }));
+    return { ...extras, findings: all };
   }
   async change(
     mutate: (config: PreflightConfig) => void,
@@ -125,6 +151,15 @@ export class PreflightService {
     source?: string,
   ) {
     config = PreflightConfigSchema.parse(config);
+    if (
+      this.context.globalOnly &&
+      Object.values(config.profiles).some((p) =>
+        p.resources.some((r) => r.scope !== "global"),
+      )
+    )
+      throw new Error(
+        "The global workspace only accepts global resources; choose a project for project scope.",
+      );
     const desired = config.profiles[config.activeProfile]!.resources;
     const lockBefore = await readText(this.store.lockPath);
     const lock = lockBefore ? Lock.parse(JSON.parse(lockBefore)) : undefined;
@@ -132,13 +167,14 @@ export class PreflightService {
     await this.policy(desired, previous);
     for (const file of lock?.files ?? []) {
       const value = await readText(file.path);
-      if ((value === null ? null : digest(value)) !== file.digest)
+      if (partDigest(file.part, value) !== file.digest)
         throw new Error(
           `Managed file changed; inspect before applying: ${file.path}`,
         );
     }
     const files: FileChange[] = [];
     const warnings: string[] = [];
+    const parts = new Map<string, string>();
     const failed = new Set<string>();
     for (const adapter of createAdapters(this.context)) {
       try {
@@ -155,7 +191,12 @@ export class PreflightService {
             } catch {
               // An unsupported type has no target here; apply warns about it.
             }
+        // Shared files (Codex config.toml, AGENTS.md) are edited table by
+        // table or block by block; the adapter has already refused to touch
+        // anything it does not own there.
+        const shared = new Set(adapter.sharedFiles?.() ?? []);
         for (const file of planned) {
+          if (shared.has(file.path)) continue;
           if (!owned.has(file.path) && file.before !== null) {
             const shared = new Set([
               join(this.context.home, ".claude.json"),
@@ -184,6 +225,10 @@ export class PreflightService {
             )
               throw new Error("Refusing unmanaged statusLine");
           }
+        }
+        for (const file of planned) {
+          const part = adapter.lockPart?.(file.path);
+          if (part) parts.set(file.path, part);
         }
         files.push(...planned);
       } catch (error) {
@@ -216,7 +261,14 @@ export class PreflightService {
     const lockFiles = [
       ...files
         .filter((f) => f.after !== null)
-        .map((f) => ({ path: f.path, digest: digest(f.after!) })),
+        .map((f) => {
+          const part = parts.get(f.path);
+          return {
+            path: f.path,
+            digest: partDigest(part, f.after)!,
+            ...(part ? { part } : {}),
+          };
+        }),
       ...(lock?.files.filter((f) => !files.some((n) => n.path === f.path)) ??
         []),
     ];
@@ -245,8 +297,11 @@ export class PreflightService {
     };
   }
   /** Detected resources the active profile does not manage. */
-  async unmanaged() {
-    const desired = await this.list().catch(() => [] as Resource[]);
+  async unmanaged(inherited: Resource[] = []) {
+    const desired = [
+      ...inherited,
+      ...(await this.list().catch(() => [] as Resource[])),
+    ];
     const adapters = createAdapters(this.context);
     const claimed = new Set<string>();
     for (const resource of desired)
@@ -272,7 +327,11 @@ export class PreflightService {
             ? ""
             : resource.type === "statusline"
               ? "statusLine"
-              : resource.type === "hook"
+              : resource.type === "instructions"
+                ? String(
+                    (resource.config as { block?: unknown }).block ?? "",
+                  )
+                : resource.type === "hook"
                 ? String(
                     (resource.config as { event?: unknown }).event ??
                       "PreToolUse",
@@ -303,10 +362,17 @@ export class PreflightService {
       throw new Error(`Cannot derive an identifier from ${detectedId}`);
     if ((await this.list()).some((r) => r.id === identifier))
       throw new Error(`Resource already exists: ${identifier}`);
+    if (resource.type === "instructions")
+      throw new Error(
+        "Instructions written outside Preflight's managed blocks stay yours; create an instructions resource to add a managed block next to them",
+      );
     const fileBacked = ["skill", "subagent", "command"].includes(resource.type);
+    const base =
+      adapter.adoptBase?.(resource.scope, resource.type) ??
+      adapter.paths()[resource.scope];
     const relative = fileBacked
-      ? path.startsWith(adapter.paths()[resource.scope] + "/")
-        ? path.slice(adapter.paths()[resource.scope].length + 1)
+      ? path.startsWith(base + "/")
+        ? path.slice(base.length + 1)
         : undefined
       : undefined;
     if (fileBacked && !safeRelative(relative))

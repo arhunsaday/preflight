@@ -6,11 +6,29 @@ description: "Search, inspect, scope, share and verify AI development setups"
 Preflight (formerly the AI Dev Kit, or ADK) manages an AI development setup the
 way a package manager manages dependencies: declared in a file, applied through
 a reversible transaction, and checked before you rely on it. It is a TypeScript
-CLI with an Ink terminal interface, and a desktop app is planned.
+CLI with an Ink terminal interface and an Electron [desktop app](/docs/preflight/desktop).
+
+## Start here
+
+New to Preflight? The [Quickstart](/docs/preflight/quickstart) takes five steps:
+install, run Doctor, open the context map, adopt what it detected, and share.
+
+What you get:
+
+- an **inventory** of skills, MCP servers, agents, hooks, plugins and instructions across Claude Code, Codex and Cursor;
+- **Doctor**, which reports findings and the smallest fix for each;
+- a **context map** of the instruction text a setup can load;
+- **usage and cache statistics** read from local transcripts (nothing leaves your machine);
+- **loadouts, profiles and discovery** of resources from several sources;
+- optional **sign-in, sharing by link and teams**.
 
 ## The core loop
 
+Preflight ships no skills, plugins or loadouts of its own. Point it at a
+content repository first, see [Sources](/docs/preflight/sources):
+
 ```sh
+preflight source add github:arhunsaday/agent-kit@main
 preflight search test                      # find a resource in the catalogue
 preflight catalog-inspect skill:ponytail   # read what it contains and asks for
 preflight catalog-add skill:ponytail --dry-run
@@ -19,10 +37,10 @@ preflight verify skill:ponytail            # check it is wired and healthy
 preflight rollback                         # reverse the latest transaction
 ```
 
-Nine resource types are managed: skills, MCP servers, subagents, hooks, slash
-commands, status lines, plugins, prompts and tools. Claude Code and Cursor have
-native adapters; everything else stays inspectable and is flagged as
-catalogued only.
+Ten resource types are managed: skills, MCP servers, subagents, hooks, slash
+commands, status lines, plugins, prompts, tools and instructions. Claude Code,
+Cursor and [Codex](/docs/preflight/codex) have native adapters; a type an
+agent cannot hold stays inspectable and is flagged as catalogued only.
 
 ## State
 

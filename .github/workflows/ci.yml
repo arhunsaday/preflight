@@ -16,66 +16,81 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm run desktop:check
       - name: Worker bundle is browser compatible
-        run: npx esbuild src/worker.ts --bundle --platform=browser --format=esm --outfile=/tmp/preflight-worker.js
+        run: npm run build:worker
       - name: CLI starts from the built package
         run: node dist/cli.js --help
-      - run: npm pack --dry-run
+      - name: The package ships the tool only, no content
+        run: |
+          npm pack --dry-run --json --ignore-scripts > pack.json
+          node -e '
+            const files = JSON.parse(require("fs").readFileSync("pack.json", "utf8"))[0].files.map((f) => f.path);
+            const content = files.filter((p) => /^(claude-code|skills|catalog|templates|prompts|standards|evals)\//.test(p));
+            if (content.length) { console.error("Content in the npm package:\n" + content.join("\n")); process.exit(1); }
+            console.log(files.length + " files, no content");
+          '
 
-  verify:
-    runs-on: ubuntu-latest
+  desktop:
+    name: desktop (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-arm64
+            runner: macos-latest
+          - platform: windows-x64
+            runner: windows-latest
+          - platform: linux-x64
+            runner: ubuntu-24.04
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v4
-
-      - name: Shell syntax
-        run: |
-          fail=0
-          for f in bootstrap.sh claude-code/hooks/*.sh claude-code/statusline/*.sh \
-                   templates/shared/agent/git-hooks/*.sh templates/shared/agent/*.sh; do
-            [ -f "$f" ] || continue
-            bash -n "$f" || { echo "::error file=$f::syntax error"; fail=1; }
-          done
-          exit $fail
-
-      - name: Repository contracts and installer tests
-        run: |
-          python3 scripts/kit.py check
-          python3 -m unittest discover -s tests
-
-      - name: JSON is valid
-        run: |
-          for f in $(git ls-files '*.json'); do
-            python3 -c "import json,sys;json.load(open('$f'))" \
-              || { echo "::error file=$f::invalid JSON"; exit 1; }
-          done
-
-      - name: Every skill has name, description and source
-        run: |
-          fail=0
-          for f in claude-code/skills/*/*/SKILL.md; do
-            head -40 "$f" | grep -q '^name:'        || { echo "::error file=$f::missing name"; fail=1; }
-            head -40 "$f" | grep -q '^description:' || { echo "::error file=$f::missing description"; fail=1; }
-            head -40 "$f" | grep -q '^source:'      || { echo "::error file=$f::missing source"; fail=1; }
-          done
-          exit $fail
-
-      - name: No duplicate skill names
-        run: |
-          dupes=$(basename -a $(dirname claude-code/skills/*/*/SKILL.md) | sort | uniq -d)
-          [ -z "$dupes" ] || { echo "::error::install flattens categories — duplicate names: $dupes"; exit 1; }
-
-      - name: Hooks behave
-        run: |
-          set -e
-          chmod +x claude-code/hooks/*.sh
-          echo '{"tool_input":{"command":"rm -rf /"}}'        | claude-code/hooks/block-dangerous.sh  && exit 1 || [ $? -eq 2 ]
-          echo '{"tool_input":{"command":"ls -la"}}'          | claude-code/hooks/block-dangerous.sh
-          echo '{"tool_input":{"file_path":".env"}}'          | claude-code/hooks/protect-files.sh     && exit 1 || [ $? -eq 2 ]
-          echo '{"tool_input":{"file_path":".env.example"}}'  | claude-code/hooks/protect-files.sh
-          echo "hooks OK"
-
-      - name: bootstrap --dry-run is clean
-        run: CLAUDE_HOME=$(mktemp -d) ./bootstrap.sh --dry-run
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Linux graphical runtime dependencies
+        if: runner.os == 'Linux'
+        run: npx playwright install-deps chromium
+      - run: npm run desktop:check
+      - name: Native command and credential regressions
+        run: npx vitest run tests/desktop.test.ts tests/worker.test.ts
+      - name: Real Electron workflows
+        if: runner.os != 'Linux'
+        run: npm run desktop:smoke
+      - name: Real Electron workflows under Xvfb
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run desktop:smoke
+      - name: Build unsigned native application
+        run: npm run desktop:pack -- --config.mac.notarize=false
+      - name: Test the packaged application
+        if: runner.os != 'Linux'
+        run: npm run desktop:smoke:packaged
+      - name: Test the packaged application under Xvfb
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run desktop:smoke:packaged
+      - name: Build installers without publishing
+        run: npm run desktop:dist -- --config.mac.notarize=false
+      - name: Record installer hashes
+        run: npm run desktop:manifest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preflight-${{ matrix.platform }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            desktop-release/*.dmg
+            desktop-release/*.zip
+            desktop-release/*.exe
+            desktop-release/*.AppImage
+            desktop-release/*.deb
+            desktop-release/manifest.json
+            desktop-release/SHA256SUMS
 
   docs:
     runs-on: ubuntu-latest
@@ -86,3 +101,16 @@ jobs:
         with: {node-version: 22, cache: npm, cache-dependency-path: docs/package-lock.json}
       - run: npm ci
       - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run backend:smoke
+      - run: npm run smoke:worker

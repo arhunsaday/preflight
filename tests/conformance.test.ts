@@ -35,6 +35,7 @@ function sample(type: ResourceType, harness: HarnessId): Resource {
       });
     case "subagent":
     case "command":
+    case "instructions":
       return ResourceSchema.parse({
         ...base,
         content: "---\nname: conformance\n---\n\nDo the thing.\n",
@@ -67,7 +68,9 @@ function sample(type: ResourceType, harness: HarnessId): Resource {
 }
 
 async function workspace() {
-  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-conformance-"));
+  const root = await mkdtemp(
+    join(await realpath(tmpdir()), "preflight-conformance-"),
+  );
   const home = join(root, "home");
   await mkdir(home);
   return { root, home };
@@ -113,13 +116,25 @@ for (const harness of HarnessIdSchema.options) {
         actor: "conformance",
       });
     }
-  });
+    // Seven round trips through the journal; slow under a loaded test run.
+  }, 30000);
 
   it(`${harness} refuses the types it does not claim`, async () => {
     const context = await workspace();
     const adapter = createAdapters(context).find((a) => a.id === harness)!;
     const unclaimed = (
-      ["skill", "mcp", "subagent", "hook", "prompt", "tool", "plugin", "statusline", "command"] as ResourceType[]
+      [
+        "skill",
+        "mcp",
+        "subagent",
+        "hook",
+        "prompt",
+        "tool",
+        "plugin",
+        "statusline",
+        "command",
+        "instructions",
+      ] as ResourceType[]
     ).filter((type) => !adapter.capabilities.includes(type));
     expect(unclaimed.length).toBeGreaterThan(0);
     for (const type of unclaimed)

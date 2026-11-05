@@ -1,0 +1,7 @@
+{
+  "name": "fixture-plugins",
+  "owner": { "name": "Preflight tests" },
+  "plugins": [
+    { "name": "hello", "source": "./plugins/hello", "description": "Says hello", "category": "plugin" }
+  ]
+}

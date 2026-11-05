@@ -1,13 +1,82 @@
 ---
 title: "Install"
-description: "Run Preflight from a clone"
+description: "npm, Homebrew and the desktop installers"
 ---
 
-<Callout type="warn">
-The package has not been published to npm yet. Run it from a clone.
-</Callout>
+Preflight ships as a command line (and terminal interface) on npm and as a
+desktop app for macOS, Windows and Linux. Both come from the same tagged
+release and share one version.
+
+## Command line
 
 Requires Node.js 22 or newer.
+
+```sh
+npm install -g @arhunsaday/preflight    # installs the `preflight` executable
+preflight --help
+
+npx @arhunsaday/preflight doctor        # or run it once without installing
+```
+
+### Homebrew
+
+```sh
+brew tap arhunsaday/tap
+brew install preflight                  # the CLI
+brew install --cask preflight           # the desktop app (macOS)
+```
+
+The tap is maintained by hand; if a formula lags behind a release, use npm.
+
+## Desktop app
+
+Download the installer for your system from the
+[latest release](https://github.com/arhunsaday/preflight/releases/latest):
+
+| System | File |
+| --- | --- |
+| macOS, Apple silicon | `Preflight-<version>-mac-arm64.dmg` |
+| macOS, Intel | `Preflight-<version>-mac-x64.dmg` |
+| Windows | `Preflight-<version>-win-x64.exe` |
+| Linux | `Preflight-<version>-linux-x86_64.AppImage` or `…-linux-amd64.deb` |
+
+Releases whose macOS app is signed and notarized say so in their notes. If a
+release says it is unsigned, macOS asks you to confirm the first launch
+(right-click the app, then Open). Windows installers are not code-signed yet,
+so SmartScreen can show a warning.
+
+## Verify a download
+
+Every release carries a `SHA256SUMS` file.
+
+```sh
+shasum -a 256 -c SHA256SUMS --ignore-missing       # macOS, Linux
+Get-FileHash .\Preflight-<version>-win-x64.exe     # Windows: compare with SHA256SUMS
+```
+
+The npm package is published from GitHub Actions with provenance, so npm shows
+which repository, workflow and commit built it. To check it:
+
+```sh
+npm audit signatures
+```
+
+## Updates
+
+- **Desktop app**: it checks for a new version shortly after start and every few
+  hours, downloads it in the background and shows a small notice in the top
+  right with **Restart to update**. Use **Check for Updates…** (the app menu on
+  macOS, the Help menu elsewhere) to check now. Updates apply on the next
+  restart even if you dismiss the notice.
+- Self-update works for signed macOS builds, Windows installers and the Linux
+  AppImage. Unsigned macOS builds and the `.deb` do not update themselves: the
+  menu item then points you to the releases page.
+- **npm**: `npm update -g @arhunsaday/preflight`.
+- **Homebrew**: `brew upgrade preflight` (and `brew upgrade --cask preflight`).
+
+## From a clone
+
+To work on Preflight itself:
 
 ```sh
 git clone https://github.com/arhunsaday/preflight ~/Repos/preflight
@@ -15,7 +84,6 @@ cd ~/Repos/preflight
 npm ci
 npm run build
 npm link            # exposes the `preflight` executable
-preflight --help
 ```
 
 Then, in a project:
@@ -31,5 +99,8 @@ preflight ui        # open the terminal interface
 another project or an isolated harness home, and `PREFLIGHT_HOME` to change the
 default home.
 
-The shell kit that predates the CLI (`bootstrap.sh`, `doctor.sh`) is still
-there: see [Install the kit](/docs/setup/install).
+The package contains the tool only. Skills, plugins, hooks and loadouts come
+from a content source you add, such as
+[agent-kit](https://github.com/arhunsaday/agent-kit): see
+[Sources](/docs/preflight/sources). The shell installer that predates the CLI
+(`bootstrap.sh`) moved there as `install.sh`.

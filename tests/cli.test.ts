@@ -36,3 +36,39 @@ it("scripts the core loop using JSON outputs and dry-run", async () => {
     scope: "project",
   });
 });
+it("context report works before initialization and includes inherited global instructions", async () => {
+  const root = await mkdtemp(join(await realpath(tmpdir()), "preflight-context-"));
+  const context = { root, home: join(root, "home") };
+  expect(await execute(["context"], context)).toMatchObject({
+    estimatedTokens: 0,
+    entries: [],
+  });
+  await execute(["--global", "init"], context);
+  const file = join(root, "skill.json");
+  await writeFile(
+    file,
+    JSON.stringify({
+      id: "skill:global",
+      type: "skill",
+      name: "Global",
+      description: "On demand",
+      source: "local:global",
+      scope: "global",
+      harnesses: ["claude-code"],
+      content: "x".repeat(400),
+    }),
+  );
+  await execute(["--global", "create", file], context);
+  expect(
+    await execute(
+      ["context", "--scope", "global", "--agent", "claude-code"],
+      context,
+    ),
+  ).toMatchObject({ entries: [{ id: "skill:global", bodyTokens: 100 }] });
+  expect(
+    await execute(["context", "--agent", "cursor"], context),
+  ).toMatchObject({ entries: [] });
+  await expect(
+    execute(["context", "--mode", "live"], context),
+  ).rejects.toThrow();
+});

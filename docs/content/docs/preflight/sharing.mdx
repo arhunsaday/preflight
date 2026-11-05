@@ -8,9 +8,12 @@ preflight share --out setup.share.json     # export a payload locally
 preflight apply setup.share.json --dry-run # preview as a diff
 preflight apply setup.share.json
 preflight share --expires 2027-01-01T00:00:00.000Z
-preflight apply abc234 --dry-run           # apply by six-character code
+preflight apply https://YOUR_BACKEND/s/abc234 --dry-run  # by link or code
 preflight revoke abc234
 ```
+
+`share` also takes `--id <id>` to share one resource, `--loadout <name>` to share a
+resolved loadout, `--scope global|project` and `--public`.
 
 The payload schema rejects credentials: recognisable secret patterns, secret
 keys, authorization headers and credential-bearing URLs. `${VARIABLE}`
@@ -19,15 +22,26 @@ must set. Inspect a payload before you publish it.
 
 ## Hosted service
 
-A Hono Cloudflare Worker (`src/worker.ts`, configured by `wrangler.jsonc` with a
-KV namespace and an R2 bucket) serves the codes. Unlisted means not listed, not
-private: anyone with a code can read it. Publishing and revoking need the owner
-token.
+The Preflight API at `https://api.preflight.arhun.fr` (a Cloudflare Worker
+with D1, KV and R2) serves the codes: 16 random characters, with older
+six-character codes still accepted. Sign in with `preflight auth login` to
+publish; the signed-in account owns each share.
 
-<Callout type="info">
-Nothing is deployed, and the public share domain is still to be chosen. Docs
-use `share.example.com` as a placeholder. Point clients at a deployment with
-`PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN` and `PREFLIGHT_OWNER_ID`.
+```sh
+preflight share                         # publish, owned by you
+preflight share --team ORGANIZATION_ID  # also list it for that team
+preflight team shares ORGANIZATION_ID   # shares published to a team
+preflight revoke CODE
+```
+
+<Callout type="warn">
+Every share link is readable by anyone who has it. `unlisted` means the code
+is not listed anywhere; `public` marks it as meant for wide sharing.
+`--team` adds the share to the team's list for its members; it does not
+restrict who can open the link.
 </Callout>
 
-Deployment steps and limits: [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md).
+The owner can revoke a share, and so can an admin of its team. Shares with
+`--expires` stop opening at that time and are purged every hour. Set
+`PREFLIGHT_API_URL` to use another deployment. Setup and limits:
+[Cloudflare backend and accounts](/docs/preflight/cloudflare-backend).

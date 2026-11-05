@@ -1,9 +1,51 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "preflight-sharing",
+  // Preflight API: sign-in, API tokens, teams (Clerk Organizations) and shares.
+  // Step-by-step deployment: docs/content/docs/preflight/cloudflare-backend.mdx
+  "name": "preflight-api",
   "main": "src/worker.ts",
   "compatibility_date": "2026-09-01",
-  "vars": {"OWNER_ID": "local"},
-  "kv_namespaces": [{"binding": "SHARES", "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"}],
-  "r2_buckets": [{"binding": "PAYLOADS", "bucket_name": "preflight-shares"}]
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Custom domain. Uncomment once the arhun.fr zone is on your Cloudflare
+  // account; `wrangler deploy` then creates the DNS record and certificate.
+  // "routes": [
+  //   { "pattern": "api.preflight.arhun.fr", "custom_domain": true }
+  // ],
+  "vars": {
+    // Public, from Clerk dashboard > API keys. Use the pk_live_ key in production.
+    "CLERK_PUBLISHABLE_KEY": "pk_test_REPLACE_WITH_YOUR_CLERK_PUBLISHABLE_KEY",
+    "PREFLIGHT_PUBLIC_URL": "https://api.preflight.arhun.fr"
+  },
+  // Secrets (never in this file): `wrangler secret put CLERK_SECRET_KEY` and,
+  // for networkless JWT verification, `wrangler secret put CLERK_JWT_KEY`
+  // (Clerk dashboard > API keys > JWT public key, PEM).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "preflight",
+      // Paste the id printed by `wrangler d1 create preflight`.
+      "database_id": "58c54fe3-18eb-4c3a-a344-a2e37127485b",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "SHARES",
+      // Paste the id printed by `wrangler kv namespace create SHARES`.
+      "id": "eea55d771941440e8822e8e2c82b2187"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "PAYLOADS", "bucket_name": "preflight-shares" }
+  ],
+  // Per-IP limits (Workers Rate Limiting). namespace_id is any integer
+  // unique to your account.
+  "ratelimits": [
+    { "name": "RL_AUTH", "namespace_id": "4291", "simple": { "limit": 30, "period": 60 } },
+    { "name": "RL_SHARES", "namespace_id": "4292", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RL_PUBLIC", "namespace_id": "4293", "simple": { "limit": 120, "period": 60 } }
+  ],
+  // Hourly purge of expired shares, sign-in codes, tokens and counters.
+  "triggers": { "crons": ["17 * * * *"] }
 }

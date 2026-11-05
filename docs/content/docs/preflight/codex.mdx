@@ -1,0 +1,62 @@
+---
+title: "Codex"
+description: "How Preflight reads and writes the OpenAI Codex CLI configuration"
+---
+
+Preflight manages three things for [Codex CLI](https://developers.openai.com/codex): MCP servers, skills and instructions. It finds the Codex home at `~/.codex`, or at `CODEX_HOME` when it is set (and `--home` is not used).
+
+| Resource | User scope | Project scope |
+| --- | --- | --- |
+| MCP servers | `[mcp_servers.<name>]` in `~/.codex/config.toml` | `[mcp_servers.<name>]` in `.codex/config.toml` |
+| Skills | `~/.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
+| Instructions | managed block in `~/.codex/AGENTS.md` | managed block in `AGENTS.md` |
+| Subagents, hooks, commands, status lines, plugins, prompts | catalogued only | catalogued only |
+
+Codex reads project `.codex/config.toml` only for projects you trust.
+
+## config.toml stays yours
+
+Preflight edits only the `[mcp_servers.<name>]` tables it owns. Every other byte of `config.toml` stays as it was: comments, `model`, `model_reasoning_effort`, `[profiles.*]`, `[projects.*]` and the order of tables. Each edit is parsed back to check that only the owned table changed. Preflight refuses to replace a server it does not manage, and refuses a server defined inline or with dotted keys; edit those by hand or adopt them first.
+
+The lockfile digest of `config.toml` covers only Preflight's tables. A change you make to `model` or a profile is not drift; a change to a Preflight table is.
+
+Portable MCP settings are translated for Codex:
+
+| Portable setting | Codex table |
+| --- | --- |
+| `command`, `args` | `command`, `args` |
+| `env: {"KEY": "${KEY}"}` | `env_vars = ["KEY"]` |
+| `env: {"KEY": "literal"}` | `env = { KEY = "literal" }` |
+| `url` | `url` (streamable HTTP) |
+| `headers.Authorization: "Bearer ${TOKEN}"` | `bearer_token_env_var = "TOKEN"` |
+| `headers.X: "${VAR}"` | `env_http_headers = { X = "VAR" }` |
+
+Codex does not support SSE servers, or an environment value that names a different variable. Preflight refuses those resources for Codex rather than writing a broken server. Other Codex keys, such as `startup_timeout_sec` or `enabled_tools`, pass through unchanged.
+
+## Skills
+
+`~/.agents/skills` (and `.agents/skills` in a project) is the shared, agent-neutral skill store. Codex reads it directly and follows symlinked skill folders. Claude Code and Cursor keep their own copies in `.claude/skills` and `.cursor/skills`; Preflight does not yet link them to the shared store, because its transactions never write through symbolic links.
+
+## Instructions
+
+An `instructions` resource is written between marker comments:
+
+```md
+<!-- preflight:begin instructions:tests -->
+Run the tests before committing.
+<!-- preflight:end instructions:tests -->
+```
+
+Your own text around the blocks is never changed, and editing it is not drift. Removing the last block of a file that holds nothing else removes the file.
+
+## Doctor
+
+`preflight doctor` adds Codex checks:
+
+- `AGENTS.override.md` replaces `AGENTS.md` at its level, so managed blocks in `AGENTS.md` are not loaded.
+- Instructions larger than `project_doc_max_bytes` (32 KiB by default) are cut by Codex.
+- Files in `~/.codex/prompts`: Codex removed custom prompts in 0.117; convert them to skills.
+- Skill folders in `~/.codex/skills`: current Codex reads `~/.agents/skills`.
+- `config.toml` that does not parse.
+
+`preflight detect` also lists `model`, `model_reasoning_effort`, the default `profile`, `[profiles.*]` names and `<name>.config.toml` profile files.

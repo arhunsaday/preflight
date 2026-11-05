@@ -69,7 +69,7 @@ export async function fetchJson(
   if (text.length > 8_000_000) throw new Error("Source response too large");
   return JSON.parse(text) as unknown;
 }
-async function skillAssets(
+export async function skillAssets(
   root: string,
   dir = root,
 ): Promise<{ path: string; contents: string }[]> {

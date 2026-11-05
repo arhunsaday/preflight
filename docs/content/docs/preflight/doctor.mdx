@@ -1,0 +1,103 @@
+---
+title: "Doctor"
+description: "Findings about your AI setup: what it costs in context, what is broken, and the smallest fix"
+---
+
+`preflight doctor` reads your Claude Code, Cursor and Codex files and reports findings. Each finding has a stable **code**, a **severity** (error, warning or note), a short explanation, an **estimated token cost per session** when one is known, and the **smallest fix**. There is no overall score: findings are listed by severity, each with an icon and a word.
+
+```bash
+preflight doctor                 # grouped, readable output in a terminal
+preflight doctor --json          # JSON array of findings (also the default when piped)
+preflight doctor --days 60       # usage window for unused-context checks
+preflight doctor --processes     # count running MCP server processes (macOS, Linux)
+preflight doctor --measure       # run SessionStart hooks once to measure their output
+preflight doctor --connect       # start or call each MCP server (opt-in)
+```
+
+The static doctor only reads files. `--measure` and `--connect` run programs and are opt-in; in the desktop app they are previewed and confirmed first. `--measure` runs each distinct SessionStart hook once in a new, empty temporary folder (`CLAUDE_PROJECT_DIR` points there) with a time limit, and deletes the folder afterwards. `--processes` runs `ps` and is skipped cleanly on other systems.
+
+Token figures are character estimates (characters / 4), the same as the [context map](./context-map). MCP tool definitions are not measured locally, so their cost is shown as unknown, never as zero.
+
+## Findings
+
+| Code | Severity | What it means |
+|---|---|---|
+| `unused-context` | warning | A skill, subagent, MCP server or plugin is listed every session but was not used in the last N days. Shows the listing tokens it would recover. Fix: `disable-model-invocation: true`, `claude plugin disable`, `claude mcp remove`. |
+| `effort-default-high` | warning | `effortLevel` is `xhigh` or `max` in a settings file. |
+| `agent-no-model` | warning | A custom subagent has no `model:` in its frontmatter. Suggests `haiku` for search agents, `sonnet` otherwise. |
+| `subagent-model-advice` | note | Built-in subagents and how to pin a model. |
+| `mcp-global-single-project` | warning | A user-scope MCP server was called from one project only; move it to that project's `.mcp.json`. |
+| `mcp-processes` | note or warning | Number and resident memory of MCP server processes under Claude Code (`--processes`). |
+| `claude-md-long` | warning | An instructions file is longer than the line limit. |
+| `claude-md-broken-import` | warning | An `@import` points to a missing file. |
+| `claude-md-duplicates-skill` | note | Instruction lines that a skill already contains. |
+| `claude-md-secret` | error | An instructions file contains what looks like a credential. |
+| `skill-cluster` | warning | Skills whose descriptions overlap (Jaccard similarity of normalized words, grouped into connected components). Keep one; set `disable-model-invocation: true` on the others. |
+| `skill-count` | note or warning | Model-invocable global skills against the target range (60-80 by default). |
+| `startup-injection` | note | A SessionStart, UserPromptSubmit, SubagentStart or PreCompact hook (from settings or a plugin) adds its output to the context. |
+| `startup-injection-large`, `startup-injection-total` | warning | Measured SessionStart output is over the per-hook or total budget (`--measure`). |
+| `hook-failed`, `hook-duplicate` | warning | A measured hook failed or timed out; a hook is listed more than once. |
+| `plugins-many`, `mcp-many` | warning | More enabled plugins or user-level MCP servers (Claude Code or Codex) than the budget. |
+| `cache-model-switch` | note or warning | Sessions that switched model mid-session, which drops the prompt cache. |
+| `cache-ttl-gap` | note or warning | Prompts sent after the cache lifetime expired. |
+| `cache-variable-prompt-hook` | note | A UserPromptSubmit hook added different text to each prompt. |
+
+Existing codes such as `secret`, `broad-permissions`, `mcp-unverified`, `drift` and `settings-secret` are unchanged.
+
+Usage-based checks (`unused-context`, `mcp-global-single-project`, cache hygiene) read the session transcripts in `~/.claude/projects` from the window. When there are none, they are listed under **Skipped** with the reason instead of reporting anything. Cache heuristics ignore subagent lines, which share the parent session. With `--no-transcripts`, or when transcript reading is turned off in the desktop app, these checks are skipped with that reason. Only Claude Code transcripts are read, so resources that only Codex uses are never reported as unused.
+
+## Thresholds
+
+Every threshold can be set under `doctor` in `preflight.config.json`. The global configuration (`~/.preflight/global/preflight.config.json`) applies first, then the project's. Missing keys keep their default.
+
+```json
+{
+  "version": 1,
+  "activeProfile": "default",
+  "profiles": { "default": { "resources": [] } },
+  "doctor": {
+    "unusedDays": 30,
+    "instructionsMaxLines": 200,
+    "skillSimilarity": 0.5,
+    "skillTarget": { "min": 60, "max": 80 },
+    "maxPlugins": 15,
+    "maxMcpServers": 10,
+    "hookOutputChars": 1000,
+    "hookTotalChars": 2000,
+    "hookTimeoutMs": 10000,
+    "mcpProcessMemoryMb": 1024,
+    "cacheGapMinutes": 5,
+    "duplicateMinChars": 40
+  }
+}
+```
+
+| Key | Default | Used by |
+|---|---|---|
+| `unusedDays` | 30 | `unused-context`, `mcp-global-single-project`, cache checks (`--days` overrides it) |
+| `instructionsMaxLines` | 200 | `claude-md-long` |
+| `skillSimilarity` | 0.5 | `skill-cluster` (0.05 to 1) |
+| `skillTarget` | 60-80 | `skill-count`, Overview gauge |
+| `maxPlugins` / `maxMcpServers` | 15 / 10 | `plugins-many` / `mcp-many` |
+| `hookOutputChars` / `hookTotalChars` | 1000 / 2000 | `startup-injection-large` / `startup-injection-total` |
+| `hookTimeoutMs` | 10000 | time limit for one measured hook |
+| `mcpProcessMemoryMb` | 1024 | `mcp-processes` becomes a warning above it |
+| `cacheGapMinutes` | 5 | `cache-ttl-gap` |
+| `duplicateMinChars` | 40 | shortest line compared for `claude-md-duplicates-skill` |
+
+## Instructions
+
+```bash
+preflight instructions lint [file]
+preflight instructions draft [--scope global|project] [--agent claude-code|codex] [--write]
+```
+
+`lint` reports lines, estimated tokens (with and without `@imports`, resolved up to five levels deep), broken imports, lines repeated from skills, and credentials, for `~/.claude/CLAUDE.md`, the project's `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`, plus Codex's `$CODEX_HOME/AGENTS.md` (default `~/.codex/AGENTS.md`) and `AGENTS.md`. `draft --agent codex` keeps the blocks that Preflight manages for `instructions` resources (`<!-- preflight:begin … -->`) unchanged.
+
+`draft` proposes a concise file and prints it as a diff. It keeps your rules, removes repeated lines, lines a skill already carries and broken imports, then adds only the short sections your file does not cover: style, verification (with the check commands detected in the project), subagent models (Claude Code), secrets, and skills. Nothing is written without `--write`; `--write --dry-run` previews the file change, and a written draft goes through the journaled transaction, so `preflight rollback` undoes it.
+
+## Desktop
+
+**Health → Doctor** groups findings by severity, with the explanation, fix and token cost of each. **Count MCP processes** runs the `--processes` check; **Measure startup hooks** previews and then runs `--measure`. **Health → Instructions** shows the instructions file, a line gauge against the limit, imports and lint findings; **Draft improvements** opens the diff in the review dialog and writes only when you apply it. The Overview shows the number of global skills against the target range.
+
+Adapted in part from [agent-compass](https://github.com/me-cedric/agent-compass) (MIT); see `THIRD_PARTY_NOTICES.md`.

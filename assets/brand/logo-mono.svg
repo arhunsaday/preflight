@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="88 24 848 896" fill="currentColor">
+  <title>Preflight</title>
+  <!-- One colour (currentColor): the dial with the tick cut out, and the beacon index. -->
+  <mask id="cut">
+    <rect width="1024" height="1024" fill="#fff"/>
+    <path d="M296 566 L444 700 L768 364" fill="none" stroke="#000" stroke-width="112" stroke-linecap="round" stroke-linejoin="round"/>
+  </mask>
+  <circle cx="512" cy="540" r="372" mask="url(#cut)"/>
+  <path d="M512 52 L570 134 L454 134Z" stroke="currentColor" stroke-width="24" stroke-linejoin="round"/>
+</svg>

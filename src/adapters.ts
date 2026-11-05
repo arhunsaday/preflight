@@ -1,8 +1,6 @@
-import { readdir, lstat } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { lstat, readdir } from "node:fs/promises";
+import { join, dirname, resolve } from "node:path";
 import { z } from "zod";
-import { createHash } from "node:crypto";
-import { parse as yaml } from "yaml";
 import {
   ResourceSchema,
   type Resource,
@@ -11,80 +9,67 @@ import {
   type Scope,
 } from "./schema.js";
 import {
+  adoptedIn,
+  emptyDirectoryTree,
+  frontmatter,
+  object,
+  slug,
+  type Context,
+  type HarnessAdapter,
+  type HarnessState,
+} from "./adapters/common.js";
+import { CodexAdapter } from "./adapters/codex.js";
+import { managedBlocks, setManagedBlock } from "./agents-md.js";
+import { mdPart } from "./adapters/parts.js";
+export {
+  digest,
+  frontmatter,
+  safeRelative,
+  type Context,
+  type HarnessAdapter,
+  type HarnessNote,
+  type HarnessPaths,
+  type HarnessState,
+} from "./adapters/common.js";
+import {
   readText,
   jsonText,
   applyFiles,
   type FileChange,
 } from "./transaction.js";
-export interface Context {
-  root: string;
-  home: string;
-}
-export interface HarnessPaths {
-  global: string;
-  project: string;
-}
-export interface HarnessState {
-  resources: Resource[];
-  issues: string[];
-}
-export interface HarnessAdapter {
-  id: HarnessId;
-  capabilities: ResourceType[];
-  detect(): Promise<boolean>;
-  paths(): HarnessPaths;
-  /** Where this harness keeps a resource; throws for a type it cannot hold. */
-  target(resource: Resource): { path: string; key?: string; section?: string };
-  read(): Promise<HarnessState>;
-  plan(desired: Resource[], previous: Resource[]): Promise<FileChange[]>;
-  write(plan: { files: FileChange[]; dryRun?: boolean }): Promise<unknown>;
-}
-export const digest = (text: string) =>
-  createHash("sha256").update(text).digest("hex");
-const slug = (id: string) =>
-  id.replace(/[^a-z0-9_-]/gi, "-") + "-" + digest(id).slice(0, 8);
-/** A path inside a harness directory: relative, no traversal, no drive. */
-export function safeRelative(path: unknown): path is string {
-  return (
-    typeof path === "string" &&
-    !!path &&
-    !path.startsWith("/") &&
-    !path.includes("\\") &&
-    !path.includes(":") &&
-    !path
-      .split("/")
-      .some((part) => part === ".." || part === "." || part === "")
-  );
-}
-
-/** The harness that owns an adopted resource's existing file, if any. */
-function adoptedIn(resource: Resource, id: HarnessId) {
-  return resource.config.adoptedBy === id &&
-    safeRelative(resource.config.adoptedPath)
-    ? resource.config.adoptedPath
-    : undefined;
-}
-
-function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("Expected configuration object");
-  return value as Record<string, unknown>;
-}
-export function frontmatter(content: string) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
-  return match ? object(yaml(match[1]!)) : {};
-}
-async function emptyDirectoryTree(path: string): Promise<boolean> {
-  const stat = await lstat(path);
-  if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
-  for (const entry of await readdir(path, { withFileTypes: true })) {
-    if (
-      !entry.isDirectory() ||
-      !(await emptyDirectoryTree(join(path, entry.name)))
-    )
-      return false;
-  }
-  return true;
+/** The extraKnownMarketplaces entry a plugin resource names, if any. */
+export function pluginMarketplace(resource: Resource) {
+  const parsed = z
+    .object({
+      name: z.string().regex(/^[a-z0-9][a-z0-9._-]*$/i),
+      source: z.union([
+        z
+          .object({
+            source: z.literal("github"),
+            repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
+            ref: z.string().optional(),
+          })
+          .strict(),
+        z
+          .object({ source: z.literal("directory"), path: z.string().min(1) })
+          .strict(),
+        z
+          .object({
+            source: z.literal("git"),
+            url: z.string().url(),
+            ref: z.string().optional(),
+          })
+          .strict(),
+      ]),
+    })
+    .strict()
+    .safeParse(resource.config.marketplace);
+  if (!parsed.success) return undefined;
+  if (resource.name.split("@")[1] !== parsed.data.name)
+    throw new Error(
+      "Invalid resource: plugin marketplace differs from name@marketplace",
+    );
+  return parsed.data;
 }
 class FileAdapter implements HarnessAdapter {
   capabilities: ResourceType[];
@@ -102,8 +87,24 @@ class FileAdapter implements HarnessAdapter {
             "command",
             "statusline",
             "plugin",
+            "instructions",
           ]
-        : ["skill", "mcp", "command"];
+        : ["skill", "mcp", "command", "instructions"];
+  }
+  private parts = new Map<string, string>();
+  /** CLAUDE.md is the user's file too: Preflight edits only its own blocks. */
+  instructionsPath(scope: Scope) {
+    return scope === "global"
+      ? join(this.paths().global, "CLAUDE.md")
+      : join(this.context.root, "CLAUDE.md");
+  }
+  sharedFiles() {
+    return this.id === "claude-code"
+      ? (["global", "project"] as const).map((s) => this.instructionsPath(s))
+      : [];
+  }
+  lockPart(path: string) {
+    return this.parts.get(resolve(path));
   }
   paths() {
     return {
@@ -145,15 +146,21 @@ class FileAdapter implements HarnessAdapter {
     switch (resource.type) {
       case "skill":
         return {
-          path: adopted ? join(base, adopted) : join(base, "skills", name, "SKILL.md"),
+          path: adopted
+            ? join(base, adopted)
+            : join(base, "skills", name, "SKILL.md"),
         };
       case "subagent":
         return {
-          path: adopted ? join(base, adopted) : join(base, "agents", `${name}.md`),
+          path: adopted
+            ? join(base, adopted)
+            : join(base, "agents", `${name}.md`),
         };
       case "command":
         return {
-          path: adopted ? join(base, adopted) : join(base, "commands", `${name}.md`),
+          path: adopted
+            ? join(base, adopted)
+            : join(base, "commands", `${name}.md`),
         };
       case "mcp":
         return {
@@ -182,6 +189,19 @@ class FileAdapter implements HarnessAdapter {
           section: "enabledPlugins",
           key: resource.name,
         };
+      case "instructions":
+        if (this.id === "cursor") {
+          if (resource.scope === "global")
+            throw new Error(
+              "Invalid resource: Cursor keeps user rules in its settings, not in a file; use project scope",
+            );
+          return { path: join(base, "rules", `${name}.mdc`) };
+        }
+        return {
+          path: this.instructionsPath(resource.scope),
+          section: "claude-md",
+          key: resource.id,
+        };
       case "statusline":
         return { path: join(base, "settings.json"), key: "statusLine" };
       default:
@@ -204,7 +224,11 @@ class FileAdapter implements HarnessAdapter {
         );
       const target = this.target(resource);
       const key = target.path + "#" + (target.key ?? "");
-      if (resource.type !== "hook" && targets.has(key))
+      if (
+        resource.type !== "hook" &&
+        target.section !== "claude-md" &&
+        targets.has(key)
+      )
         throw new Error(`Target collision: ${key}`);
       targets.add(key);
     }
@@ -237,6 +261,23 @@ class FileAdapter implements HarnessAdapter {
       const removing = !wanted.includes(resource);
       const target = this.target(resource);
       const file = await obtain(target.path);
+      if (resource.type === "instructions") {
+        if (!removing && !resource.content?.trim())
+          throw new Error(
+            `Invalid resource: instructions ${resource.id} have no content`,
+          );
+        if (target.section === "claude-md")
+          file.after = setManagedBlock(
+            file.after,
+            resource.id,
+            removing ? null : resource.content!,
+          );
+        else
+          file.after = removing
+            ? null
+            : `---\ndescription: ${JSON.stringify(resource.description || resource.name)}\nalwaysApply: true\n---\n${resource.content!.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "")}`;
+        continue;
+      }
       if (!target.key) {
         if (!removing && resource.type === "skill" && !resource.content?.trim())
           throw new Error(
@@ -279,7 +320,10 @@ class FileAdapter implements HarnessAdapter {
           entry = {
             matcher: String(resource.config.matcher ?? ""),
             hooks: [
-              { type: "command", command: await materialize(resource, removing) },
+              {
+                type: "command",
+                command: await materialize(resource, removing),
+              },
             ],
           };
         const entries = (current as unknown[] | undefined) ?? [];
@@ -294,6 +338,25 @@ class FileAdapter implements HarnessAdapter {
           delete block[target.key];
       } else if (removing) {
         delete block[target.key];
+        const marketplace =
+          resource.type === "plugin" ? pluginMarketplace(resource) : undefined;
+        if (marketplace && doc.extraKnownMarketplaces) {
+          const known = object(doc.extraKnownMarketplaces);
+          const stillUsed = wanted.some(
+            (r) =>
+              r.type === "plugin" &&
+              r.scope === resource.scope &&
+              pluginMarketplace(r)?.name === marketplace.name,
+          );
+          if (
+            !stillUsed &&
+            JSON.stringify(known[marketplace.name]) ===
+              JSON.stringify({ source: marketplace.source })
+          )
+            delete known[marketplace.name];
+          if (Object.keys(known).length) doc.extraKnownMarketplaces = known;
+          else delete doc.extraKnownMarketplaces;
+        }
         if (resource.type === "statusline" && resource.config.script === true)
           await materialize(resource, true);
       } else {
@@ -307,8 +370,17 @@ class FileAdapter implements HarnessAdapter {
           )
         )
           throw new Error(`Refusing unmanaged entry: ${target.key}`);
-        if (resource.type === "plugin") block[target.key] = resource.enabled;
-        else if (
+        if (resource.type === "plugin") {
+          block[target.key] = resource.enabled;
+          const marketplace = pluginMarketplace(resource);
+          if (marketplace) {
+            const known = object(doc.extraKnownMarketplaces ?? {});
+            // A person's own declaration of the same marketplace is kept.
+            if (!Object.hasOwn(known, marketplace.name))
+              known[marketplace.name] = { source: marketplace.source };
+            doc.extraKnownMarketplaces = known;
+          }
+        } else if (
           resource.type === "statusline" &&
           resource.config.script === true
         ) {
@@ -323,6 +395,21 @@ class FileAdapter implements HarnessAdapter {
       }
       if (target.section) doc[target.section] = block;
       file.after = jsonText(doc);
+    }
+    // Only the blocks count in the lock digest, so editing your own text
+    // around them is not drift.
+    this.parts.clear();
+    for (const scope of ["global", "project"] as const) {
+      const path = this.instructionsPath(scope);
+      if (this.id === "claude-code" && files.has(path))
+        this.parts.set(
+          resolve(path),
+          mdPart(
+            wanted
+              .filter((r) => r.type === "instructions" && r.scope === scope)
+              .map((r) => r.id),
+          ),
+        );
     }
     return [...files.values()];
   }
@@ -414,6 +501,60 @@ class FileAdapter implements HarnessAdapter {
           );
       }
       if (this.id === "claude-code") {
+        const path = this.instructionsPath(scope);
+        const text = await readText(path);
+        if (text !== null)
+          try {
+            for (const block of managedBlocks(text))
+              resources.push(
+                ResourceSchema.parse({
+                  id: `instructions:${this.id}:${scope}:${block.id.replace(/[^a-z0-9._-]/gi, "-")}`,
+                  type: "instructions",
+                  name: block.id,
+                  source: `file://${path}`,
+                  scope,
+                  harnesses: [this.id],
+                  content: block.content,
+                  config: { block: block.id },
+                }),
+              );
+          } catch (e) {
+            issues.push(`${path}: ${String(e)}`);
+          }
+      } else if (scope === "project") {
+        let rules: string[] = [];
+        try {
+          rules = await readdir(join(base, "rules"));
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+        }
+        for (const name of rules.filter((n) => n.endsWith(".mdc"))) {
+          const path = join(base, "rules", name);
+          const content = await readText(path);
+          if (content === null) continue;
+          let meta: Record<string, unknown> = {};
+          try {
+            meta = frontmatter(content);
+          } catch {
+            /* A rule with odd front matter is still listed. */
+          }
+          resources.push(
+            ResourceSchema.parse({
+              id: `instructions:${this.id}:${scope}:${name.replace(/[^a-z0-9._-]/gi, "-")}`,
+              type: "instructions",
+              name: name.replace(/\.mdc$/, ""),
+              description:
+                typeof meta.description === "string" ? meta.description : "",
+              source: `file://${path}`,
+              scope,
+              harnesses: [this.id],
+              content,
+              config: meta,
+            }),
+          );
+        }
+      }
+      if (this.id === "claude-code") {
         const path = join(base, "settings.json");
         const settings = await readText(path);
         if (settings) {
@@ -474,6 +615,7 @@ class FileAdapter implements HarnessAdapter {
 export const createAdapters = (context: Context): HarnessAdapter[] => [
   new FileAdapter("claude-code", context),
   new FileAdapter("cursor", context),
+  new CodexAdapter(context),
 ];
 export async function detectAll(adapters: HarnessAdapter[]) {
   return Promise.all(
@@ -492,6 +634,7 @@ export async function detectAll(adapters: HarnessAdapter[]) {
           capabilities: adapter.capabilities,
           resources: [],
           issues: [],
+          notes: [],
           error: `unsupported today: ${String(e)}`,
         };
       }

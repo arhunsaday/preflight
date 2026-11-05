@@ -1,16 +1,86 @@
 ---
-title: "Desktop app (coming)"
-description: "Planned, not started"
+title: "Desktop app"
+description: "The same engine in an Electron window, with previews, accounts and teams"
 ---
 
+The desktop app is an Electron interface over the same command engine and
+resource schemas as the [CLI](/docs/preflight/cli). Its sidebar is grouped as **Configuration** (overview, skills, MCP servers,
+all resources, detected), **Discover** (discover resources, loadouts, [sources](/docs/preflight/sources)),
+**Health** (doctor, [context map](/docs/preflight/context-map),
+[usage](/docs/preflight/usage), benchmarks), **Manage** (profiles, projects,
+activity, command console) and **Collaborate** (sharing, team), with your
+account at the bottom. A command console runs the remaining CLI
+operations without a shell. Every write opens a preview first and applies only
+after you confirm it.
+
+```sh
+npm ci
+npm run desktop:dev            # development with hot reload
+npm run desktop:check          # types and production bundles
+npm run desktop:start          # run the previously built app
+npm run desktop:pack           # native directory under desktop-release/
+npm run desktop:dist           # platform installers
+npm run desktop:smoke          # real Electron, disposable project, home and settings
+```
+
+## Workspaces
+
+The workspace selector switches between the **Global** configuration
+(`~/.preflight/global/preflight.config.json`) and a project picked through the
+native folder dialog. Opening a folder does not initialise it. Projects show the
+global resources they inherit. Global scope targets your real home directory, so
+check the exact paths in the preview before confirming.
+
+| Shortcut | Action |
+| --- | --- |
+| Cmd/Ctrl+K | palette of views, actions and workspaces |
+| Cmd/Ctrl+R | refresh the workspace |
+| Cmd/Ctrl+O | open a project |
+| Cmd/Ctrl+1–8 | jump to the main views |
+| `/` | filter the current list |
+| `?` | list every shortcut |
+
+## Window layout
+
+The bar at the top shows the workspace, the current view and the project path.
+The status strip at the bottom shows the scope, the active profile, the number
+of managed resources and the doctor state (clear, warnings or errors). Below
+1040 px the sidebar becomes an icon rail; hover an icon to see its label. The
+theme button in the top bar cycles through system, light and dark.
+
+To regenerate the app icons after a change to `assets/brand/icon.svg`, run
+`node scripts/create-desktop-icon.mjs`. To take review screenshots of both
+themes, run `npm run desktop:build`, then
+`xvfb-run -a node scripts/desktop-captures.mjs <folder>`.
+
+## Security model
+
+- The renderer has no Node access; a sandboxed preload exposes explicit methods.
+- Operations run one at a time in the main process. Changing project or account
+  invalidates pending previews, and confirmation rechecks files and imported inputs.
+- Account tokens stay in the main process, encrypted with Electron `safeStorage`
+  when available and session-only otherwise. They never reach the renderer,
+  project config or installer and agent environments.
+
+## Accounts, sharing and teams
+
+**Account → Sign in with browser** opens the Preflight sign-in page (GitHub or
+Google, through Clerk) and receives the result on a `127.0.0.1` loopback
+address. The desktop then holds a Preflight API token in its main process.
+**Use an API token** accepts a `pfk_` token instead. The default backend is
+`https://api.preflight.arhun.fr`; change it in **Backend URL**. See
+[Cloudflare backend](/docs/preflight/cloudflare-backend). Sharing exports and
+imports JSON locally and publishes, lists and revokes owned shares on the
+backend. The Team page manages Clerk Organizations: email invitations, accept
+or decline, admin and member roles, member removal and leaving. A team always
+keeps one admin. A separate local roster works offline and grants no backend
+access.
+
+The [context map](/docs/preflight/context-map) (**Health → Context map**) shows
+a treemap of the instruction text a setup can load.
+
 <Callout type="info">
-A Preflight desktop app is planned. It does not exist yet, and there is no date.
+Installers, signing and automatic updates are described in [Install](/docs/preflight/install).
+A release says in its notes whether its macOS app is signed and notarized; Windows
+installers are not code-signed yet.
 </Callout>
-
-The intent is the same engine behind a windowed interface: browse and inspect a
-setup, preview a change as a diff, apply it, and roll it back, without a
-terminal. The CLI and [terminal interface](/docs/preflight/tui) are the
-supported surfaces today, and anything the app does will be a command you can
-also run there.
-
-This page will describe the app once there is something to install.

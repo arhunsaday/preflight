@@ -1,0 +1,34 @@
+---
+title: "Context map"
+description: "Estimate how much instruction text a setup can put in an agent's context"
+---
+
+Open **Health → Context map** in the desktop app to explore the weight of your AI setup. The selected workspace controls the inventory: global instructions alone, or a project's resources together with inherited global instructions and detected unmanaged resources. Catalogue search results are not counted as installed resources.
+
+The treemap groups instructions by type. Block area represents a resource's share of the **estimated, sized content in the current selection**. Select a block for its source, scope, agents and loading assumptions. Click a category heading to zoom, or switch to the sorted list to reach tiny blocks. Search by name or ID, filter by agent or scope, and optionally show disabled resources. Unknown contributions appear separately; they never receive an invented area.
+
+## What the numbers mean
+
+- **All available bodies if loaded** adds each available instruction body's character estimate. For skills it also includes the catalogue name and description, because these can be exposed separately before a skill is invoked. This is a hypothetical scenario, not a measurement of current context usage.
+- **Skill catalogue only** includes skill names and descriptions. The actual catalogue an agent exposes depends on its implementation. Prompts, command and subagent bodies are excluded from this scenario.
+- **Instructions** (such as `AGENTS.md`, including Preflight's managed blocks) count in both scenarios, because the agent adds them to every session in their scope.
+- Each contribution uses `ceil(characters / 4)`. This is not tokenizer output. Language, tokenization, agent wrappers and activation rules can change the actual number substantially.
+- Disabled resources contribute zero. Shared resource IDs are deduplicated, with the project profile taking precedence over inherited resources. Managed resources' detected installed copies are excluded using their adapter targets.
+- MCP transport settings, executable hook settings, plugins and status lines are not model context. Their runtime contributions are unknown: MCP tool schemas and responses are not inferred from local configuration. The map never starts a server or sends instructions to an external service.
+- Conversation history, attachments, tool responses, native agent system prompts and other session-only inputs are outside this report. No full context-window utilization percentage is claimed.
+
+A large skill is worth reviewing for repeated instructions and reference material that could load on demand. A small configuration file does not imply a small MCP tool catalogue.
+
+## CLI
+
+The same estimate is available as JSON:
+
+```sh
+preflight context
+preflight context --mode catalogue --agent claude-code
+preflight context --scope project --agent cursor
+preflight context --agent codex
+preflight --global context
+```
+
+Reports include `estimatedTokens`, `unknownCount` and an entry for each resource, with its body/catalogue estimates and explanation. Credentials and resource configuration objects are not included. The command works before initializing a managed profile and does not change files.
