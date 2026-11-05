@@ -6,6 +6,7 @@ import type {
 } from "../src/schema.js";
 import type { Finding, Usage } from "../src/analysis.js";
 import type { BenchResult } from "../src/bench.js";
+import type { ArenaReport } from "../src/bench-arena.js";
 import type { UpdateState } from "./updates.js";
 import type { DoctorExtras } from "../src/doctor.js";
 import type { InstructionsReport } from "../src/instructions.js";
@@ -83,6 +84,8 @@ export interface Snapshot {
   loadoutCatalog: LoadoutCatalog;
   sources: SourceSummary[];
   benches: BenchResult[];
+  /** Saved arena reports (.preflight/arena). */
+  arenas: ArenaReport[];
   errors: string[];
 }
 export interface Prepared {

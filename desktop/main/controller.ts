@@ -435,7 +435,8 @@ export class DesktopController {
             ? "Confirmation runs each SessionStart hook once in an empty temporary folder, with a time limit."
           : args[0] === "install" ||
               args[0] === "git" ||
-              (args[0] === "bench" && args[1] === "run")
+              (args[0] === "bench" &&
+                (args[1] === "run" || args[1] === "arena"))
             ? "External process effects are outside the local file rollback."
             : undefined,
       } as Prepared;

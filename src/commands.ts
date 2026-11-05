@@ -50,6 +50,8 @@ import { resolveLoadout, materializeLoadout } from "./loadouts.js";
 import { installationPlan, runCommand, gitSync } from "./operations.js";
 import { fixedTaskSet } from "./bench-tasks.js";
 import { runBench, compareRuns, BenchRun } from "./bench.js";
+import { runArena, type ArenaSide } from "./bench-arena.js";
+import { DEFAULT_MAX_CV, DEFAULT_MIN_RUNS } from "./bench-checklist.js";
 import { retrofit } from "./retrofit.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
 import { defaultService } from "./auth-client.js";
@@ -987,11 +989,36 @@ export async function execute(
         { actor: process.env.USER ?? "local", dryRun: dry() },
       );
     });
-  bench
-    .command("run")
+  const checkOptions = (o: Record<string, string | undefined>) => ({
+    minRuns: Number(o.minRuns ?? DEFAULT_MIN_RUNS),
+    maxCv: Number(o.maxCv ?? DEFAULT_MAX_CV),
+  });
+  const settingsOptions = (o: Record<string, string | undefined>) => ({
+    model: o.model ?? null,
+    effort: o.effort ?? null,
+    budget: o.budget === undefined ? null : Number(o.budget),
+  });
+  const withSettings = (c: Command) =>
+    c
+      .option(
+        "--model <model>",
+        "model the agent uses (recorded, passed as env)",
+      )
+      .option("--effort <level>", "effort level the agent uses (recorded)")
+      .option("--budget <usd>", "spend cap per task in USD (recorded)")
+      .option(
+        "--min-runs <n>",
+        `repetitions needed for the checklist (default ${DEFAULT_MIN_RUNS})`,
+      )
+      .option(
+        "--max-cv <ratio>",
+        `spread between runs that counts as noise (default ${DEFAULT_MAX_CV})`,
+      );
+  withSettings(bench.command("run"))
     .requiredOption("--config <path-or-current>")
     .requiredOption("--tasks <path>")
     .option("--name <name>", "result name", "current")
+    .option("--runs <n>", "repetitions of the task set", "1")
     .action(async (options) => {
       result = await runBench(
         ctx().root,
@@ -1001,16 +1028,84 @@ export async function execute(
           : resolve(ctx().root, options.config),
         resolve(ctx().root, options.tasks),
         dry(),
+        {
+          runs: Number(options.runs),
+          settings: settingsOptions(options),
+          ...checkOptions(options),
+        },
       );
     });
-  bench.command("compare <left> <right>").action(async (left, right) => {
-    if (!/^[a-z0-9_-]+$/i.test(left) || !/^[a-z0-9_-]+$/i.test(right))
-      throw new Error("Invalid benchmark name");
-    result = compareRuns(
-      BenchRun.parse(await input(`.preflight/bench/${left}.json`)),
-      BenchRun.parse(await input(`.preflight/bench/${right}.json`)),
+  withSettings(bench.command("compare <left> <right>")).action(
+    async (left, right, options) => {
+      if (!/^[a-z0-9_-]+$/i.test(left) || !/^[a-z0-9_-]+$/i.test(right))
+        throw new Error("Invalid benchmark name");
+      result = compareRuns(
+        BenchRun.parse(await input(`.preflight/bench/${left}.json`)),
+        BenchRun.parse(await input(`.preflight/bench/${right}.json`)),
+        checkOptions(options),
+      );
+    },
+  );
+  const arenaSide = async (
+    name: string,
+    catalogPath?: string,
+  ): Promise<ArenaSide> => {
+    const configText = await readText(
+      join(ctx().root, "preflight.config.json"),
     );
-  });
+    if (configText) {
+      const config = PreflightConfigSchema.parse(JSON.parse(configText));
+      if (Object.hasOwn(config.profiles, name))
+        return { label: name, config: { ...config, activeProfile: name } };
+    }
+    const entry = (await loadoutsFor(catalogPath)).find(name);
+    const plan = materializeLoadout(
+      entry.data,
+      entry.name,
+      await catalog(catalogPath),
+    );
+    if (plan.missing.length)
+      throw new Error(
+        `Missing loadout resources/prerequisites: ${plan.missing.join(", ")}`,
+      );
+    return {
+      label: name,
+      config: PreflightConfigSchema.parse({
+        version: 1,
+        activeProfile: "default",
+        profiles: { default: { resources: plan.resources } },
+      }),
+    };
+  };
+  withSettings(bench.command("arena"))
+    .description("Run one task set with two configurations, alternating order")
+    .requiredOption(
+      "--task <path-or-name>",
+      "task manifest (bench/<name>.json)",
+    )
+    .requiredOption("--left <loadout-or-profile>")
+    .requiredOption("--right <loadout-or-profile>")
+    .option("--runs <n>", "repetitions per side", String(DEFAULT_MIN_RUNS))
+    .option("--name <name>", "report name")
+    .option("--catalog <directory>")
+    .action(async (options) => {
+      const task = /^[a-z0-9_-]+$/i.test(options.task)
+        ? join(ctx().root, "bench", `${options.task}.json`)
+        : resolve(ctx().root, options.task);
+      result = await runArena(
+        ctx().root,
+        task,
+        await arenaSide(options.left, options.catalog),
+        await arenaSide(options.right, options.catalog),
+        dry(),
+        {
+          name: options.name,
+          runs: Number(options.runs),
+          settings: settingsOptions(options),
+          ...checkOptions(options),
+        },
+      );
+    });
   command(
     "validate <file>",
     "Validate a desired-state configuration",

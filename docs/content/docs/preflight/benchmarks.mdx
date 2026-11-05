@@ -1,0 +1,41 @@
+---
+title: "Benchmarks"
+description: "Measure whether a configuration helps: runs, compare, arena and the result checklist"
+---
+
+Benchmarks run a task set with your agent in disposable clones and measure the result. Every task gets a clean clone of a pinned revision and an empty home folder. Both vanish after the run.
+
+Runs execute your agent and verification commands. Agent usage can cost money. Preflight shows a preview first and runs only after you confirm.
+
+## Run, compare, arena
+
+```sh
+preflight bench scaffold --repo . --revision <sha>        # the ten-task suite
+preflight bench run --config current --tasks bench/tasks.json --name base --runs 3
+preflight bench compare base candidate
+preflight bench arena --task bench/tasks.json --left lean --right full --runs 5
+```
+
+- `bench run` runs the whole task set `--runs` times (default 1) and saves `.preflight/bench/<name>.json`.
+- `bench compare` compares two saved runs of the same task set and revision.
+- `bench arena` runs the same task with two configurations. Each side is a profile of the project or a loadout from your sources. Runs alternate the order (left, right, right, left, ...) so drift favours neither side. Default: 3 runs per side. The report is saved in `.preflight/arena/<name>.json`.
+
+Model, effort and budget stay yours to set: `--model`, `--effort` and `--budget <usd>`. Preflight records them in the result. It passes them to each task as `PREFLIGHT_BENCH_MODEL` (and `ANTHROPIC_MODEL`), `PREFLIGHT_BENCH_EFFORT` and `PREFLIGHT_BENCH_BUDGET_USD`. A task command reads them. The agent can also write the model it used, `costUsd` and a `limiter` (`budget`, `timeout` or `turns`) in the `PREFLIGHT_METRICS` file.
+
+## Result checklist
+
+`bench run`, `bench compare` and `bench arena` print a `checklist`. Each check is `pass`, `warn` or `fail`, with one sentence. The checks follow the pstack `benchmark-checklist` skill (MIT).
+
+| Check | Pass when | Options |
+| --- | --- | --- |
+| Enough repetitions | at least 3 runs (2 runs warn, 1 run fails) | `--min-runs <n>` |
+| Spread between runs | the coefficient of variation of run duration is at most 0.25 (up to twice that warns, more fails) | `--max-cv <ratio>` |
+| No limit reached | no run hit a budget, timeout or turn cap | |
+| Task done | the success check (the verify command) passed in every task run, not only exit code 0 | |
+| Same model, effort and budget | both sides used the same values (compare and arena) | |
+
+A compare with a failing check says: do not publish this result. An arena names a winner only when no check fails. It picks the side with the higher success rate. With equal rates, the side wins only when the duration ranges of the runs do not overlap. Otherwise the report says there is no winner.
+
+## Desktop
+
+In **Benchmarks**, the Arena form takes the task manifest, left, right, runs, and optional model, effort and budget. Preview first, then confirm. Saved arena reports show two columns (success rate, duration, tokens, cost, spread) and the checklist. Each checklist row shows an icon and a word (Pass, Warning, Fail), so colour is never the only signal.
