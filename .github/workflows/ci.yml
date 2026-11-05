@@ -59,7 +59,7 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run desktop:smoke
       - name: Build unsigned native application
-        run: npm run desktop:pack -- -c.mac.notarize=false
+        run: npm run desktop:pack -- --config.mac.notarize=false
       - name: Test the packaged application
         if: runner.os != 'Linux'
         run: npm run desktop:smoke:packaged
@@ -67,7 +67,7 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run desktop:smoke:packaged
       - name: Build installers without publishing
-        run: npm run desktop:dist -- -c.mac.notarize=false
+        run: npm run desktop:dist -- --config.mac.notarize=false
       - name: Record installer hashes
         run: npm run desktop:manifest
       - uses: actions/upload-artifact@v4

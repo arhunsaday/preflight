@@ -164,7 +164,7 @@ jobs:
         if: runner.os == 'macOS' && needs.draft.outputs.signed != 'true'
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder ${{ matrix.args }} -c.mac.notarize=false --publish always
+        run: npx electron-builder ${{ matrix.args }} --config.mac.notarize=false --publish always
       - name: Build and upload (Windows, Linux)
         if: runner.os != 'macOS'
         env:
