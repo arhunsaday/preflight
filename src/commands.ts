@@ -6,6 +6,7 @@ import { verifyResource } from "./verify.js";
 import { ConfigStore } from "./state.js";
 import { buildContextReport, contextResources } from "./context-map.js";
 import { PreflightService } from "./service.js";
+import { buildStatus } from "./status.js";
 import { type Context } from "./adapters.js";
 import {
   ResourceSchema,
@@ -119,7 +120,11 @@ export async function execute(
       "manage the shared global configuration at HOME/.preflight/global",
     )
     .option("--dry-run", "preview all changes without writing")
-    .option("--json", "machine-readable output (default)")
+    .option("--json", "machine-readable output (alias of -o json); --text is the alias of -o text")
+    .option(
+      "-o, --output <format>",
+      "json, text or auto (text on a terminal, json when piped)",
+    )
     .option("--root <path>", "project root", context.root)
     .option("--home <path>", "harness home", context.home);
   const ctx = (): Context => {
@@ -175,6 +180,11 @@ export async function execute(
   };
   const shareBase = (value?: string) =>
     value ?? process.env.PREFLIGHT_SHARE_URL ?? defaultService();
+  command(
+    "status",
+    "One line per harness: installed, profile, resource counts, doctor findings",
+    async () => buildStatus(ctx()),
+  );
   command("init", "Create a project configuration", async () =>
     service().init(dry()),
   );

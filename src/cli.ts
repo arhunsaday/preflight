@@ -1,7 +1,10 @@
 import { cliAuth, cliTeam, withCliAccount } from "./cli-auth.js";
 import { homedir } from "node:os";
 import { execute, canonicalContext } from "./commands.js";
+import { renderText } from "./render-text.js";
+import { outputMode, commandPath, type OutputMode } from "./output.js";
 import { resolve, join } from "node:path";
+let mode: OutputMode = "json";
 async function main() {
   if (Number(process.versions.node.split(".")[0]) < 22)
     throw new Error("Preflight requires Node.js 22 or newer");
@@ -10,6 +13,7 @@ async function main() {
     process.cwd(),
     process.env.PREFLIGHT_HOME ?? homedir(),
   );
+  mode = outputMode(args, !!process.stdout.isTTY);
   if (args[0] === "inbox") args.splice(0, 1, "team", "inbox");
   if (args[0] === "auth" || args[0] === "team") {
     const result = await (args[0] === "auth" ? cliAuth : cliTeam)(
@@ -17,7 +21,11 @@ async function main() {
       context.home,
     );
     if (result !== undefined)
-      process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+      process.stdout.write(
+        mode === "text"
+          ? renderText(commandPath(args), result)
+          : JSON.stringify(result, null, 2) + "\n",
+      );
     return;
   }
   if (args[0] === "ui") {
@@ -39,33 +47,36 @@ async function main() {
     await startUI(selected);
     return;
   }
-  // A person at a terminal reads doctor and instructions grouped and worded;
-  // pipes and --json keep the JSON contract.
-  const command = args.find(
-    (a, i) =>
-      !a.startsWith("-") && !["--root", "--home"].includes(args[i - 1] ?? ""),
-  );
-  if (
-    (command === "doctor" || command === "instructions") &&
-    process.stdout.isTTY &&
-    !args.includes("--json") &&
-    !args.includes("--text")
-  )
-    args.push("--text");
+  // doctor and instructions have their own text form (--text); every other
+  // command goes through renderText. JSON stays the contract for pipes.
+  const command = commandPath(args)[0];
+  const own = command === "doctor" || command === "instructions";
+  if (own && mode === "text" && !args.includes("--text")) args.push("--text");
+  if (!own || mode === "json")
+    for (let i = args.length - 1; i >= 0; i--)
+      if (args[i] === "--text") args.splice(i, 1);
+  if (!args.length && mode === "text") {
+    const help = await execute(["--help"], context);
+    process.stdout.write(`${help}\nStart here: preflight status\n`);
+    return;
+  }
   const result = await withCliAccount(args, context.home, () =>
     execute(args.length ? args : ["--help"], context),
   );
   process.stdout.write(
     typeof result === "string"
       ? result
-      : JSON.stringify(result ?? null, null, 2) + "\n",
+      : mode === "text"
+        ? renderText(commandPath(args), result)
+        : JSON.stringify(result ?? null, null, 2) + "\n",
   );
 }
 main().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(
-    JSON.stringify({
-      error: error instanceof Error ? error.message : String(error),
-    }) + "\n",
+    mode === "text"
+      ? `error: ${message}\n`
+      : JSON.stringify({ error: message }) + "\n",
   );
   process.exitCode = 1;
 });

@@ -9,6 +9,8 @@ and the desktop application share one version.
 
 ### Added
 
+- `preflight status`: one line per harness (Claude Code, Codex, Cursor) with install state, active profile, resource counts and doctor findings, for global and project scope.
+- Global option `-o, --output <json|text|auto>`: `auto` prints text at a terminal and JSON in a pipe; `--json` and `--text` stay as aliases. Piped output is unchanged.
 - `preflight` command line: `detect`, `doctor`, `init`, `list`, `search`, `add`, `remove`, `install`, `share`, `import`, `loadout`, `bench` and more. Commands print JSON by default; previews are required before anything is written.
 - Adapters for Claude Code, Codex and Cursor covering skills, MCP servers, subagents, hooks, plugins and instruction files, with `preflight.config.json` / lock file ownership and recovery.
 - Doctor: findings, drift between declared and installed state, observed usage, and the context cost of each resource. Context map showing what every harness loads into a session.
