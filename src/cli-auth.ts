@@ -2,12 +2,17 @@ import { cloudRequest, type CloudOperation } from "./cloud-client.js";
 import { Command } from "commander";
 import { readFile, mkdir, writeFile, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { hostname } from "node:os";
+import { createInterface } from "node:readline/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
-  beginDeviceSignIn,
-  pollDeviceSignIn,
   accountIdentity,
+  defaultService,
+  loopback,
+  pkce,
+  redeemCode,
+  signInUrl,
   signOut,
 } from "./auth-client.js";
 import { serviceUrl } from "./sharing.js";
@@ -16,6 +21,7 @@ const Metadata = z.object({
   service: z.string(),
   ownerId: z.string(),
   expiresAt: z.string(),
+  tokenId: z.string().optional(),
   user: z
     .object({ id: z.string(), name: z.string(), email: z.string() })
     .optional(),
@@ -38,73 +44,97 @@ async function credential(home: string, service: string) {
     .digest("hex");
   return new Entry("dev.preflight.cli", account);
 }
+/** Signs in through the browser; returns a redeemed Preflight API token. */
+async function browserSignIn(service: string, browser: boolean) {
+  const { verifier, challenge, state } = pkce();
+  const label = `Preflight CLI on ${hostname()}`.slice(0, 100);
+  if (!browser) {
+    const redirectUri = "oob";
+    const url = signInUrl(service, { redirectUri, state, challenge, client: "cli" });
+    process.stderr.write(`Open this URL in a browser and sign in:\n${url}\n`);
+    const prompt = createInterface({ input: process.stdin, output: process.stderr });
+    try {
+      const code = await prompt.question("Paste the code shown after sign-in: ");
+      return await redeemCode(service, { code, verifier, redirectUri, label });
+    } finally {
+      prompt.close();
+    }
+  }
+  const server = await loopback(state);
+  try {
+    const url = signInUrl(service, {
+      redirectUri: server.redirectUri,
+      state,
+      challenge,
+      client: "cli",
+    });
+    process.stderr.write(`Opening your browser to sign in:\n${url}\n`);
+    const { default: open } = await import("open");
+    await open(url).catch(() =>
+      process.stderr.write("Could not open a browser; open the URL above.\n"),
+    );
+    const code = await server.code;
+    return await redeemCode(service, {
+      code,
+      verifier,
+      redirectUri: server.redirectUri,
+      label,
+    });
+  } finally {
+    server.close();
+  }
+}
+async function storedToken(home: string) {
+  const account = await storedAccount(home);
+  if (!account) throw new Error("Run preflight auth login first.");
+  const token = (await credential(home, account.service)).getPassword();
+  if (!token) throw new Error("Run preflight auth login to restore your session.");
+  return { account, token };
+}
 export async function cliAuth(args: string[], home: string) {
   let result: unknown;
   const program = new Command().name("preflight auth").exitOverride();
   program
     .command("login")
-    .requiredOption("--service <url>", "Cloudflare backend URL")
-    .option("--no-browser", "display the login URL without opening a browser")
+    .option("--service <url>", "Preflight API URL (default: PREFLIGHT_API_URL or https://api.preflight.arhun.fr)")
+    .option("--no-browser", "print the sign-in URL and paste the code by hand")
     .action(async (options) => {
-      const service = serviceUrl(options.service);
-      const device = await beginDeviceSignIn(service, "preflight-cli");
-      process.stderr.write(
-        `Open ${device.verification_uri_complete}\nConfirm device code: ${device.user_code}\n`,
-      );
-      if (options.browser) {
-        const { default: open } = await import("open");
-        await open(device.verification_uri_complete);
-      }
-      const expiresAt = Date.now() + device.expires_in * 1000;
-      while (Date.now() < expiresAt) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, device.interval * 1000),
+      const service = options.service ? serviceUrl(options.service) : defaultService();
+      const path = join(home, ".preflight", "account.json");
+      if (await linkedComponent(path))
+        throw new Error("Refusing symlink credential metadata path");
+      const grant = await browserSignIn(service, options.browser);
+      const entry = await credential(home, service);
+      try {
+        entry.setPassword(grant.token);
+      } catch {
+        await signOut(service, grant.token).catch(() => undefined);
+        throw new Error(
+          "The OS credential store is unavailable. Enable Keychain, Windows Credential Manager or Linux Secret Service/keyring and retry.",
         );
-        const poll = await pollDeviceSignIn(service, "preflight-cli", device);
-        if (poll.status === "pending") continue;
-        const identity = await accountIdentity(service, poll.token);
-        const path = join(home, ".preflight", "account.json");
-        if (await linkedComponent(path)) {
-          await signOut(service, poll.token);
-          throw new Error("Refusing symlink credential metadata path");
-        }
-        const entry = await credential(home, service);
-        try {
-          entry.setPassword(poll.token);
-        } catch {
-          await signOut(service, poll.token);
-          throw new Error(
-            "The OS credential store is unavailable. Enable Keychain, Windows Credential Manager or Linux Secret Service/keyring and retry.",
-          );
-        }
-        await mkdir(join(home, ".preflight"), { recursive: true, mode: 0o700 });
-        const temp = `${path}.${randomUUID()}.tmp`;
-        const metadata = {
-          service,
-          ownerId: identity.ownerId,
-          expiresAt: identity.expiresAt ?? poll.expiresAt,
-          ...(identity.user ? { user: identity.user } : {}),
-        };
-        try {
-          await writeFile(temp, JSON.stringify(metadata, null, 2), {
-            mode: 0o600,
-            flag: "wx",
-          });
-          await rename(temp, path);
-        } catch (error) {
-          entry.deletePassword();
-          await rm(temp, { force: true });
-          await signOut(service, poll.token);
-          throw error;
-        }
-        result = {
-          connected: true,
-          ...metadata,
-          storage: "os-credential-store",
-        };
-        return;
       }
-      throw new Error("Sign-in expired; run preflight auth login again.");
+      await mkdir(join(home, ".preflight"), { recursive: true, mode: 0o700 });
+      const temp = `${path}.${randomUUID()}.tmp`;
+      const metadata = {
+        service,
+        ownerId: grant.user.id,
+        expiresAt: grant.expiresAt,
+        tokenId: grant.tokenId,
+        user: grant.user,
+      };
+      try {
+        await writeFile(temp, JSON.stringify(metadata, null, 2), {
+          mode: 0o600,
+          flag: "wx",
+        });
+        await rename(temp, path);
+      } catch (error) {
+        entry.deletePassword();
+        await rm(temp, { force: true });
+        await signOut(service, grant.token).catch(() => undefined);
+        throw error;
+      }
+      result = { connected: true, ...metadata, storage: "os-credential-store" };
     });
   program.command("status").action(async () => {
     const stored = await storedAccount(home);
@@ -125,6 +155,21 @@ export async function cliAuth(args: string[], home: string) {
       storage: "os-credential-store",
     };
   });
+  program
+    .command("tokens")
+    .description("List your Preflight API tokens")
+    .action(async () => {
+      const { account, token } = await storedToken(home);
+      result = await cloudRequest(account.service, token, { action: "tokens" });
+    });
+  program
+    .command("revoke <token-id>")
+    .description("Revoke one of your Preflight API tokens")
+    .action(async (tokenId) => {
+      const { account, token } = await storedToken(home);
+      await cloudRequest(account.service, token, { action: "revoke-token", tokenId });
+      result = { revoked: tokenId };
+    });
   program.command("logout").action(async () => {
     const stored = await storedAccount(home);
     if (stored) {
@@ -194,11 +239,7 @@ export async function withCliAccount<T>(
 export async function cliTeam(args: string[], home: string) {
   let result: unknown;
   const request = async (operation: CloudOperation) => {
-    const account = await storedAccount(home);
-    if (!account)
-      throw new Error("Run preflight auth login before managing organizations.");
-    const token = (await credential(home, account.service)).getPassword();
-    if (!token) throw new Error("Run preflight auth login to restore your session.");
+    const { account, token } = await storedToken(home);
     return cloudRequest(account.service, token, operation);
   };
   const program = new Command().name("preflight team").exitOverride();
@@ -225,7 +266,7 @@ export async function cliTeam(args: string[], home: string) {
     });
   program
     .command("invite <organization-id> <email>")
-    .option("--role <role>", "owner, admin or member", "member")
+    .option("--role <role>", "admin or member", "member")
     .action(async (organizationId, email, options) => {
       result = await request({
         action: "invite",
@@ -233,13 +274,7 @@ export async function cliTeam(args: string[], home: string) {
         email,
         role: options.role,
       });
-      const invitation = z.object({ id: z.string() }).parse(result);
-      const account = await storedAccount(home);
-      result = {
-        ...(result as object),
-        url: `${serviceUrl(account!.service)}/invite/${encodeURIComponent(invitation.id)}`,
-        delivery: "copy-link",
-      };
+      result = { ...(result as object), delivery: "email" };
     });
   program
     .command("invitations <organization-id>")
@@ -255,6 +290,12 @@ export async function cliTeam(args: string[], home: string) {
       .action(async (invitationId) => {
         result = await request({ action, invitationId });
       });
+  program
+    .command("shares <organization-id>")
+    .description("List the shares published to a team")
+    .action(async (team) => {
+      result = await request({ action: "shares", team });
+    });
   program
     .command("role <organization-id> <member-id> <role>")
     .action(async (organizationId, memberId, role) => {

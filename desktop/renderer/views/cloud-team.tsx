@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Users, Mail, RefreshCw, Plus, Copy, ShieldCheck } from "lucide-react";
+import { Users, Mail, RefreshCw, Plus, ShieldCheck } from "lucide-react";
 import type { CloudOperation } from "../../../src/cloud-client";
 import type { Workspace } from "../workspace";
 import { Badge, Button, Dialog, Empty, Notice } from "../components/ui";
@@ -30,9 +30,8 @@ const Details = Organization.extend({
 });
 type Review = { operation: CloudOperation; title: string; description: string };
 const roles = {
-  owner: "Manages owners, members and invitations.",
-  admin: "Manages members and invitations, but cannot assign or change owners.",
-  member: "Can view the organization and its members.",
+  admin: "Manages members, roles and invitations.",
+  member: "Can view the organization, its members and its team shares.",
 };
 
 export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
@@ -51,24 +50,20 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
     [slug, setSlug] = useState("");
   const [creating, setCreating] = useState(false);
   const [email, setEmail] = useState(""),
-    [role, setRole] = useState<"member" | "admin" | "owner">("member");
+    [role, setRole] = useState<"member" | "admin">("member");
   const [review, setReviewState] = useState<Review | null>(null);
   const setReview = (value: Review | null) => {
     if (value) w.setError("");
     setReviewState(value);
   };
-  const connected = w.state?.account.authentication === "session";
+  const connected = w.state?.account.authentication === "token";
   const service = w.state?.account.service;
   const myRole = selected?.members.find(
     (m) => m.userId === w.state?.account.user?.id,
   )?.role;
-  const manage =
-    myRole?.split(",").some((r) => r === "owner" || r === "admin") ?? false;
-  const owner = myRole?.split(",").includes("owner") ?? false;
+  const manage = myRole === "admin";
   const lastOwner =
-    owner &&
-    selected?.members.filter((m) => m.role.split(",").includes("owner"))
-      .length === 1;
+    manage && selected?.members.filter((m) => m.role === "admin").length === 1;
   const load = async () => {
     const [groups, inbox] = await Promise.all([
       window.preflight.cloud({ action: "organizations" }),
@@ -86,12 +81,26 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
     setLoaded(true);
   };
   const open = async (organizationId: string) => {
-    const [details, pending] = await Promise.all([
-      window.preflight.cloud({ action: "organization", organizationId }),
-      window.preflight.cloud({ action: "invitations", organizationId }),
-    ]);
-    setSelected(Details.parse(details));
-    setInvitations(z.array(Invitation).parse(pending));
+    const details = Details.parse(
+      await window.preflight.cloud({ action: "organization", organizationId }),
+    );
+    // Only admins can see an organization's invitations.
+    const admin =
+      details.members.find((m) => m.userId === w.state?.account.user?.id)
+        ?.role === "admin";
+    setSelected(details);
+    setInvitations(
+      admin
+        ? z
+            .array(Invitation)
+            .parse(
+              await window.preflight.cloud({
+                action: "invitations",
+                organizationId,
+              }),
+            )
+        : [],
+    );
   };
   useEffect(() => {
     setSelected(null);
@@ -134,7 +143,6 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
         and access. The offline roster below is kept on this device.
       </Notice>
     );
-  const link = (id: string) => `${service}/invite/${encodeURIComponent(id)}`;
   return (
     <section className="team-workspace">
       <div className="section-intro">
@@ -294,8 +302,8 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                 <p>
                   {roles[(myRole ?? "member") as keyof typeof roles] ??
                     "Permissions are enforced by your organization."}{" "}
-                  Membership controls team management; public and unlisted share
-                  links remain readable by anyone with their link.
+                  Members see the team's shares in their list; share links stay
+                  readable by anyone who has the link.
                 </p>
               </div>
               <h3>Members</h3>
@@ -327,8 +335,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                         </div>
                       </td>
                       <td>
-                        {manage &&
-                        (owner || !m.role.split(",").includes("owner")) ? (
+                        {manage ? (
                           <select
                             aria-label={`Role for ${m.user.name}`}
                             value={m.role}
@@ -339,8 +346,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                                   action: "update-role",
                                   organizationId: selected.id,
                                   memberId: m.id,
-                                  role: e.target.value as
-                                    "owner" | "admin" | "member",
+                                  role: e.target.value as "admin" | "member",
                                 },
                                 title: "Change team access?",
                                 description: `Change ${m.user.name} from ${m.role} to ${e.target.value}. ${roles[e.target.value as keyof typeof roles]}`,
@@ -365,7 +371,6 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                             >
                               Administrator
                             </option>
-                            {owner && <option value="owner">Owner</option>}
                           </select>
                         ) : (
                           <Badge>{m.role}</Badge>
@@ -373,8 +378,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                       </td>
                       <td>
                         {manage &&
-                          m.userId !== w.state?.account.user?.id &&
-                          (owner || !m.role.split(",").includes("owner")) && (
+                          m.userId !== w.state?.account.user?.id && (
                             <Button
                               variant="ghost"
                               onClick={() =>
@@ -434,7 +438,6 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                       >
                         <option value="member">Member</option>
                         <option value="admin">Administrator</option>
-                        {owner && <option value="owner">Owner</option>}
                       </select>
                     </label>
                     <Button variant="primary" disabled={!!w.busy} type="submit">
@@ -442,9 +445,8 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                     </Button>
                   </form>
                   <p className="hint">
-                    Copy the invitation link and send it to the recipient. No
-                    email is sent automatically. Acceptance requires their
-                    signed-in, verified account.
+                    Clerk emails the invitation. The recipient accepts it here
+                    or with preflight inbox after signing in with that email.
                   </p>
                   <table>
                     <thead>
@@ -479,21 +481,13 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                               Date.parse(i.expiresAt) > Date.now() && (
                                 <div className="button-row">
                                   <Button
-                                    aria-label={`Copy invitation for ${i.email}`}
-                                    onClick={() =>
-                                      void window.preflight.copyText(link(i.id))
-                                    }
-                                  >
-                                    <Copy size={14} />
-                                    Copy link
-                                  </Button>
-                                  <Button
                                     variant="ghost"
                                     onClick={() =>
                                       setReview({
                                         operation: {
                                           action: "cancel-invitation",
                                           invitationId: i.id,
+                                          organizationId: selected.id,
                                         },
                                         title: "Cancel this invitation?",
                                         description: `The invitation for ${i.email} will stop working.`,
@@ -516,8 +510,8 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
               )}
               {lastOwner && (
                 <p className="hint">
-                  Make another member an owner before leaving or changing your
-                  own role.
+                  Make another member an administrator before leaving or
+                  changing your own role.
                 </p>
               )}
               <Button
@@ -527,7 +521,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                   setReview({
                     operation: { action: "leave", organizationId: selected.id },
                     title: "Leave this organization?",
-                    description: `You will lose membership in ${selected.name}. Transfer ownership first if you are its last owner.`,
+                    description: `You will lose membership in ${selected.name}. Promote another administrator first if you are the last one.`,
                   })
                 }
               >

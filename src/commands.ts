@@ -39,6 +39,7 @@ import { fixedTaskSet } from "./bench-tasks.js";
 import { runBench, compareRuns, BenchRun } from "./bench.js";
 import { retrofit } from "./retrofit.js";
 import { applyFiles, readText, jsonText, recover } from "./transaction.js";
+import { defaultService } from "./auth-client.js";
 import bundled from "../catalog/resources.json" with { type: "json" };
 import loadouts from "../catalog/loadouts.json" with { type: "json" };
 export const catalogResources = () => z.array(ResourceSchema).parse(bundled);
@@ -101,7 +102,7 @@ export async function execute(
   const catalog = async (path?: string) =>
     path ? localCatalog(resolve(ctx().root, path)) : catalogResources();
   const shareBase = (value?: string) =>
-    value ?? process.env.PREFLIGHT_SHARE_URL ?? "http://localhost:8787";
+    value ?? process.env.PREFLIGHT_SHARE_URL ?? defaultService();
   command("init", "Create a project configuration", async () =>
     service().init(dry()),
   );
@@ -440,6 +441,7 @@ export async function execute(
         ownerId: options.owner ?? process.env.PREFLIGHT_OWNER_ID ?? "local",
         visibility: options.public ? "public" : "unlisted",
         ...(options.expires ? { expiresAt: options.expires } : {}),
+        ...(options.team ? { team: options.team } : {}),
       });
       if (options.out) {
         const path = resolve(ctx().root, options.out);
@@ -468,6 +470,7 @@ export async function execute(
     .option("--owner <owner>")
     .option("--public")
     .option("--expires <ISO-date>")
+    .option("--team <organization-id>", "list the share for that team's members")
     .option("--out <path>")
     .option("--service <url>");
   command(

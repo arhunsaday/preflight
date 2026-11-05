@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer } from "node:http";
+import { createHash, randomBytes } from "node:crypto";
 import { build } from "esbuild";
 import assert from "node:assert/strict";
 import { packagedExecutable } from "./desktop-artifacts.mjs";
@@ -45,9 +46,13 @@ const worker = (
 ).default;
 const records = new Map();
 const objects = new Map();
+const shareCount = () =>
+  [...records.keys()].filter((k) => !k.startsWith("__")).length;
+const standardDatabase = await localD1();
 const bindings = {
-  OWNER_ID: "smoke-owner",
-  WRITE_TOKEN: "desktop-smoke-token",
+  DB: standardDatabase.database,
+  PREFLIGHT_DEV_AUTH: "1",
+  PREFLIGHT_DEV_AUTH_SECRET: "desktop-smoke-dev-secret",
   SHARES: {
     get: async (k) => records.get(k) ?? null,
     put: async (k, v) => records.set(k, v),
@@ -62,7 +67,7 @@ const bindings = {
 };
 let accountGate;
 let releasePendingAccount;
-let latestDeviceToken;
+let latestIssuedToken;
 const server = createServer(async (req, res) => {
   try {
     let body = "";
@@ -81,8 +86,8 @@ const server = createServer(async (req, res) => {
       }),
       bindings,
     );
-    if (req.url === "/api/auth/device/token" && response.ok)
-      latestDeviceToken = (await response.clone().json()).access_token;
+    if (req.url === "/auth/token" && response.ok)
+      latestIssuedToken = (await response.clone().json()).token;
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(await response.text());
   } catch (e) {
@@ -92,6 +97,53 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const service = `http://127.0.0.1:${server.address().port}`;
+const api = async (path, body, token, method) => {
+  const response = await fetch(service + path, {
+    method: method ?? (body ? "POST" : "GET"),
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const text = await response.text();
+  assert.ok(response.ok, `${path}: HTTP ${response.status} ${text}`);
+  return text ? JSON.parse(text) : null;
+};
+const devSession = (person) => api("/auth/dev/session", person);
+/** What the browser sign-in page does after the person signs in. */
+const completeBrowserSignIn = async (url, person) => {
+  const query = new URL(url).searchParams;
+  const { redirect } = await api("/auth/exchange", {
+    session_token: (await devSession(person)).token,
+    redirect_uri: query.get("redirect_uri"),
+    state: query.get("state"),
+    code_challenge: query.get("code_challenge"),
+    code_challenge_method: query.get("code_challenge_method"),
+    client: query.get("client"),
+  });
+  assert.equal((await fetch(redirect)).status, 200);
+};
+/** A Preflight API token for a person, as `preflight auth login` gets one. */
+const apiToken = async (person) => {
+  const verifier = randomBytes(32).toString("base64url");
+  const redirectUri = "http://127.0.0.1:45999/callback";
+  const { redirect } = await api("/auth/exchange", {
+    session_token: (await devSession(person)).token,
+    redirect_uri: redirectUri,
+    state: "desktop-smoke-state-01",
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+    client: "cli",
+  });
+  return api("/auth/token", {
+    code: new URL(redirect).searchParams.get("code"),
+    code_verifier: verifier,
+    redirect_uri: redirectUri,
+  });
+};
+const smokeOwner = { name: "Smoke owner", email: "smoke-owner@example.com" };
+const smokeOwnerToken = (await apiToken(smokeOwner)).token;
 const executable =
   process.env.PREFLIGHT_DESKTOP_EXECUTABLE ??
   (process.argv.includes("--packaged")
@@ -104,7 +156,6 @@ const app = await electron.launch({
     : { args: [resolve(".")] }),
   env,
 });
-let standardDatabase;
 const errors = [];
 try {
   const page = await app.firstWindow();
@@ -261,26 +312,24 @@ try {
   await page.getByRole("cell", { name: /Ada/ }).first().waitFor();
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("heading", { name: "Your Preflight account" }).waitFor();
-  await page.getByText("Legacy deployment token", { exact: true }).click();
+  await page.getByText("Use an API token", { exact: true }).click();
   await page.getByRole("textbox", { name: "Service URL" }).fill(service);
-  await page
-    .getByRole("textbox", { name: "Owner token" })
-    .fill("desktop-smoke-token");
+  await page.getByRole("textbox", { name: "API token" }).fill(smokeOwnerToken);
   await page
     .getByRole("button", { name: "Connect service", exact: true })
     .click();
   await page
-    .getByRole("heading", { name: "Connected as smoke-owner" })
+    .getByRole("heading", { name: "Connected as Smoke owner" })
     .waitFor();
   assert.equal(
     JSON.stringify(await page.evaluate(() => window.preflight.state())).includes(
-      "desktop-smoke-token",
+      smokeOwnerToken,
     ),
     false,
   );
   assert.equal(
     (await readFile(join(data, "workspace.json"), "utf8")).includes(
-      "desktop-smoke-token",
+      smokeOwnerToken,
     ),
     false,
   );
@@ -296,7 +345,7 @@ try {
     (await page.locator(".dialog .code").textContent()) ?? "",
   );
   assert.equal(publication.code.length, 16);
-  assert.equal(records.size, 1);
+  assert.equal(shareCount(), 1);
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Share URL, code or JSON file" })
@@ -315,7 +364,7 @@ try {
     .getByRole("button", { name: "Apply changes", exact: true })
     .click();
   await page.getByRole("button", { name: "Done", exact: true }).click();
-  assert.equal(records.size, 0);
+  assert.equal(shareCount(), 0);
   const secondProject = join(temporary, "other-project");
   await mkdir(secondProject);
   await app.evaluate(({ dialog }, path) => {
@@ -524,70 +573,50 @@ try {
   );
   await page.setViewportSize({ width: 1440, height: 940 });
   await app.evaluate(({ shell }) => {
-    shell.openExternal = async () => {};
+    globalThis.__opened = [];
+    shell.openExternal = async (url) => {
+      globalThis.__opened.push(url);
+    };
   });
+  const lastOpened = () => app.evaluate(() => globalThis.__opened.at(-1));
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
-  standardDatabase = await localD1();
-  bindings.AUTH_DB = standardDatabase.database;
-  bindings.BASE_URL = service;
-  bindings.BETTER_AUTH_SECRET =
-    "electron-test-only-secret-at-least-thirty-two-characters";
-  bindings.AUTH_LOCAL_TEST = "1";
-  const cloudCall = async (path, body, token) => {
-    const response = await fetch(service + "/api/auth/" + path, {
-      method: body ? "POST" : "GET",
-      headers: {
-        Origin: service,
-        ...(body ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    assert.equal(response.status, 200, await response.clone().text());
-    return response.json();
-  };
-  const signup = async (name, email) => {
-    const account = await cloudCall("sign-up/email", {
-      name,
-      email,
-      password: "safe-electron-test-password-123",
-    });
-    await bindings.AUTH_DB.prepare(
-      "UPDATE user SET email_verified = 1 WHERE id = ?",
-    )
-      .bind(account.user.id)
-      .run();
-    return account;
-  };
-  const signIn = async (account) => {
+  // The pasted API token was revoked on disconnect.
+  assert.equal(
+    (
+      await fetch(service + "/api/account", {
+        headers: { Authorization: `Bearer ${smokeOwnerToken}` },
+      })
+    ).status,
+    401,
+  );
+  const signIn = async (person) => {
     await page
       .getByRole("textbox", { name: "Backend URL", exact: true })
       .fill(service);
     await page
       .getByRole("button", { name: "Sign in with browser", exact: true })
       .click();
-    const heading = page.getByRole("heading", { name: /Confirm code:/ });
-    await heading.waitFor();
-    const userCode = (await heading.textContent())
-      .replace("Confirm code: ", "")
-      .trim();
-    await cloudCall(
-      "device?user_code=" + encodeURIComponent(userCode),
-      undefined,
-      account.token,
-    );
-    await cloudCall("device/approve", { userCode }, account.token);
     await page
-      .getByRole("heading", {
-        name: "Connected as " + account.user.name,
-        exact: true,
-      })
+      .getByRole("heading", { name: "Finish signing in in your browser" })
       .waitFor();
+    const url = new URL(await lastOpened());
+    assert.equal(url.origin + url.pathname, service + "/auth/sign-in");
+    assert.equal(url.searchParams.get("client"), "desktop");
+    assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+    assert.match(
+      url.searchParams.get("redirect_uri"),
+      /^http:\/\/127\.0\.0\.1:\d+\/callback$/,
+    );
+    await completeBrowserSignIn(url.href, person);
+    await page
+      .getByRole("heading", { name: "Connected as " + person.name, exact: true })
+      .waitFor();
+    return latestIssuedToken;
   };
-  const owner = await signup("Crew owner", "owner@example.com");
-  const member = await signup("New member", "new-member@example.com");
-  await signIn(owner);
+  const owner = { name: "Crew owner", email: "owner@example.com" };
+  const member = { name: "New member", email: "new-member@example.com" };
+  const ownerToken = await signIn(owner);
   await page.screenshot({ path: join(temporary, "account-standard.png") });
   await page.getByRole("button", { name: "Team", exact: true }).click();
   await page.getByText("Create organization", { exact: true }).first().click();
@@ -618,17 +647,13 @@ try {
     .getByRole("cell", { name: /new-member@example.com/ })
     .first()
     .waitFor();
-  const groups = await cloudCall("organization/list", undefined, owner.token);
-  const pending = await cloudCall(
-    "organization/list-invitations?organizationId=" + groups[0].id,
+  const groups = await api("/api/orgs", undefined, ownerToken);
+  const pending = await api(
+    `/api/orgs/${groups[0].id}/invitations`,
     undefined,
-    owner.token,
+    ownerToken,
   );
-  const invitationPage = await fetch(service + "/invite/" + pending[0].id, {
-    headers: { Authorization: `Bearer ${member.token}` },
-  });
-  assert.equal(invitationPage.status, 200);
-  assert.match(await invitationPage.text(), /Accept invitation/);
+  assert.equal(pending[0].email, "new-member@example.com");
   await page.screenshot({ path: join(temporary, "team-owner.png") });
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
@@ -671,6 +696,7 @@ try {
   await page.setViewportSize({ width: 1440, height: 940 });
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  // Cancelling after the code was redeemed must revoke the new token.
   let releaseAccount;
   let accountReached;
   const reached = new Promise((resolve) => {
@@ -681,34 +707,25 @@ try {
   });
   accountGate = { started: accountReached, wait };
   releasePendingAccount = releaseAccount;
-  latestDeviceToken = undefined;
+  latestIssuedToken = undefined;
   await page
     .getByRole("button", { name: "Sign in with browser", exact: true })
     .click();
-  const cancelling = page.getByRole("heading", { name: /Confirm code:/ });
-  await cancelling.waitFor();
-  const cancelledCode = (await cancelling.textContent())
-    .replace("Confirm code: ", "")
-    .trim();
-  await cloudCall(
-    "device?user_code=" + encodeURIComponent(cancelledCode),
-    undefined,
-    owner.token,
-  );
-  await cloudCall("device/approve", { userCode: cancelledCode }, owner.token);
+  await page
+    .getByRole("heading", { name: "Finish signing in in your browser" })
+    .waitFor();
+  await completeBrowserSignIn(await lastOpened(), owner);
   await Promise.race([
     reached,
     new Promise((_, reject) =>
       setTimeout(
         () =>
-          reject(
-            new Error("Device redemption did not reach account verification"),
-          ),
+          reject(new Error("Code redemption did not reach account verification")),
         12000,
       ),
     ),
   ]);
-  const cancelledToken = latestDeviceToken;
+  const cancelledToken = latestIssuedToken;
   assert.ok(cancelledToken);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   releaseAccount();
@@ -726,10 +743,7 @@ try {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  assert.ok(
-    revoked,
-    "Cancelling a redeemed device grant must revoke its session",
-  );
+  assert.ok(revoked, "Cancelling a redeemed sign-in must revoke its token");
   assert.equal(
     await page.evaluate(
       async () => (await window.preflight.state()).account.connected,
@@ -755,5 +769,5 @@ try {
     ),
   ]);
   await new Promise((resolve) => server.close(resolve));
-  standardDatabase?.close();
+  standardDatabase.close();
 }

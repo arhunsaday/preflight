@@ -22,7 +22,7 @@ export interface Account {
   service: string;
   ownerId: string;
   storage: "encrypted" | "session" | "none";
-  authentication: "session" | "deployment-token" | "none";
+  authentication: "token" | "none";
   user?: { id: string; name: string; email: string };
 }
 export interface DesktopState {
@@ -85,7 +85,6 @@ export interface DesktopApi {
   team(value: Team): Promise<DesktopState>;
   beginSignIn(service: string): Promise<{
     id: string;
-    userCode: string;
     verificationUri: string;
     interval: number;
     expiresAt: number;

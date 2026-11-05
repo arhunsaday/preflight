@@ -72,10 +72,19 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 
 | Command | Purpose |
 | --- | --- |
-| `auth login --service <url>`, `auth status`, `auth logout` | browser device sign-in; credentials go to the OS keychain |
-| `team list\|create\|members` | cloud organizations |
-| `team invite\|invitations\|inbox\|accept\|reject` | invitations |
-| `team role\|remove\|leave\|cancel-invitation` | membership changes |
+| `auth login [--service <url>] [--no-browser]` | browser sign-in (GitHub or Google); the API token goes to the OS keychain |
+| `auth status`, `auth logout` | show or revoke the current sign-in |
+| `auth tokens`, `auth revoke <token-id>` | list or revoke your API tokens |
+| `team list\|create\|members` | teams (Clerk Organizations) |
+| `team invite <org> <email> [--role admin\|member]` | Clerk emails the invitation |
+| `team invitations <org>`, `team cancel-invitation <id>` | invitations you sent (admins) |
+| `inbox` (or `team inbox`), `team accept\|reject <id>` | invitations for you |
+| `team role <org> <user> admin\|member`, `team remove`, `team leave` | membership changes |
+| `team shares <org>` | shares published to a team |
+
+`auth login` opens your browser on the Preflight sign-in page and listens on
+`127.0.0.1` for the redirect. With `--no-browser`, it prints the URL and you
+paste the code that the page shows. Tokens expire after 90 days without use.
 
 Backend setup: [Cloudflare backend and accounts](/docs/preflight/cloudflare-backend).
 
@@ -84,7 +93,8 @@ Backend setup: [Cloudflare backend and accounts](/docs/preflight/cloudflare-back
 | Variable | Used for |
 | --- | --- |
 | `PREFLIGHT_HOME` | default harness home |
-| `PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN`, `PREFLIGHT_OWNER_ID` | the sharing service |
+| `PREFLIGHT_API_URL` | the backend (default `https://api.preflight.arhun.fr`) |
+| `PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN` | share with an explicit service and API token instead of the signed-in account |
 | `PREFLIGHT_METRICS` | a benchmark task writes tokens and interventions here |
 
 Worked examples for each group: [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md).

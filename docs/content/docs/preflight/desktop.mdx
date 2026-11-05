@@ -62,12 +62,17 @@ themes, run `npm run desktop:build`, then
 
 ## Accounts, sharing and teams
 
-Browser sign-in uses Better Auth OAuth and device authorization against the
+**Account → Sign in with browser** opens the Preflight sign-in page (GitHub or
+Google, through Clerk) and receives the result on a `127.0.0.1` loopback
+address. The desktop then holds a Preflight API token in its main process.
+**Use an API token** accepts a `pfk_` token instead. The default backend is
+`https://api.preflight.arhun.fr`; change it in **Backend URL**. See
 [Cloudflare backend](/docs/preflight/cloudflare-backend). Sharing exports and
 imports JSON locally and publishes, lists and revokes owned shares on the
-backend. The Team page manages real organizations: invitation links, accept or
-decline, roles, member removal and leaving, with the last owner protected. A
-separate local roster works offline and grants no backend access.
+backend. The Team page manages Clerk Organizations: email invitations, accept
+or decline, admin and member roles, member removal and leaving. A team always
+keeps one admin. A separate local roster works offline and grants no backend
+access.
 
 The [context map](/docs/preflight/context-map) (**Improve → Context map**) shows
 a treemap of the instruction text a setup can load.

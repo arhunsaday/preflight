@@ -159,6 +159,8 @@ export const SharePayloadSchema = z
     visibility: z.enum(["public", "unlisted"]),
     createdAt: z.string().datetime(),
     expiresAt: z.string().datetime().optional(),
+    /** Organization id: lists the share for that team's members. */
+    team: z.string().min(1).max(200).optional(),
     resources: z.array(ResourceSchema).min(1),
     profileName: z.string().optional(),
   })

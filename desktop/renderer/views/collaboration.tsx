@@ -36,7 +36,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
     [scope, setScope] = useState("all"),
     [visibility, setVisibility] = useState("unlisted"),
     [loadout, setLoadout] = useState("");
-  const session = w.state?.account.authentication === "session";
+  const session = w.state?.account.authentication === "token";
   const loadHosted = () =>
     w.task("Loading your shares…", async () => {
       const response = z
@@ -260,7 +260,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
 }
 export function Account({ workspace: w }: { workspace: Workspace }) {
   const [service, setService] = useState(
-      w.state?.account.service || "http://localhost:8787",
+      w.state?.account.service || "https://api.preflight.arhun.fr",
     ),
     [token, setToken] = useState("");
   const account = w.state?.account;
@@ -343,41 +343,29 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
               type="url"
               value={service}
               onChange={(e) => setService(e.target.value)}
-              placeholder="https://preflight.example.com"
+              placeholder="https://api.preflight.arhun.fr"
             />
           </label>
           <p className="hint">
-            Sign in with GitHub or Google in your browser. Confirm the device
-            code there; credentials stay outside this interface.
+            Sign in with GitHub or Google in your browser. Preflight receives
+            an API token on this computer; it never reaches this window.
           </p>
           {loginError && <Notice>{loginError}</Notice>}
           {device ? (
             <div className="device-code">
-              <h3>
-                Confirm code: <code>{device.userCode}</code>
-              </h3>
+              <h3>Finish signing in in your browser</h3>
               <p className="muted">
-                Your browser opened the sign-in page. Check that it shows this
-                code, then approve. Waiting for approval…
+                Your browser opened the Preflight sign-in page. Sign in, then
+                confirm the connection. Waiting for your browser…
               </p>
               <div className="button-row">
-                <Button
-                  onClick={() =>
-                    void window.preflight
-                      .copyText(device.userCode)
-                      .then(() => w.notify("Code copied"))
-                  }
-                >
-                  <Copy size={14} />
-                  Copy code
-                </Button>
                 <Button
                   onClick={() =>
                     void window.preflight.openExternal(device.verificationUri)
                   }
                 >
                   <ExternalLink size={14} />
-                  Open sign-in page
+                  Open sign-in page again
                 </Button>
                 <Button variant="ghost" onClick={() => setDevice(null)}>
                   Cancel
@@ -399,7 +387,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
             </Button>
           )}
           <details>
-            <summary>Legacy deployment token</summary>
+            <summary>Use an API token</summary>
             <form
               className="form-section account-form"
               onSubmit={(e) => {
@@ -417,18 +405,18 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
                   type="url"
                   value={service}
                   onChange={(e) => setService(e.target.value)}
-                  placeholder="https://shares.example.com"
+                  placeholder="https://api.preflight.arhun.fr"
                 />
               </label>
               <label>
-                Owner token
+                API token
                 <input
                   required
                   type="password"
                   autoComplete="off"
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
-                  placeholder="Deployment write token"
+                  placeholder="pfk_…"
                 />
               </label>
               <p className="hint">
@@ -445,8 +433,8 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
         </div>
       )}
       <Notice>
-        Accounts and sessions use Better Auth on Cloudflare D1. Your backend
-        administrator configures the available OAuth providers.
+        Accounts and teams use Clerk; Preflight API tokens expire after 90
+        days without use. Manage them with preflight auth tokens.
       </Notice>
     </div>
   );

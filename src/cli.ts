@@ -10,6 +10,7 @@ async function main() {
     process.cwd(),
     process.env.PREFLIGHT_HOME ?? homedir(),
   );
+  if (args[0] === "inbox") args.splice(0, 1, "team", "inbox");
   if (args[0] === "auth" || args[0] === "team") {
     const result = await (args[0] === "auth" ? cliAuth : cliTeam)(
       args.slice(1),
