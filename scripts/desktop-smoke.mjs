@@ -689,6 +689,10 @@ try {
   const lastOpened = () => app.evaluate(() => globalThis.__opened.at(-1));
   await navigate("Account");
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  // Disconnect revokes the token, then shows the sign-in form; wait for it.
+  await page
+    .getByRole("button", { name: "Sign in with browser", exact: true })
+    .waitFor();
   // The pasted API token was revoked on disconnect.
   assert.equal(
     (
