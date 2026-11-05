@@ -3,15 +3,41 @@ title: "CLI reference"
 description: "Every command, grouped by what it does"
 ---
 
-Commands print JSON on stdout; errors go to stderr with a nonzero exit code.
-Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
+Commands print JSON when stdout is a pipe and text at a terminal; errors go to
+stderr with a nonzero exit code.
+Global options: `--dry-run`, `-o, --output <json|text|auto>`, `--root <path>`, `--home <path>`, and
 `--global` to target the shared global configuration at `~/.preflight/global`.
 `preflight <command> --help` is authoritative. New here? Follow the [Quickstart](/docs/preflight/quickstart).
+
+## Output format
+
+| Option | Result |
+| --- | --- |
+| `-o json` (or `--json`) | the JSON contract. Scripts can rely on it. Errors are JSON on stderr: `{"error": "..."}` |
+| `-o text` (or `--text`) | a table or `key: value` rendering for people. Errors are one line on stderr: `error: ...` |
+| `-o auto` (default) | `text` at a terminal, `json` when stdout is a pipe or a file |
+
+`doctor` and `instructions` use their own grouped text. `status`, `list`,
+`detect`, `search`, `source list`, `profiles list`, `loadouts list` and `usage`
+have a dedicated text form. Every other command prints its JSON as aligned
+`key: value` lines and tables. Output sent to a pipe is the same JSON as in
+earlier versions.
+
+## Status
+
+`preflight status` shows one line per harness (Claude Code, Codex, Cursor):
+installed or not, config folders, active profile, and the number of skills, MCP
+servers, subagents, plugins, hooks and instruction files, as `global/project`.
+It also counts doctor findings (errors, warnings, info) for each harness.
+It reads configuration files only. It does not read transcripts, start MCP
+servers or run hooks. `preflight` with no arguments at a terminal prints the help
+and suggests this command.
 
 ## Setup and state
 
 | Command | Purpose |
 | --- | --- |
+| `status` | one line per harness: installed, profile, resource counts, doctor findings |
 | `init` | create a project configuration |
 | `list` | list desired resources |
 | `validate <file>` | validate a desired-state configuration |
