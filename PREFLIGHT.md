@@ -166,6 +166,8 @@ preflight usage --since 30d --by session
 preflight usage --agent codex --by day
 preflight usage --transcripts /path/to/claude/jsonl/transcripts
 preflight prune --transcripts /path/to/claude/jsonl/transcripts
+preflight reflect --since 30d --text
+preflight reflect lesson add --draft <id> --apply --dry-run
 preflight verify mcp:example
 preflight verify mcp:example --connect
 ```
