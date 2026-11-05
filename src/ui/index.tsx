@@ -1,9 +1,11 @@
 import React from "react";
 import { render } from "ink";
 import type { Context } from "../adapters.js";
-import { App } from "./app.js";
+import { Root } from "./dashboard.js";
 
 export { App, writes } from "./app.js";
+export { Dashboard, Root } from "./dashboard.js";
+export * from "./dashboard-model.js";
 export {
   ResourceList,
   configLines,
@@ -43,6 +45,6 @@ export {
   type FormState,
 } from "./form.js";
 
-export async function startUI(context: Context) {
-  await render(<App context={context} />).waitUntilExit();
+export async function startUI(context: Context, options: { classic?: boolean } = {}) {
+  await render(<Root context={context} classic={options.classic ?? false} />).waitUntilExit();
 }
