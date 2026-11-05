@@ -187,6 +187,19 @@ const errors = [];
 try {
   const page = await app.firstWindow();
   page.setDefaultTimeout(15000);
+  // Sidebar items share labels with buttons in the main view (the Overview's
+  // "All resources", "Discover resources"…), so every navigation click is
+  // scoped to the sidebar. A string label matches exactly; a RegExp also
+  // matches an item with a count, such as "Skills 2".
+  const sidebar = page.locator("aside.sidebar");
+  const navigate = (label) =>
+    sidebar
+      .getByRole("button", {
+        name: label,
+        ...(typeof label === "string" ? { exact: true } : {}),
+      })
+      .click();
+  const main = page.getByRole("main");
   page.on("pageerror", (e) => errors.push(e.message));
   assert.deepEqual(
     await page.evaluate(() => ({
@@ -208,10 +221,7 @@ try {
       .activeProfile,
     "default",
   );
-  await page
-    .getByRole("navigation", { name: "Main navigation" })
-    .getByRole("button", { name: "Discover resources", exact: true })
-    .click();
+  await navigate("Discover resources");
   await page
     .getByRole("textbox", { name: "Search resources" })
     .fill("ponytail");
@@ -239,7 +249,7 @@ try {
       .profiles.default.resources.length,
     1,
   );
-  await page.getByRole("button", { name: /^Skills/ }).click();
+  await navigate(/^Skills/);
   await page.getByRole("heading", { name: "ponytail", exact: true }).waitFor();
   await page
     .getByRole("button", { name: "Theme: system. Switch theme", exact: true })
@@ -295,7 +305,7 @@ try {
       .profiles.default.resources[0].description,
     "A verified desktop skill",
   );
-  await page.getByRole("button", { name: "Profiles", exact: true }).click();
+  await navigate("Profiles");
   await page
     .getByRole("textbox", { name: "Name", exact: true })
     .fill("frontend");
@@ -310,12 +320,12 @@ try {
     JSON.parse(await readFile(join(project, "preflight.config.json"), "utf8"))
       .profiles.frontend,
   );
-  await page.getByRole("button", { name: /^Doctor/ }).click();
+  await navigate(/^Doctor/);
   await page
     .getByRole("heading", { name: "Check your setup", exact: true })
     .waitFor();
   await page.screenshot({ path: join(temporary, "doctor.png") });
-  await page.getByRole("button", { name: "Instructions", exact: true }).click();
+  await navigate("Instructions");
   await page.getByRole("heading", { name: "What your agent reads every session" }).waitFor();
   await page
     .getByRole("button", { name: "Draft improvements", exact: true })
@@ -330,21 +340,19 @@ try {
   assert.match(await readFile(join(project, "CLAUDE.md"), "utf8"), /## Secrets/);
   await page.getByRole("meter", { name: "Lines against the limit" }).waitFor();
   await page.screenshot({ path: join(temporary, "instructions.png") });
-  await page.getByRole("button", { name: "Loadouts", exact: true }).click();
+  await navigate("Loadouts");
   await page.locator(".loadout-list button").first().click();
   await page
     .getByRole("button", { name: "Preview installation", exact: true })
     .waitFor();
-  await page
-    .getByRole("button", { name: "Command console", exact: true })
-    .click();
+  await navigate("Command console");
   await page.getByRole("textbox", { name: "Preflight command" }).fill("list");
   await page.getByRole("button", { name: "Run", exact: true }).click();
   // Read-only console output stays inline instead of opening a dialog.
   await page.locator(".console-entry").first().waitFor();
-  await page.getByRole("button", { name: "Benchmarks", exact: true }).click();
+  await navigate("Benchmarks");
   await page.getByRole("heading", { name: "No benchmark runs yet" }).waitFor();
-  await page.getByRole("button", { name: "Team", exact: true }).click();
+  await navigate("Team");
   await page.getByText("Offline roster", { exact: true }).click();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await page
@@ -352,7 +360,7 @@ try {
     .fill("ada@example.com");
   await page.getByRole("button", { name: "Add teammate", exact: true }).click();
   await page.getByRole("cell", { name: /Ada/ }).first().waitFor();
-  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await navigate("Account");
   await page.getByRole("heading", { name: "Your Preflight account" }).waitFor();
   await page.getByText("Use an API token", { exact: true }).click();
   await page.getByRole("textbox", { name: "Service URL" }).fill(service);
@@ -375,7 +383,7 @@ try {
     ),
     false,
   );
-  await page.getByRole("button", { name: "Sharing", exact: true }).click();
+  await navigate("Sharing");
   await page
     .getByRole("button", { name: "Preview publication", exact: true })
     .click();
@@ -422,7 +430,7 @@ try {
     .getByRole("button", { name: "Initialize project", exact: true })
     .waitFor();
   await assert.rejects(readFile(join(secondProject, "preflight.config.json")));
-  await page.getByRole("button", { name: /^Projects/ }).click();
+  await navigate(/^Projects/);
   await page
     .locator(".project-item")
     .filter({ hasText: project })
@@ -450,7 +458,7 @@ try {
     .getByRole("button", { name: "Apply changes", exact: true })
     .click();
   await page.getByRole("button", { name: "Done", exact: true }).click();
-  await page.getByRole("button", { name: /^MCP servers/ }).click();
+  await navigate(/^MCP servers/);
   await page.getByRole("button", { name: "New resource", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Name", exact: true })
@@ -513,7 +521,7 @@ try {
   await page
     .getByRole("button", { name: "Edit in global configuration", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await navigate("Overview");
   await page
     .getByRole("heading", { name: "Inherited global configuration" })
     .waitFor();
@@ -545,7 +553,7 @@ try {
   await page
     .getByRole("button", { name: "Refresh workspace", exact: true })
     .click();
-  await page.getByRole("button", { name: "Context map", exact: true }).click();
+  await navigate("Context map");
   await page
     .getByRole("heading", { name: "See the weight of your setup" })
     .waitFor();
@@ -564,7 +572,7 @@ try {
     .filter({ hasText: "Skills" })
     .click();
   assert.equal(await page.locator(".context-tree-group").count(), 1);
-  await page
+  await main
     .getByRole("button", { name: "All resources", exact: true })
     .click();
   assert.equal(await page.locator(".context-tree-group").count(), 4);
@@ -594,10 +602,7 @@ try {
     .getByRole("button", { name: "Refresh workspace", exact: true })
     .click();
 
-  await page
-    .getByRole("navigation", { name: "Main navigation" })
-    .getByRole("button", { name: "Usage", exact: true })
-    .click();
+  await navigate("Usage");
   await page.getByText("Cache hit rate", { exact: true }).waitFor();
   assert.ok(
     (await page.locator(".usage-chart svg rect").count()) > 0,
@@ -612,10 +617,7 @@ try {
   await page.getByText("Transcript reading is off", { exact: true }).waitFor();
   await transcripts.check();
   await page.getByText("Cache hit rate", { exact: true }).waitFor();
-  await page
-    .getByRole("navigation", { name: "Main navigation" })
-    .getByRole("button", { name: "Discover resources", exact: true })
-    .click();
+  await navigate("Discover resources");
   await page
     .getByRole("button", { name: "Search online", exact: true })
     .click();
@@ -631,10 +633,7 @@ try {
   await page
     .getByRole("button", { name: "Bundled library", exact: true })
     .click();
-  await page
-    .getByRole("navigation", { name: "Main navigation" })
-    .getByRole("button", { name: "Discover resources", exact: true })
-    .click();
+  await navigate("Discover resources");
   await page.getByRole("textbox", { name: "Search resources" }).fill("");
   await page
     .getByRole("navigation", { name: "Main navigation" })
@@ -656,7 +655,7 @@ try {
     };
   });
   const lastOpened = () => app.evaluate(() => globalThis.__opened.at(-1));
-  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await navigate("Account");
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   // The pasted API token was revoked on disconnect.
   assert.equal(
@@ -695,7 +694,7 @@ try {
   const member = { name: "New member", email: "new-member@example.com" };
   const ownerToken = await signIn(owner);
   await page.screenshot({ path: join(temporary, "account-standard.png") });
-  await page.getByRole("button", { name: "Team", exact: true }).click();
+  await navigate("Team");
   await page.getByText("Create organization", { exact: true }).first().click();
   await page
     .locator(".team-create")
@@ -732,10 +731,10 @@ try {
   );
   assert.equal(pending[0].email, "new-member@example.com");
   await page.screenshot({ path: join(temporary, "team-owner.png") });
-  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await navigate("Account");
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await signIn(member);
-  await page.getByRole("button", { name: "Team", exact: true }).click();
+  await navigate("Team");
   await page
     .getByRole("button", { name: "Review invitation", exact: true })
     .click();
@@ -771,7 +770,7 @@ try {
     true,
   );
   await page.setViewportSize({ width: 1440, height: 940 });
-  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await navigate("Account");
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   // Cancelling after the code was redeemed must revoke the new token.
   let releaseAccount;
