@@ -59,11 +59,64 @@ export const ProfileSchema = z
   .strict();
 export type Profile = z.infer<typeof ProfileSchema>;
 
+/**
+ * Doctor thresholds. Every key is optional; a missing key keeps its default
+ * (see `doctorDefaults`). The project configuration overrides the global one.
+ */
+export const DoctorSettingsSchema = z
+  .object({
+    /** A resource unused for this many days is reported as unused context. */
+    unusedDays: z.number().int().min(1).max(3650).optional(),
+    /** CLAUDE.md / AGENTS.md longer than this many lines is reported. */
+    instructionsMaxLines: z.number().int().min(1).optional(),
+    /** Jaccard similarity of skill descriptions that makes two skills overlap. */
+    skillSimilarity: z.number().min(0.05).max(1).optional(),
+    /** Target range for the number of model-invocable global skills. */
+    skillTarget: z
+      .object({ min: z.number().int().min(0), max: z.number().int().min(1) })
+      .strict()
+      .optional(),
+    /** Enabled plugins before `plugins-many` is reported. */
+    maxPlugins: z.number().int().min(0).optional(),
+    /** User-level MCP servers before `mcp-many` is reported. */
+    maxMcpServers: z.number().int().min(0).optional(),
+    /** Characters one SessionStart hook may print (`--measure`). */
+    hookOutputChars: z.number().int().min(0).optional(),
+    /** Characters all SessionStart hooks together may print (`--measure`). */
+    hookTotalChars: z.number().int().min(0).optional(),
+    /** Time limit for one measured hook, in milliseconds. */
+    hookTimeoutMs: z.number().int().min(100).max(120000).optional(),
+    /** Resident memory of all MCP processes before it is a warning (`--processes`). */
+    mcpProcessMemoryMb: z.number().min(1).optional(),
+    /** Idle minutes after which the prompt cache has expired. */
+    cacheGapMinutes: z.number().min(1).optional(),
+    /** Shortest instruction line compared with skill bodies for duplication. */
+    duplicateMinChars: z.number().int().min(10).optional(),
+  })
+  .strict();
+export type DoctorSettings = z.infer<typeof DoctorSettingsSchema>;
+export const doctorDefaults = {
+  unusedDays: 30,
+  instructionsMaxLines: 200,
+  skillSimilarity: 0.5,
+  skillTarget: { min: 60, max: 80 },
+  maxPlugins: 15,
+  maxMcpServers: 10,
+  hookOutputChars: 1000,
+  hookTotalChars: 2000,
+  hookTimeoutMs: 10000,
+  mcpProcessMemoryMb: 1024,
+  cacheGapMinutes: 5,
+  duplicateMinChars: 40,
+} satisfies Required<DoctorSettings>;
+export type DoctorThresholds = typeof doctorDefaults;
+
 export const PreflightConfigSchema = z
   .object({
     version: z.literal(1),
     activeProfile: z.string().min(1).default("default"),
     profiles: z.record(z.string(), ProfileSchema),
+    doctor: DoctorSettingsSchema.optional(),
   })
   .strict()
   .superRefine((config, context) => {

@@ -25,6 +25,7 @@ import {
   type FileChange,
 } from "./transaction.js";
 import { analyze, analyzeSettings, type Finding } from "./analysis.js";
+import { extendedChecks, type DoctorOptions } from "./doctor.js";
 const Lock = PreflightLockSchema;
 export type Policy = (
   desired: Resource[],
@@ -58,7 +59,11 @@ export class PreflightService {
   detect() {
     return detectAll(createAdapters(this.context));
   }
-  async doctor() {
+  async doctor(options: DoctorOptions = {}) {
+    return (await this.doctorReport(options)).findings;
+  }
+  /** Doctor findings plus the checks that were skipped and the facts behind them. */
+  async doctorReport(options: DoctorOptions = {}) {
     const states = await this.detect();
     const findings: Finding[] = states.flatMap((s) =>
       s.error
@@ -104,7 +109,12 @@ export class PreflightService {
           });
       }
     }
-    return findings;
+    const extras = await extendedChecks(
+      this.context,
+      states.flatMap((s) => s.resources),
+      options,
+    );
+    return { ...extras, findings: [...findings, ...extras.findings] };
   }
   async change(
     mutate: (config: PreflightConfig) => void,

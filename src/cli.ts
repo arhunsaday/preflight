@@ -38,6 +38,19 @@ async function main() {
     await startUI(selected);
     return;
   }
+  // A person at a terminal reads doctor and instructions grouped and worded;
+  // pipes and --json keep the JSON contract.
+  const command = args.find(
+    (a, i) =>
+      !a.startsWith("-") && !["--root", "--home"].includes(args[i - 1] ?? ""),
+  );
+  if (
+    (command === "doctor" || command === "instructions") &&
+    process.stdout.isTTY &&
+    !args.includes("--json") &&
+    !args.includes("--text")
+  )
+    args.push("--text");
   const result = await withCliAccount(args, context.home, () =>
     execute(args.length ? args : ["--help"], context),
   );

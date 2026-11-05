@@ -33,6 +33,13 @@ import {
   inspectRemote,
 } from "./catalog.js";
 import { measureUsage } from "./analysis.js";
+import { formatDoctor, loadThresholds } from "./doctor.js";
+import {
+  draftInstructions,
+  formatDraft,
+  formatInstructions,
+  lintInstructions,
+} from "./instructions.js";
 import { resolveLoadout, materializeLoadout } from "./loadouts.js";
 import { installationPlan, runCommand, gitSync } from "./operations.js";
 import { fixedTaskSet } from "./bench-tasks.js";
@@ -117,10 +124,23 @@ export async function execute(
   ).option("--connect");
   command(
     "doctor",
-    "Analyze installed setup and managed-file drift; --connect tests MCP servers",
+    "Analyze installed setup, context cost and managed-file drift; --connect tests MCP servers",
     async (options) => {
-      const findings = await service().doctor();
-      if (!options.connect) return findings;
+      const days =
+        options.days === undefined ? undefined : z.coerce.number().int().min(1).max(3650).parse(options.days);
+      const report = await service().doctorReport({
+        ...(days ? { days } : {}),
+        ...(options.transcripts
+          ? { transcripts: resolve(ctx().root, options.transcripts) }
+          : {}),
+        processes: !!options.processes,
+        measure: !!options.measure,
+        dryRun: dry(),
+      });
+      const findings = report.findings;
+      const output = () =>
+        options.text ? formatDoctor(findings, report.skipped) : findings;
+      if (!options.connect) return output();
       // Opt-in only: the static doctor never starts a configured program.
       const probes = (await service().list()).filter(
         (r) => r.type === "mcp" && r.enabled,
@@ -165,9 +185,80 @@ export async function execute(
             resourceId: resource.id,
           });
         }
-      return findings;
+      return output();
     },
-  ).option("--connect", "start or call each configured MCP server");
+  )
+    .option("--connect", "start or call each configured MCP server")
+    .option("--days <n>", "usage window for unused-context checks (default 30)")
+    .option("--transcripts <directory>", "session transcripts to read")
+    .option("--processes", "count running MCP server processes with ps")
+    .option(
+      "--measure",
+      "run each SessionStart hook once in a temporary folder to measure its output",
+    )
+    .option("--text", "human-readable output grouped by severity");
+  const instructions = program
+    .command("instructions")
+    .description("Lint or draft CLAUDE.md and AGENTS.md instruction files");
+  const detectedResources = async () =>
+    (await service().detect()).flatMap((s) => s.resources);
+  instructions
+    .command("lint [file]")
+    .description("Lines, tokens, @imports, skill duplicates and secrets")
+    .option("--text", "human-readable output")
+    .action(async (file, options) => {
+      const { thresholds } = await loadThresholds(ctx());
+      const report = await lintInstructions(
+        ctx(),
+        await detectedResources(),
+        thresholds,
+        file,
+      );
+      result = options.text ? formatInstructions(report) : report;
+    });
+  instructions
+    .command("draft")
+    .description(
+      "Propose a concise instructions file as a diff; --write applies it after review",
+    )
+    .addOption(
+      new Option("--scope <scope>").choices(["global", "project"]).default("global"),
+    )
+    .addOption(
+      new Option("--agent <agent>")
+        .choices(["claude-code", "codex"])
+        .default("claude-code"),
+    )
+    .option("--write", "write the proposal (preview it first with --dry-run)")
+    .option("--text", "human-readable output")
+    .action(async (options) => {
+      const { thresholds } = await loadThresholds(ctx());
+      const draft = await draftInstructions(
+        ctx(),
+        { scope: options.scope, agent: options.agent },
+        await detectedResources(),
+        thresholds,
+      );
+      if (!options.write) {
+        result = options.text
+          ? formatDraft(draft, false)
+          : { ...draft, next: "Run again with --write to apply; add --dry-run to preview." };
+        return;
+      }
+      const { before, after, ...rest } = draft;
+      const written = await applyFiles(
+        ctx().root,
+        [{ path: draft.path, before, after }],
+        {
+          actor: process.env.USER ?? "local",
+          source: "instructions draft",
+          dryRun: dry(),
+        },
+      );
+      result = options.text
+        ? formatDraft(draft, !dry())
+        : { ...rest, ...written, warnings: draft.notes };
+    });
   command(
     "unmanaged",
     "List detected resources this profile does not manage",
