@@ -60,7 +60,7 @@ Global options: `--dry-run`, `--json`, `--root <path>`, `--home <path>`, and
 | `usage [--by session\|skill\|project\|model\|day\|agent] [--since 30d] [--until day] [--agent claude-code\|codex\|all] [--project root]` | tokens, cache hit rate and cost estimate from local Claude Code and Codex transcripts; see [Usage](/docs/preflight/usage) |
 | `prune` | propose unused skills (never deletes) |
 | `context [--mode potential\|catalogue] [--agent claude-code\|cursor\|codex] [--scope global\|project]` | estimated instruction size; see [Context map](/docs/preflight/context-map) |
-| `bench scaffold\|run\|compare` | local A/B runs of two configurations |
+| `bench scaffold\|run\|compare\|arena` | local A/B runs of two configurations; see [Benchmarks](/docs/preflight/benchmarks) |
 
 ## Share, project and Git
 
@@ -98,6 +98,7 @@ Backend setup: [Cloudflare backend and accounts](/docs/preflight/cloudflare-back
 | `PREFLIGHT_HOME` | default harness home |
 | `PREFLIGHT_API_URL` | the backend (default `https://api.preflight.arhun.fr`) |
 | `PREFLIGHT_SHARE_URL`, `PREFLIGHT_SHARE_TOKEN` | share with an explicit service and API token instead of the signed-in account |
-| `PREFLIGHT_METRICS` | a benchmark task writes tokens and interventions here |
+| `PREFLIGHT_METRICS` | a benchmark task writes tokens, interventions, cost, model and any limit reached here |
+| `PREFLIGHT_BENCH_MODEL`, `PREFLIGHT_BENCH_EFFORT`, `PREFLIGHT_BENCH_BUDGET_USD` | the model, effort and budget a benchmark run asks a task to use |
 
 Worked examples for each group: [PREFLIGHT.md](https://github.com/arhunsaday/preflight/blob/main/PREFLIGHT.md).

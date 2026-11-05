@@ -379,6 +379,14 @@ try {
   await page.locator(".console-entry").first().waitFor();
   await navigate("Benchmarks");
   await page.getByRole("heading", { name: "No benchmark runs yet" }).waitFor();
+  // Arena form: task, left, right, runs.
+  await page
+    .getByRole("heading", { name: "Arena: two configurations, one task" })
+    .waitFor();
+  await page.getByRole("combobox", { name: "Left", exact: true }).fill("a");
+  await page.getByRole("combobox", { name: "Right", exact: true }).fill("b");
+  await page.getByRole("spinbutton", { name: "Runs per side" }).waitFor();
+  await page.getByRole("button", { name: "Preview arena" }).waitFor();
   await navigate("Team");
   await page.getByText("Offline roster", { exact: true }).click();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");

@@ -48,6 +48,9 @@ SOFTWARE.
   `disable-model-invocation: true` on overlapping or rarely used skills
   (`skill-cluster`, `unused-context`) and the per-role subagent model rule in
   `preflight instructions draft`.
+- Adapted: the questions of the `benchmark-checklist` skill (repetitions,
+  spread, limiter, did the work happen, same setup on both sides) became the
+  result checklist in `src/bench-checklist.ts`.
 
 ```
 MIT License

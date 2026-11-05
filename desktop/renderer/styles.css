@@ -4166,3 +4166,14 @@ pre.patch .hunk {
   white-space: nowrap;
   margin: 1px 0 6px;
 }
+.arena-result {
+  margin-top: 16px;
+}
+.arena-result table,
+.checklist table {
+  width: 100%;
+  margin-top: 8px;
+}
+.checklist .badge svg {
+  vertical-align: -2px;
+}

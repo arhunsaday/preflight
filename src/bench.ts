@@ -13,6 +13,11 @@ import { digest } from "./adapters.js";
 import { runCommand } from "./operations.js";
 import { PreflightConfigSchema } from "./schema.js";
 import { PreflightService } from "./service.js";
+import {
+  checklistCompare,
+  checklistFor,
+  type ChecklistOptions,
+} from "./bench-checklist.js";
 import { applyFiles, readText, jsonText } from "./transaction.js";
 const Command = z.object({
   command: z.string().min(1),
@@ -38,6 +43,14 @@ export const TaskSet = z
     if (new Set(v.tasks.map((t) => t.id)).size !== v.tasks.length)
       c.addIssue({ code: "custom", message: "Duplicate task ID" });
   });
+export const Limiter = z.enum(["budget", "timeout", "turns"]);
+/** Model, effort and budget a run used. Each one stays configurable. */
+export const Settings = z.object({
+  model: z.string().nullable().default(null),
+  effort: z.string().nullable().default(null),
+  budget: z.number().nonnegative().nullable().default(null),
+});
+export type BenchSettings = z.infer<typeof Settings>;
 export const BenchRun = z.object({
   name: z.string(),
   configDigest: z.string(),
@@ -50,11 +63,24 @@ export const BenchRun = z.object({
       durationMs: z.number(),
       tokens: z.number().nonnegative().nullable(),
       interventions: z.number().nonnegative().nullable(),
+      /** Repetition number, from 1. Older files have none. */
+      run: z.number().int().positive().optional(),
+      /** Did the success check (the verify command) pass? */
+      verified: z.boolean().optional(),
+      exitCode: z.number().int().optional(),
+      costUsd: z.number().nonnegative().nullable().optional(),
+      limiter: Limiter.nullable().optional(),
+      model: z.string().nullable().optional(),
     }),
   ),
+  settings: Settings.optional(),
 });
 export type BenchResult = z.infer<typeof BenchRun>;
-export function compareRuns(a: BenchResult, b: BenchResult) {
+export function compareRuns(
+  a: BenchResult,
+  b: BenchResult,
+  options: ChecklistOptions = {},
+) {
   a = BenchRun.parse(a);
   b = BenchRun.parse(b);
   if (a.taskDigest !== b.taskDigest || a.revision !== b.revision)
@@ -78,22 +104,51 @@ export function compareRuns(a: BenchResult, b: BenchResult) {
     right,
     passRateDelta: right.passRate - left.passRate,
     durationDeltaMs: right.durationMs - left.durationMs,
+    checklist: checklistCompare(a, b, options),
   };
 }
-export async function runBench(
+const Metrics = z.object({
+  tokens: z.number().nonnegative(),
+  interventions: z.number().nonnegative(),
+  costUsd: z.number().nonnegative().optional(),
+  limiter: Limiter.optional(),
+  model: z.string().optional(),
+});
+export interface RunOptions {
+  settings?: Partial<BenchSettings>;
+  /** Repetitions of the whole task set. */
+  runs?: number;
+  minRuns?: number;
+  maxCv?: number;
+}
+export function settingsEnv(settings: BenchSettings): NodeJS.ProcessEnv {
+  return {
+    ...(settings.model
+      ? {
+          PREFLIGHT_BENCH_MODEL: settings.model,
+          ANTHROPIC_MODEL: settings.model,
+        }
+      : {}),
+    ...(settings.effort ? { PREFLIGHT_BENCH_EFFORT: settings.effort } : {}),
+    ...(settings.budget !== null
+      ? { PREFLIGHT_BENCH_BUDGET_USD: String(settings.budget) }
+      : {}),
+  };
+}
+/**
+ * One pass over the task set. Every task gets its own clone of the pinned
+ * revision and its own empty HOME; both vanish when the pass ends.
+ */
+export async function runTasks(
   root: string,
-  name: string,
-  configPath: string,
-  tasksPath: string,
-  dryRun = false,
-) {
-  if (!/^[a-z0-9_-]+$/i.test(name)) throw new Error("Invalid benchmark name");
-  const taskText = await readFile(tasksPath, "utf8");
-  const set = TaskSet.parse(JSON.parse(taskText));
-  const configText = await readFile(configPath, "utf8");
-  const config = PreflightConfigSchema.parse(JSON.parse(configText));
-  if (dryRun) return { name, tasks: set, configDigest: digest(configText) };
-  const workspace = await realpath(await mkdtemp(join(tmpdir(), "preflight-bench-")));
+  set: z.infer<typeof TaskSet>,
+  config: z.infer<typeof PreflightConfigSchema>,
+  run: number,
+  settings: BenchSettings,
+): Promise<BenchResult["results"]> {
+  const workspace = await realpath(
+    await mkdtemp(join(tmpdir(), "preflight-bench-")),
+  );
   const results: BenchResult["results"] = [];
   try {
     for (const task of set.tasks) {
@@ -123,47 +178,79 @@ export async function runBench(
       const metricsPath = join(checkout, ".preflight", "bench-metrics.json");
       const env = {
         ...process.env,
+        ...settingsEnv(settings),
         HOME: home,
         PREFLIGHT_CONFIG: join(checkout, "preflight.config.json"),
         PREFLIGHT_METRICS: metricsPath,
       };
-      const run = await runCommand(task.run, checkout, task.timeoutMs, env);
+      const ran = await runCommand(task.run, checkout, task.timeoutMs, env);
       const verification =
-        run.code === 0
+        ran.code === 0
           ? await runCommand(task.verify, checkout, task.timeoutMs, env)
           : undefined;
-      let metrics: { tokens: number | null; interventions: number | null } = {
-        tokens: null,
-        interventions: null,
-      };
+      let metrics: z.infer<typeof Metrics> | undefined;
       const text = await readText(metricsPath);
-      if (text)
-        metrics = z
-          .object({
-            tokens: z.number().nonnegative(),
-            interventions: z.number().nonnegative(),
-          })
-          .parse(JSON.parse(text));
+      if (text) metrics = Metrics.parse(JSON.parse(text));
       results.push({
         id: task.id,
-        passed: run.code === 0 && verification?.code === 0,
-        durationMs: run.durationMs + (verification?.durationMs ?? 0),
-        ...metrics,
+        passed: ran.code === 0 && verification?.code === 0,
+        durationMs: ran.durationMs + (verification?.durationMs ?? 0),
+        tokens: metrics?.tokens ?? null,
+        interventions: metrics?.interventions ?? null,
+        run,
+        verified: verification?.code === 0,
+        exitCode: ran.code,
+        costUsd: metrics?.costUsd ?? null,
+        limiter: metrics?.limiter ?? (ran.code === 124 ? "timeout" : null),
+        model: metrics?.model ?? null,
       });
       await writeFile(
         join(workspace, `output-${results.length}.txt`),
-        run.stdout + run.stderr,
+        ran.stdout + ran.stderr,
       );
     }
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }
+  return results;
+}
+export const fullSettings = (s: Partial<BenchSettings> = {}): BenchSettings =>
+  Settings.parse(s);
+export async function runBench(
+  root: string,
+  name: string,
+  configPath: string,
+  tasksPath: string,
+  dryRun = false,
+  options: RunOptions = {},
+) {
+  if (!/^[a-z0-9_-]+$/i.test(name)) throw new Error("Invalid benchmark name");
+  const taskText = await readFile(tasksPath, "utf8");
+  const set = TaskSet.parse(JSON.parse(taskText));
+  const configText = await readFile(configPath, "utf8");
+  const config = PreflightConfigSchema.parse(JSON.parse(configText));
+  const settings = fullSettings(options.settings);
+  const runs = options.runs ?? 1;
+  if (!Number.isInteger(runs) || runs < 1 || runs > 50)
+    throw new Error("Runs must be a whole number from 1 to 50");
+  if (dryRun)
+    return {
+      name,
+      tasks: set,
+      configDigest: digest(configText),
+      runs,
+      settings,
+    };
+  const results: BenchResult["results"] = [];
+  for (let i = 1; i <= runs; i++)
+    results.push(...(await runTasks(root, set, config, i, settings)));
   const result: BenchResult = {
     name,
     configDigest: digest(configText),
     taskDigest: digest(taskText),
     revision: set.revision,
     results,
+    settings,
   };
   const path = join(root, ".preflight", "bench", `${name}.json`);
   await applyFiles(
@@ -171,5 +258,5 @@ export async function runBench(
     [{ path, before: await readText(path), after: jsonText(result) }],
     { actor: process.env.USER ?? "local", source: "benchmark" },
   );
-  return result;
+  return { ...result, checklist: checklistFor(result, options) };
 }

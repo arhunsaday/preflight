@@ -5,6 +5,7 @@ import { PreflightService } from "../src/service.js";
 import { PreflightLockSchema } from "../src/schema.js";
 import { ConfigStore } from "../src/state.js";
 import { BenchRun } from "../src/bench.js";
+import { ArenaReport } from "../src/bench-arena.js";
 import type { Context } from "../src/adapters.js";
 import type { Snapshot } from "./protocol.js";
 export async function snapshot(
@@ -65,90 +66,126 @@ export async function snapshot(
             }),
         [],
       );
-  const [detected, report, instructions, usage, loadoutList, sourceList, benches] =
-    await Promise.all([
-      safe(
-        "Detected resources",
-        async () =>
-          (await service.unmanaged(inherited)).map((entry) => entry.resource),
-        [],
-      ),
-      safe(
-        "Doctor",
-        () =>
-          service.doctorReport(transcripts ? {} : { readTranscripts: false }),
-        null,
-      ),
-      safe(
-        "Instructions",
-        () =>
-          execute(["instructions", "lint"], context) as Promise<
-            Snapshot["instructions"]
-          >,
-        null,
-      ),
-      safe(
-        "Usage",
-        async () =>
-          transcripts
-            ? ((await execute(
-                ["usage", "--since", "30d"],
-                context,
-              )) as Snapshot["usage"])
-            : null,
-        null,
-      ),
-      safe(
-        "Loadouts",
-        async () =>
-          (await execute(["loadouts", "list"], context)) as {
-            loadouts: string[];
-          } & Snapshot["loadoutCatalog"],
-        { loadouts: [], details: {}, presets: {} },
-      ),
-      safe(
-        "Sources",
-        async () =>
-          (await execute(["source", "list"], context)) as {
-            sources: Snapshot["sources"];
-            errors: string[];
-          },
-        { sources: [], errors: [] },
-      ),
-      safe(
-        "Benchmarks",
-        async () => {
-          let files: string[];
+  const [
+    detected,
+    report,
+    instructions,
+    usage,
+    loadoutList,
+    sourceList,
+    benches,
+    arenas,
+  ] = await Promise.all([
+    safe(
+      "Detected resources",
+      async () =>
+        (await service.unmanaged(inherited)).map((entry) => entry.resource),
+      [],
+    ),
+    safe(
+      "Doctor",
+      () => service.doctorReport(transcripts ? {} : { readTranscripts: false }),
+      null,
+    ),
+    safe(
+      "Instructions",
+      () =>
+        execute(["instructions", "lint"], context) as Promise<
+          Snapshot["instructions"]
+        >,
+      null,
+    ),
+    safe(
+      "Usage",
+      async () =>
+        transcripts
+          ? ((await execute(
+              ["usage", "--since", "30d"],
+              context,
+            )) as Snapshot["usage"])
+          : null,
+      null,
+    ),
+    safe(
+      "Loadouts",
+      async () =>
+        (await execute(["loadouts", "list"], context)) as {
+          loadouts: string[];
+        } & Snapshot["loadoutCatalog"],
+      { loadouts: [], details: {}, presets: {} },
+    ),
+    safe(
+      "Sources",
+      async () =>
+        (await execute(["source", "list"], context)) as {
+          sources: Snapshot["sources"];
+          errors: string[];
+        },
+      { sources: [], errors: [] },
+    ),
+    safe(
+      "Benchmarks",
+      async () => {
+        let files: string[];
+        try {
+          files = await readdir(join(context.root, ".preflight", "bench"));
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw e;
+        }
+        const results = [];
+        for (const name of files
+          .filter((f) => /^[a-z0-9_-]+\.json$/i.test(f))
+          .slice(0, 100)) {
           try {
-            files = await readdir(join(context.root, ".preflight", "bench"));
-          } catch (e) {
-            if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
-            throw e;
-          }
-          const results = [];
-          for (const name of files
-            .filter((f) => /^[a-z0-9_-]+\.json$/i.test(f))
-            .slice(0, 100)) {
-            try {
-              results.push(
-                BenchRun.parse(
-                  JSON.parse(
-                    await readFile(
-                      join(context.root, ".preflight", "bench", name),
-                      "utf8",
-                    ),
+            results.push(
+              BenchRun.parse(
+                JSON.parse(
+                  await readFile(
+                    join(context.root, ".preflight", "bench", name),
+                    "utf8",
                   ),
                 ),
-              );
-            } catch (e) {
-              errors.push(`Benchmark ${name}: ${String(e)}`);
-            }
+              ),
+            );
+          } catch (e) {
+            errors.push(`Benchmark ${name}: ${String(e)}`);
           }
-          return results;
-        },
-        [],
-      ),
-    ]);
+        }
+        return results;
+      },
+      [],
+    ),
+    safe(
+      "Arena reports",
+      async () => {
+        const dir = join(context.root, ".preflight", "arena");
+        let files: string[];
+        try {
+          files = await readdir(dir);
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw e;
+        }
+        const reports = [];
+        for (const name of files
+          .filter((f) => /^[a-z0-9_-]+\.json$/i.test(f))
+          .slice(0, 50)) {
+          try {
+            reports.push(
+              ArenaReport.parse(
+                JSON.parse(await readFile(join(dir, name), "utf8")),
+              ),
+            );
+          } catch (e) {
+            errors.push(`Arena ${name}: ${String(e)}`);
+          }
+        }
+        return reports;
+      },
+      [],
+    ),
+  ]);
   return {
     root: context.root,
     home: context.home,
@@ -191,6 +228,7 @@ export async function snapshot(
       loadouts: s.loadouts,
     })),
     benches,
+    arenas,
     errors: [...errors, ...sourceList.errors.map((e) => `Source ${e}`)],
   };
 }

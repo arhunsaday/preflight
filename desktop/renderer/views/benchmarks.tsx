@@ -1,7 +1,120 @@
 import { useState } from "react";
-import { FlaskConical, Play, ArrowRightLeft, FilePlus2 } from "lucide-react";
+import {
+  FlaskConical,
+  Play,
+  ArrowRightLeft,
+  FilePlus2,
+  Swords,
+  CircleCheck,
+  TriangleAlert,
+  CircleX,
+} from "lucide-react";
+import type { ArenaReport } from "../../../src/bench-arena.js";
+import type { Checklist } from "../../../src/bench-checklist.js";
 import type { Workspace } from "../workspace";
 import { Button, Empty, Badge, Notice } from "../components/ui";
+const STATUS = {
+  pass: { Icon: CircleCheck, word: "Pass", tone: "green" },
+  warn: { Icon: TriangleAlert, word: "Warning", tone: "amber" },
+  fail: { Icon: CircleX, word: "Fail", tone: "red" },
+} as const;
+/** Checklist rows: icon and word carry the status, colour only adds to it. */
+export function ChecklistRows({ checklist }: { checklist: Checklist }) {
+  return (
+    <div className="checklist">
+      <table aria-label="Result checklist">
+        <thead>
+          <tr>
+            <th>Check</th>
+            <th>Status</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checklist.checks.map((c) => {
+            const { Icon, word, tone } = STATUS[c.status];
+            return (
+              <tr key={c.id}>
+                <td>{c.label}</td>
+                <td>
+                  <Badge tone={tone}>
+                    <Icon size={13} aria-hidden /> {word}
+                  </Badge>
+                </td>
+                <td>{c.message}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {checklist.note && <Notice>{checklist.note}</Notice>}
+    </div>
+  );
+}
+type Spread = { median: number | null; min: number | null; max: number | null };
+const range = (s: Spread | null, f: (v: number) => string) =>
+  s && s.median !== null
+    ? `${f(s.median)} (${f(s.min!)} to ${f(s.max!)})`
+    : "Unknown";
+export function ArenaResult({ report }: { report: ArenaReport }) {
+  const rows: [string, (s: ArenaReport["left"]) => string][] = [
+    ["Success rate", (s) => `${(s.successRate * 100).toFixed(0)}%`],
+    [
+      "Duration, median (range)",
+      (s) => range(s.durationMs, (v) => `${(v / 1000).toFixed(1)}s`),
+    ],
+    [
+      "Tokens, median (range)",
+      (s) => range(s.tokens, (v) => v.toLocaleString()),
+    ],
+    [
+      "Cost, median (range)",
+      (s) => range(s.costUsd, (v) => `$${v.toFixed(2)}`),
+    ],
+    [
+      "Spread of duration",
+      (s) =>
+        s.durationMs.cv === null
+          ? "Unknown"
+          : `${(s.durationMs.cv * 100).toFixed(0)}%`,
+    ],
+    ["Runs", (s) => String(s.runs)],
+  ];
+  return (
+    <section className="arena-result" aria-label={`Arena ${report.name}`}>
+      <h4>
+        <Swords size={15} /> {report.name}
+      </h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th>{report.left.label} (left)</th>
+            <th>{report.right.label} (right)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, f]) => (
+            <tr key={label}>
+              <td>{label}</td>
+              <td>{f(report.left)}</td>
+              <td>{f(report.right)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        <Badge tone={report.winner === "none" ? "amber" : "green"}>
+          {report.winner === "none"
+            ? "No winner"
+            : `Winner: ${report.winnerLabel}`}
+        </Badge>{" "}
+        {report.verdict}
+      </p>
+      <ChecklistRows checklist={report.checklist} />
+    </section>
+  );
+}
 export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
   const [name, setName] = useState("candidate"),
     [tasks, setTasks] = useState("bench/tasks.json"),
@@ -10,8 +123,23 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
     [revision, setRevision] = useState(""),
     [agent, setAgent] = useState("claude"),
     [left, setLeft] = useState(""),
-    [right, setRight] = useState("");
+    [right, setRight] = useState(""),
+    [arenaTask, setArenaTask] = useState("bench/tasks.json"),
+    [arenaLeft, setArenaLeft] = useState(""),
+    [arenaRight, setArenaRight] = useState(""),
+    [arenaRuns, setArenaRuns] = useState("3"),
+    [arenaModel, setArenaModel] = useState(""),
+    [arenaEffort, setArenaEffort] = useState(""),
+    [arenaBudget, setArenaBudget] = useState(""),
+    [checklist, setChecklist] = useState<Checklist | null>(null);
   const runs = w.snapshot?.benches ?? [];
+  const arenas = w.snapshot?.arenas ?? [];
+  const choices = [
+    ...new Set([
+      ...Object.keys(w.snapshot?.config?.profiles ?? {}),
+      ...(w.snapshot?.loadouts ?? []),
+    ]),
+  ];
   return (
     <div className="page-scroll">
       <div className="section-intro">
@@ -151,7 +279,11 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           className="inline-form"
           onSubmit={(e) => {
             e.preventDefault();
-            void w.run(["bench", "compare", left, right]);
+            void w.run(["bench", "compare", left, right]).then((v) => {
+              setChecklist(
+                (v as { checklist?: Checklist } | undefined)?.checklist ?? null,
+              );
+            });
           }}
         >
           <label>
@@ -185,6 +317,114 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
             Compare
           </Button>
         </form>
+      </div>
+      {checklist && (
+        <div className="form-section">
+          <h3>Result checklist</h3>
+          <ChecklistRows checklist={checklist} />
+        </div>
+      )}
+      <div className="form-section">
+        <h3>Arena: two configurations, one task</h3>
+        <form
+          className="inline-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void w.run([
+              "bench",
+              "arena",
+              "--task",
+              arenaTask,
+              "--left",
+              arenaLeft,
+              "--right",
+              arenaRight,
+              "--runs",
+              arenaRuns,
+              ...(arenaModel ? ["--model", arenaModel] : []),
+              ...(arenaEffort ? ["--effort", arenaEffort] : []),
+              ...(arenaBudget ? ["--budget", arenaBudget] : []),
+            ]);
+          }}
+        >
+          <label>
+            Task manifest
+            <input
+              required
+              value={arenaTask}
+              onChange={(e) => setArenaTask(e.target.value)}
+            />
+          </label>
+          <label>
+            Left
+            <input
+              required
+              list="arena-choices"
+              value={arenaLeft}
+              onChange={(e) => setArenaLeft(e.target.value)}
+            />
+          </label>
+          <label>
+            Right
+            <input
+              required
+              list="arena-choices"
+              value={arenaRight}
+              onChange={(e) => setArenaRight(e.target.value)}
+            />
+          </label>
+          <datalist id="arena-choices">
+            {choices.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <label>
+            Runs per side
+            <input
+              required
+              type="number"
+              min={1}
+              max={50}
+              value={arenaRuns}
+              onChange={(e) => setArenaRuns(e.target.value)}
+            />
+          </label>
+          <label>
+            Model (optional)
+            <input
+              value={arenaModel}
+              onChange={(e) => setArenaModel(e.target.value)}
+            />
+          </label>
+          <label>
+            Effort (optional)
+            <input
+              value={arenaEffort}
+              onChange={(e) => setArenaEffort(e.target.value)}
+            />
+          </label>
+          <label>
+            Budget per task, USD (optional)
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={arenaBudget}
+              onChange={(e) => setArenaBudget(e.target.value)}
+            />
+          </label>
+          <Button
+            type="submit"
+            disabled={!!w.busy || !w.snapshot?.initialized}
+            variant="primary"
+          >
+            <Swords size={15} />
+            Preview arena
+          </Button>
+        </form>
+        {arenas.map((r) => (
+          <ArenaResult key={r.name} report={r} />
+        ))}
       </div>
       <details className="form-section">
         <summary>Generate the ten-task suite</summary>
