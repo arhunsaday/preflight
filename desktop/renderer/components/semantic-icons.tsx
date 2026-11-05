@@ -10,6 +10,8 @@ import {
   Gauge,
   Asterisk,
   MousePointer2,
+  Hexagon,
+  FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ResourceType, HarnessId } from "../../../src/schema";
@@ -30,6 +32,7 @@ export const resourceAppearance = {
   tool: { icon: Wrench, tone: "tool" },
   plugin: { icon: Puzzle, tone: "plugin" },
   statusline: { icon: Gauge, tone: "statusline" },
+  instructions: { icon: FileText, tone: "instructions" },
 } satisfies Record<ResourceType, { icon: LucideIcon; tone: string }>;
 
 const stroke = 1.75;
@@ -82,19 +85,23 @@ export function HarnessBadge({
   harness: HarnessId;
   compact?: boolean;
 }) {
-  const claude = harness === "claude-code";
-  const Icon = claude ? Asterisk : MousePointer2;
+  const meta = {
+    "claude-code": { Icon: Asterisk, name: "Claude Code", short: "Claude", weight: 2.25 },
+    codex: { Icon: Hexagon, name: "Codex", short: "Codex", weight: stroke },
+    cursor: { Icon: MousePointer2, name: "Cursor", short: "Cursor", weight: stroke },
+  }[harness];
+  const Icon = meta.Icon;
   return (
     <span
       className={`badge semantic-badge harness-badge ${compact ? "compact" : ""}`}
-      title={claude ? "Claude Code" : "Cursor"}
+      title={meta.name}
     >
       <Icon
         size={compact ? 11 : 12}
-        strokeWidth={claude ? 2.25 : stroke}
+        strokeWidth={meta.weight}
         aria-hidden="true"
       />
-      <span>{claude ? (compact ? "Claude" : "Claude Code") : "Cursor"}</span>
+      <span>{compact ? meta.short : meta.name}</span>
     </span>
   );
 }

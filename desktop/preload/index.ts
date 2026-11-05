@@ -11,6 +11,7 @@ const api: DesktopApi = {
   prepare: (args) => ipcRenderer.invoke("preflight:prepare", args),
   confirm: (receipt) => ipcRenderer.invoke("preflight:confirm", receipt),
   team: (value) => ipcRenderer.invoke("preflight:team", value),
+  preferences: (value) => ipcRenderer.invoke("preflight:preferences", value),
   beginSignIn: (service) =>
     ipcRenderer.invoke("preflight:beginSignIn", service),
   pollSignIn: (id) => ipcRenderer.invoke("preflight:pollSignIn", id),

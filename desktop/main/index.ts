@@ -179,6 +179,7 @@ async function boot() {
       ? controller.addProject(selected.filePaths[0])
       : controller.publicState();
   });
+  handle("preferences", (value) => controller.setPreferences(value));
   handle("team", (value) =>
     controller.updateTeam(value as Parameters<typeof controller.updateTeam>[0]),
   );

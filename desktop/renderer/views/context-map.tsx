@@ -73,6 +73,7 @@ export function ContextMap({ workspace: w }: { workspace: Workspace }) {
             <option value="all">All agents (deduplicated)</option>
             <option value="claude-code">Claude Code</option>
             <option value="cursor">Cursor</option>
+            <option value="codex">Codex</option>
           </select>
         </label>
         <label>

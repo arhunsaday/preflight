@@ -17,7 +17,9 @@ try {
   }
   const value =
     args[0] === "@snapshot"
-      ? await snapshot(context)
+      ? await snapshot(context, {
+          transcripts: !args.includes("--no-transcripts"),
+        })
       : await execute(args, context);
   process.stdout.write(JSON.stringify({ ok: true, value: value ?? null }));
 } catch (error) {

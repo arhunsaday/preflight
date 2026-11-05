@@ -13,6 +13,7 @@ export const names: Record<ResourceType, string> = {
   plugin: "Plugins",
   hook: "Hooks",
   statusline: "Status lines",
+  instructions: "Instructions",
 };
 export const count = (value: number) => value.toLocaleString();
 export function ContextTree({

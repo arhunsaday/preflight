@@ -1,7 +1,3 @@
-import { readdir } from "node:fs/promises";
-import { createReadStream } from "node:fs";
-import { createInterface } from "node:readline";
-import { join } from "node:path";
 import { secretPaths, type Resource } from "./schema.js";
 import { buildContextReport } from "./context-map.js";
 export interface Finding {
@@ -84,84 +80,8 @@ export function analyze(resources: Resource[]): Finding[] {
     });
   return findings;
 }
-export interface Usage {
-  sessions: number;
-  invocations: Record<string, number>;
-  invalidLines: number;
-  skillsUsed: number;
-  skillsInstalled: number;
-  utilization: number;
-  prune: string[];
-}
-export async function measureUsage(
-  directory: string,
-  resources: Resource[],
-): Promise<Usage> {
-  const invocations: Record<string, number> = {};
-  let sessions = 0,
-    invalidLines = 0;
-  async function walk(dir: string) {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === "ENOENT") return;
-      throw e;
-    }
-    for (const entry of entries) {
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) await walk(path);
-      else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-        sessions++;
-        const lines = createInterface({
-          input: createReadStream(path),
-          crlfDelay: Infinity,
-        });
-        for await (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            visit(JSON.parse(line));
-          } catch {
-            invalidLines++;
-          }
-        }
-      }
-    }
-  }
-  function visit(value: unknown) {
-    if (Array.isArray(value)) {
-      value.forEach(visit);
-      return;
-    }
-    if (!value || typeof value !== "object") return;
-    const obj = value as Record<string, unknown>;
-    if (obj.type === "tool_use" && typeof obj.name === "string") {
-      const input = obj.input as Record<string, unknown> | undefined;
-      const key =
-        obj.name === "Skill" && typeof input?.skill === "string"
-          ? `skill:${input.skill}`
-          : obj.name;
-      invocations[key] = (invocations[key] ?? 0) + 1;
-    }
-    Object.values(obj).forEach(visit);
-  }
-  await walk(directory);
-  const skills = resources.filter((r) => r.type === "skill");
-  const unused = skills.filter(
-    (r) => !invocations[`skill:${r.name}`] && !invocations[r.id],
-  );
-  return {
-    sessions,
-    invocations,
-    invalidLines,
-    skillsUsed: skills.length - unused.length,
-    skillsInstalled: skills.length,
-    utilization: skills.length
-      ? (skills.length - unused.length) / skills.length
-      : 0,
-    prune: sessions ? unused.map((r) => r.id) : [],
-  };
-}
+// Observed usage now comes from the token-aware transcript reader in usage.ts.
+export { measureUsage, type Usage } from "./usage.js";
 
 export function analyzeSettings(input: unknown, path: string): Finding[] {
   const findings: Finding[] = [];

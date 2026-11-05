@@ -21,7 +21,7 @@ import {
   ArrowDownToLine,
   X,
 } from "lucide-react";
-import type { Resource, ResourceType } from "../../../src/schema";
+import type { HarnessId, Resource, ResourceType } from "../../../src/schema";
 import { ResourceSchema, ResourceTypeSchema } from "../../../src/schema";
 import type { Workspace } from "../workspace";
 import {
@@ -98,7 +98,7 @@ export function Resources({
             (kind === "all" || r.type === kind) &&
             (scope === "all" || r.scope === scope) &&
             (harness === "all" ||
-              r.harnesses.includes(harness as "cursor" | "claude-code")) &&
+              r.harnesses.includes(harness as HarnessId)) &&
             `${r.name} ${r.id} ${r.description} ${r.tags.join(" ")}`
               .toLowerCase()
               .includes(query.toLowerCase()),
@@ -289,6 +289,7 @@ export function Resources({
           <option value="all">All agents</option>
           <option value="claude-code">Claude Code</option>
           <option value="cursor">Cursor</option>
+          <option value="codex">Codex</option>
         </select>
         {mode === "installed" && (
           <Button variant="primary" disabled={!!w.busy} onClick={newResource}>

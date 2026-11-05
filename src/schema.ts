@@ -10,13 +10,14 @@ export const ResourceTypeSchema = z.enum([
   "plugin",
   "statusline",
   "command",
+  "instructions",
 ]);
 export type ResourceType = z.infer<typeof ResourceTypeSchema>;
 
 export const ScopeSchema = z.enum(["global", "project"]);
 export type Scope = z.infer<typeof ScopeSchema>;
 
-export const HarnessIdSchema = z.enum(["claude-code", "cursor"]);
+export const HarnessIdSchema = z.enum(["claude-code", "cursor", "codex"]);
 export type HarnessId = z.infer<typeof HarnessIdSchema>;
 
 const jsonValue: z.ZodType<unknown> = z.lazy(() =>
@@ -107,7 +108,14 @@ export const PreflightLockSchema = z
     profile: z.string(),
     resources: z.array(ResourceSchema),
     files: z.array(
-      z.object({ path: z.string(), digest: z.string().nullable() }).strict(),
+      z
+        .object({
+          path: z.string(),
+          digest: z.string().nullable(),
+          /** The digest covers only the parts Preflight owns in a shared file. */
+          part: z.string().optional(),
+        })
+        .strict(),
     ),
   })
   .strict();

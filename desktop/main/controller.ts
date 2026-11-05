@@ -33,6 +33,10 @@ const Settings = z.object({
   activeProjectId: z.string().nullable(),
   workspace: z.enum(["global", "project"]).optional(),
   team: TeamSchema,
+  /** Reading local transcripts is on unless the person turns it off. */
+  preferences: z
+    .object({ readTranscripts: z.boolean().default(true) })
+    .default({ readTranscripts: true }),
   account: z
     .object({
       service: z.string(),
@@ -170,6 +174,7 @@ export class DesktopController {
     projects: [],
     activeProjectId: null,
     team: { name: "My team", members: [] },
+    preferences: { readTranscripts: true },
     account: null,
   };
   private receipts = new Map<string, Receipt>();
@@ -206,6 +211,7 @@ export class DesktopController {
       activeProjectId: this.settings.activeProjectId,
       workspace: this.workspace(),
       team: structuredClone(this.settings.team),
+      preferences: { ...this.settings.preferences },
       account: {
         connected: !!this.auth,
         service: this.settings.account?.service ?? "",
@@ -306,7 +312,30 @@ export class DesktopController {
     return { root: p.root, home: this.home };
   }
   async snapshot() {
-    return this.exclusive(() => this.engine(["@snapshot"], this.context()));
+    return this.exclusive(() =>
+      this.engine(
+        [
+          "@snapshot",
+          ...(this.settings.preferences.readTranscripts
+            ? []
+            : ["--no-transcripts"]),
+        ],
+        this.context(),
+      ),
+    );
+  }
+  async setPreferences(value: unknown) {
+    return this.exclusive(async () => {
+      this.settings.preferences = Settings.shape.preferences.parse({
+        ...this.settings.preferences,
+        ...z
+          .object({ readTranscripts: z.boolean().optional() })
+          .strict()
+          .parse(value),
+      });
+      await this.save();
+      return this.publicState();
+    });
   }
   private async fingerprint(context = this.context()) {
     const values = await Promise.all(
@@ -338,6 +367,13 @@ export class DesktopController {
   async prepare(input: unknown): Promise<Prepared> {
     return this.exclusive(async () => {
       const args = validateCommand(input).filter((a) => a !== "--dry-run");
+      if (
+        ["usage", "prune"].includes(args[0]!) &&
+        !this.settings.preferences.readTranscripts
+      )
+        throw new Error(
+          "Reading conversation transcripts is turned off. Turn it on in Usage to measure usage.",
+        );
       if (
         this.auth &&
         args.some((arg) => /^--(?:service|owner)(?:=|$)/.test(arg))

@@ -22,6 +22,33 @@ const project = join(temporary, "project"),
   home = join(temporary, "home"),
   data = join(temporary, "app");
 await Promise.all([mkdir(project), mkdir(home), mkdir(data)]);
+// A Codex config the person wrote by hand, and one recent Claude transcript.
+const codexConfig =
+  '# hand-written\nmodel = "gpt-6.1-sol"\n\n[projects."/work"]\ntrust_level = "trusted"\n';
+await mkdir(join(home, ".codex"), { recursive: true });
+await writeFile(join(home, ".codex", "config.toml"), codexConfig);
+await mkdir(join(home, ".claude", "projects", "-smoke"), { recursive: true });
+await writeFile(
+  join(home, ".claude", "projects", "-smoke", "smoke.jsonl"),
+  JSON.stringify({
+    type: "assistant",
+    sessionId: "smoke-session",
+    requestId: "r1",
+    cwd: project,
+    timestamp: new Date().toISOString(),
+    message: {
+      id: "m1",
+      model: "claude-sonnet-4-6",
+      content: [],
+      usage: {
+        input_tokens: 1200,
+        output_tokens: 300,
+        cache_read_input_tokens: 4800,
+        cache_creation_input_tokens: 0,
+      },
+    },
+  }) + "\n",
+);
 const env = {
   ...process.env,
   PREFLIGHT_DESKTOP_TEST_ROOT: project,
@@ -420,12 +447,16 @@ try {
     .getByRole("textbox", { name: "Server URL" })
     .fill("https://example.com/mcp");
   await page.getByRole("checkbox", { name: "Cursor", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Codex", exact: true }).check();
   await page
     .getByRole("button", { name: "Preview changes", exact: true })
     .click();
   assert.equal(
     JSON.parse(
-      await readFile(join(home, ".preflight", "global", "preflight.config.json"), "utf8"),
+      await readFile(
+        join(home, ".preflight", "global", "preflight.config.json"),
+        "utf8",
+      ),
     ).profiles.default.resources.length,
     0,
   );
@@ -443,6 +474,19 @@ try {
     JSON.parse(await readFile(join(home, ".cursor", "mcp.json"), "utf8"))
       .mcpServers["global-server"].url,
     "https://example.com/mcp",
+  );
+  const codexWritten = await readFile(
+    join(home, ".codex", "config.toml"),
+    "utf8",
+  );
+  assert.ok(
+    codexWritten.startsWith(codexConfig),
+    "Codex config.toml keeps the hand-written part byte for byte",
+  );
+  assert.ok(
+    codexWritten.includes(
+      '[mcp_servers.global-server]\nurl = "https://example.com/mcp"',
+    ),
   );
   await page
     .getByRole("heading", { name: "global-server", exact: true })
@@ -535,6 +579,24 @@ try {
     .getByRole("button", { name: "Refresh workspace", exact: true })
     .click();
 
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Usage", exact: true })
+    .click();
+  await page.getByText("Cache hit rate", { exact: true }).waitFor();
+  assert.ok(
+    (await page.locator(".usage-chart svg rect").count()) > 0,
+    "Usage shows the daily bar chart",
+  );
+  await page.locator(".metrics strong", { hasText: "80%" }).waitFor();
+  await page.screenshot({ path: join(temporary, "usage.png") });
+  const transcripts = page.getByRole("checkbox", {
+    name: /Read conversation transcripts/,
+  });
+  await transcripts.uncheck();
+  await page.getByText("Transcript reading is off", { exact: true }).waitFor();
+  await transcripts.check();
+  await page.getByText("Cache hit rate", { exact: true }).waitFor();
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("button", { name: "Discover resources", exact: true })
