@@ -47,6 +47,7 @@ import {
 } from "./instructions.js";
 import { resolveLoadout, materializeLoadout } from "./loadouts.js";
 import { installationPlan, runCommand, gitSync } from "./operations.js";
+import { installFromRepository, isRepositorySpec } from "./repo-install.js";
 import { fixedTaskSet } from "./bench-tasks.js";
 import { runBench, compareRuns, BenchRun } from "./bench.js";
 import { retrofit } from "./retrofit.js";
@@ -634,9 +635,30 @@ export async function execute(
       };
     });
   command(
-    "install <id>",
-    "Preview or execute a delegated package-manager installation",
+    "install <target>",
+    "Install resources from a repository (owner/repo[@ref][/folder], a GitHub URL or ./path), or run a resource's package-manager installation",
     async (id, options) => {
+      if (isRepositorySpec(id))
+        return installFromRepository(service(), id, {
+          ...(options.select
+            ? {
+                select: String(options.select)
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              }
+            : {}),
+          all: !!options.all,
+          ...(options.harness
+            ? {
+                harnesses: String(options.harness)
+                  .split(",")
+                  .map((h) => HarnessIdSchema.parse(h.trim())),
+              }
+            : {}),
+          ...(options.scope ? { scope: ScopeSchema.parse(options.scope) } : {}),
+          apply: !!options.apply && !dry(),
+        });
       const resource = await service().inspect(id);
       const plan = installationPlan(resource);
       if (dry() || !options.execute)
@@ -675,7 +697,16 @@ export async function execute(
         detected: await service().detect(),
       };
     },
-  ).option("--execute", "run the package manager");
+  )
+    .option("--execute", "run the package manager")
+    .option("--select <ids>", "repository: install these ids or names, comma-separated")
+    .option("--all", "repository: install everything found")
+    .option(
+      "--harness <list>",
+      "repository: claude-code,codex,cursor (default: every agent detected here)",
+    )
+    .option("--scope <scope>", "repository: global or project")
+    .option("--apply", "repository: write the files; without it, preview only");
   command(
     "context",
     "Estimate available instruction context; MCP runtime contributions remain unknown",

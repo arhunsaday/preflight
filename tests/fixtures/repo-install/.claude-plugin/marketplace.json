@@ -1,0 +1,10 @@
+{
+  "name": "fixture-tools",
+  "plugins": [
+    {
+      "name": "helper",
+      "source": "./plugins/helper",
+      "description": "A plugin that brings one skill."
+    }
+  ]
+}

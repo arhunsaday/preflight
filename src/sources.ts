@@ -147,7 +147,7 @@ async function exists(path: string) {
   }
 }
 /** Download and unpack a commit once; a cached commit is never refetched. */
-async function fetchCommit(
+export async function fetchCommit(
   home: string,
   name: string,
   repo: string,
