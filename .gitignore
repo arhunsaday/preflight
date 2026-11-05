@@ -15,7 +15,7 @@ __pycache__/
 .idea/
 
 # Preflight TypeScript package
-node_modules/
+node_modules
 dist/
 coverage/
 .superpowers/
