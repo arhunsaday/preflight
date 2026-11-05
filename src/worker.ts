@@ -54,7 +54,7 @@ export interface Dependencies {
   /** Replaces the identity provider (tests inject a fake verifier here). */
   directory?: (env: Env) => Directory | null;
 }
-interface Caller {
+export interface Caller {
   userId: string;
   authentication: "token" | "session";
   tokenId?: string;

@@ -24,7 +24,7 @@ const exchangeBody = (session: string, challenge: string, redirect = "http://127
 });
 
 it("fails closed without Clerk keys, and keeps the dev identity to loopback hosts", async () => {
-  const f = await fixture({ env: { PREFLIGHT_DEV_AUTH: undefined }, directory: () => null });
+  const f = await fixture({ env: { PREFLIGHT_DEV_AUTH: "0" }, directory: () => null });
   expect((await f.request("/api/account", { token: "pfk_x" })).status).toBe(503);
   expect((await f.request("/auth/sign-in")).status).toBe(503);
   expect((await (await f.request("/api/health")).json()) as object).toMatchObject({
@@ -171,7 +171,7 @@ it("serves the sign-in page with a nonce CSP for Clerk and the language set", as
   expect(frontendApi("pk_test_" + btoa("evil.com/x$"))).toBeNull();
   const fake = { verifySession: async () => null } as unknown as Directory;
   const f = await fixture({
-    env: { PREFLIGHT_DEV_AUTH: undefined, CLERK_PUBLISHABLE_KEY: key, CLERK_SECRET_KEY: "sk_test" },
+    env: { PREFLIGHT_DEV_AUTH: "0", CLERK_PUBLISHABLE_KEY: key, CLERK_SECRET_KEY: "sk_test" },
     directory: () => fake,
   });
   const page = await f.request("/auth/sign-in?client=cli");
