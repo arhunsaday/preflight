@@ -1,6 +1,6 @@
 {
   "name": "@arhunsaday/preflight",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "Search, inspect, scope, share, and verify AI development configurations. Ships no content: add a source such as github:arhunsaday/agent-kit.",
   "keywords": [
     "ai",
