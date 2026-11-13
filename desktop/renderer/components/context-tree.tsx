@@ -1,3 +1,11 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 import { useEffect, useRef, useState } from "react";
 import { Map as MapIcon } from "lucide-react";
 import { layoutTreemap, type ContextEntry } from "../../../src/context-map";
@@ -223,20 +231,20 @@ export function ContextList({
 }) {
   return (
     <div className="context-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Resource</th>
-            <th>Scope</th>
-            <th>Estimated tokens</th>
-            <th>Share of sized content</th>
-            {toggle && <th>Switch</th>}
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Resource</TableHead>
+            <TableHead>Scope</TableHead>
+            <TableHead>Estimated tokens</TableHead>
+            <TableHead>Share of sized content</TableHead>
+            {toggle && <TableHead>Switch</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {entries.map((e) => (
-            <tr key={e.id}>
-              <td>
+            <TableRow key={e.id}>
+              <TableCell>
                 <button
                   onClick={() => select(e.id)}
                   aria-pressed={selected === e.id}
@@ -244,22 +252,22 @@ export function ContextList({
                   {e.name}
                   <small>{names[e.type]}</small>
                 </button>
-              </td>
-              <td>{e.scope}</td>
-              <td>
+              </TableCell>
+              <TableCell>{e.scope}</TableCell>
+              <TableCell>
                 {!e.enabled
                   ? "Disabled"
                   : e.tokens === null
                     ? "Unknown"
                     : `~${count(e.tokens)}`}
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 {e.tokens && total
                   ? `${((e.tokens / total) * 100).toFixed(1)}%`
                   : "—"}
-              </td>
+              </TableCell>
               {toggle && (
-                <td>
+                <TableCell>
                   {(() => {
                     const target = toggle.find(e.id);
                     return target && switchable(target) ? (
@@ -272,12 +280,12 @@ export function ContextList({
                       "—"
                     );
                   })()}
-                </td>
+                </TableCell>
               )}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       {!entries.length && (
         <Empty
           title="No matching resources"

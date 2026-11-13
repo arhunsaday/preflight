@@ -1,3 +1,4 @@
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Hand, Power, PowerOff } from "lucide-react";
 import { modelInvocable } from "../../../src/context-map";
 import type { Resource } from "../../../src/schema";
@@ -49,20 +50,17 @@ export function ResourceSwitch({
   const option = (to: SwitchState, label: string, Icon: typeof Power) => {
     const args = switchArgs(resource, to);
     return (
-      <button
-        type="button"
-        className={state === to ? "active" : ""}
-        aria-pressed={state === to}
+      <ToggleGroupItem
+        value={to}
         disabled={disabled || (state !== to && !args)}
         title={
           to === "manual" && state === "off"
             ? "Switch On first, then make it manual"
             : undefined
         }
-        onClick={() => args && onChange(args)}
       >
         <Icon size={13} aria-hidden /> {label}
-      </button>
+      </ToggleGroupItem>
     );
   };
   return (
@@ -71,11 +69,18 @@ export function ResourceSwitch({
       role="group"
       aria-label={`Switch for ${resource.name}`}
     >
-      <div className="segmented">
+      <ToggleGroup
+        type="single"
+        value={state}
+        onValueChange={(to) => {
+          const args = to ? switchArgs(resource, to as SwitchState) : null;
+          if (args) onChange(args);
+        }}
+      >
         {option("on", "On", Power)}
         {skill && option("manual", "Manual", Hand)}
         {option("off", "Off", PowerOff)}
-      </div>
+      </ToggleGroup>
       <small>
         <b>{state === "on" ? "On" : state === "off" ? "Off" : "Manual"}</b> ·{" "}
         {switchCost(resource)}

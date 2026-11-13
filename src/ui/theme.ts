@@ -2,7 +2,7 @@ import type { Finding } from "../analysis.js";
 import type { ResourceType, Scope } from "../schema.js";
 
 export const color = {
-  accent: "cyan",
+  accent: "blueBright",
   success: "green",
   warning: "yellow",
   danger: "red",
@@ -41,7 +41,7 @@ export const typeLabel: Record<ResourceType, string> = {
 };
 
 export const typeColor: Record<ResourceType, string> = {
-  skill: "cyan",
+  skill: "blueBright",
   mcp: "magenta",
   subagent: "blue",
   hook: "yellow",
@@ -49,13 +49,13 @@ export const typeColor: Record<ResourceType, string> = {
   tool: "white",
   plugin: "magentaBright",
   statusline: "blueBright",
-  command: "cyanBright",
+  command: "whiteBright",
   instructions: "greenBright",
 };
 
 export const scopeColor: Record<Scope, string> = {
   global: "yellow",
-  project: "cyan",
+  project: "blueBright",
 };
 
 export const severity: Record<

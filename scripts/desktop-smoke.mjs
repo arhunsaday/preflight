@@ -683,7 +683,7 @@ try {
   const flip = async (label) => {
     await page.getByRole("button", { name: "List", exact: true }).click();
     await page.getByRole("checkbox", { name: "Show disabled" }).check();
-    await switchFor().getByRole("button", { name: label, exact: true }).click();
+    await switchFor().getByRole("radio", { name: label, exact: true }).click();
     await page.getByRole("heading", { name: "Review changes" }).waitFor();
     await page.getByText("listing tokens per session", { exact: false }).waitFor();
     await page
@@ -785,7 +785,7 @@ try {
   await page.screenshot({ path: join(temporary, "reflect.png") });
   await navigate("Discover resources");
   await page
-    .getByRole("button", { name: "Search online", exact: true })
+    .getByRole("radio", { name: "Search online", exact: true })
     .click();
   await page
     .getByRole("combobox", { name: "Search source" })
@@ -797,7 +797,7 @@ try {
   await page.getByText(/skills.sh: Error: Set VERCEL_OIDC_TOKEN/).waitFor();
   await page.screenshot({ path: join(temporary, "online-search.png") });
   // Install from a repository with no catalogue: scan, choose, preview, apply.
-  await page.getByRole("button", { name: "From GitHub", exact: true }).click();
+  await page.getByRole("radio", { name: "From GitHub", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Repository to install from" })
     .fill(resolve("tests/fixtures/repo-install"));
@@ -840,7 +840,7 @@ try {
       .docs,
   );
   await page
-    .getByRole("button", { name: "Your sources", exact: true })
+    .getByRole("radio", { name: "Your sources", exact: true })
     .click();
   await navigate("Discover resources");
   await page.getByRole("textbox", { name: "Search resources" }).fill("");

@@ -1,3 +1,4 @@
+import { Input } from "../components/ui/input";
 import { useState } from "react";
 import { Download, FolderGit2, Search } from "lucide-react";
 import type { HarnessId, ResourceType } from "../../../src/schema";
@@ -80,7 +81,7 @@ export function GithubInstall({ workspace: w }: { workspace: Workspace }) {
       <div className="discovery-sources">
         <label>
           Repository
-          <input
+          <Input
             aria-label="Repository to install from"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -106,7 +107,11 @@ export function GithubInstall({ workspace: w }: { workspace: Workspace }) {
       </div>
       {report ? (
         <div className="repo-install">
-          <div className="repo-install-agents" role="group" aria-label="Install into">
+          <div
+            className="repo-install-agents"
+            role="group"
+            aria-label="Install into"
+          >
             <span>Install into</span>
             {agents.map((agent) => (
               <label key={agent.id}>
@@ -134,7 +139,9 @@ export function GithubInstall({ workspace: w }: { workspace: Workspace }) {
           )}
           {Object.entries(report.found).map(([type, items]) => (
             <section key={type} aria-label={`Found ${type}`}>
-              <h3>{plural(items.length, type === "mcp" ? "MCP server" : type)}</h3>
+              <h3>
+                {plural(items.length, type === "mcp" ? "MCP server" : type)}
+              </h3>
               <div className="file-list">
                 {items.map((item) => {
                   const into = item.supports.filter((h) => targets.has(h));

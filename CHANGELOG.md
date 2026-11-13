@@ -7,6 +7,11 @@ and the desktop application share one version.
 
 ## [Unreleased]
 
+### Changed
+
+- One visual identity in navy blue: the desktop app, the website, the docs, the logo, the app icons, the favicons, the social card and the terminal interface drop the petrol and cyan accents. Status colours (red, amber, green) keep their meaning.
+- The desktop app and the website draw their controls with shadcn/ui components (Button, Badge, Card, Dialog, Dropdown menu, Alert, Empty, Tabs, Toggle group, Input, Native select, Textarea, Table) on one shared set of theme tokens, light and dark. The desktop app now builds with Tailwind CSS; its layout styles stay in `styles.css`.
+
 ### Added
 
 - `preflight ui` opens a keyboard dashboard: a tab for each detected harness, a list of sections (Overview, Skills, MCP, Subagents, Hooks, Plugins, Instructions, Profiles, Doctor, Usage) and a detail pane. `p` switches profile with a preview, `d` runs the doctor, `/` filters. `m` or `--classic` opens the resource manager.

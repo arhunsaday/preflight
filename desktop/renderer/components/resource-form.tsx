@@ -1,3 +1,6 @@
+import { Input } from "./ui/input";
+import { NativeSelect } from "./ui/native-select";
+import { Textarea } from "./ui/textarea";
 import { useState } from "react";
 import { ResourceSchema, ResourceTypeSchema } from "../../../src/schema";
 import type { Resource } from "../../../src/schema";
@@ -125,7 +128,7 @@ export function ResourceForm({
         <div className="dialog-body form-grid">
           <label>
             Name
-            <input
+            <Input
               required
               value={value.name}
               disabled={!!resource && !adding}
@@ -134,7 +137,7 @@ export function ResourceForm({
           </label>
           <label>
             Type
-            <select
+            <NativeSelect
               value={value.type}
               disabled={!!resource}
               onChange={(e) => field("type", e.target.value)}
@@ -142,11 +145,11 @@ export function ResourceForm({
               {ResourceTypeSchema.options.map((t) => (
                 <option key={t}>{t}</option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label>
             Resource ID
-            <input
+            <Input
               value={value.id}
               disabled={!!resource}
               placeholder={`${value.type}:my-resource`}
@@ -155,25 +158,25 @@ export function ResourceForm({
           </label>
           <label>
             Scope
-            <select
+            <NativeSelect
               value={value.scope}
               disabled={globalOnly}
               onChange={(e) => field("scope", e.target.value)}
             >
               <option value="project">Project</option>
               <option value="global">Global</option>
-            </select>
+            </NativeSelect>
           </label>
           <label className="span-2">
             Description
-            <input
+            <Input
               value={value.description}
               onChange={(e) => field("description", e.target.value)}
             />
           </label>
           <label className="span-2">
             Source
-            <input
+            <Input
               required
               value={value.source}
               onChange={(e) => field("source", e.target.value)}
@@ -268,7 +271,7 @@ export function ResourceForm({
               {advanced ? (
                 <label>
                   Configuration (JSON)
-                  <textarea
+                  <Textarea
                     rows={9}
                     value={value.config}
                     onChange={(e) => field("config", e.target.value)}
@@ -278,20 +281,20 @@ export function ResourceForm({
                 <>
                   <label>
                     Connection type
-                    <select
+                    <NativeSelect
                       value={transport}
                       onChange={(e) => setTransport(e.target.value)}
                     >
                       <option value="stdio">Local command (stdio)</option>
                       <option value="http">Remote server (HTTP)</option>
                       <option value="sse">Remote server (SSE)</option>
-                    </select>
+                    </NativeSelect>
                   </label>
                   {transport === "stdio" ? (
                     <>
                       <label>
                         Executable
-                        <input
+                        <Input
                           value={command}
                           onChange={(e) => setCommand(e.target.value)}
                           placeholder="npx, uvx, node or an absolute executable path"
@@ -300,7 +303,7 @@ export function ResourceForm({
                       </label>
                       <label>
                         Arguments (one per line)
-                        <textarea
+                        <Textarea
                           rows={4}
                           value={args}
                           onChange={(e) => setArgs(e.target.value)}
@@ -311,7 +314,7 @@ export function ResourceForm({
                       </label>
                       <label>
                         Environment variables (JSON)
-                        <textarea
+                        <Textarea
                           rows={3}
                           value={variables}
                           onChange={(e) => setVariables(e.target.value)}
@@ -323,7 +326,7 @@ export function ResourceForm({
                     <>
                       <label>
                         Server URL
-                        <input
+                        <Input
                           type="url"
                           value={url}
                           onChange={(e) => setUrl(e.target.value)}
@@ -333,7 +336,7 @@ export function ResourceForm({
                       </label>
                       <label>
                         Headers (JSON)
-                        <textarea
+                        <Textarea
                           rows={3}
                           value={headers}
                           onChange={(e) => setHeaders(e.target.value)}
@@ -358,7 +361,7 @@ export function ResourceForm({
                 {value.type === "skill"
                   ? "Skill instructions (SKILL.md)"
                   : "Content"}
-                <textarea
+                <Textarea
                   rows={10}
                   value={value.content}
                   onChange={(e) => field("content", e.target.value)}
@@ -373,7 +376,7 @@ export function ResourceForm({
                 <summary>Advanced configuration</summary>
                 <label>
                   Configuration (JSON)
-                  <textarea
+                  <Textarea
                     rows={5}
                     value={value.config}
                     onChange={(e) => field("config", e.target.value)}

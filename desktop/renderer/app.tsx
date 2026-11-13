@@ -77,9 +77,12 @@ function BrandMark() {
       height={20}
       aria-hidden="true"
     >
-      <rect width="1024" height="1024" rx="232" fill="#13707a" />
+      <rect width="1024" height="1024" rx="232" fill="#0c2d5e" />
       <g transform="translate(548 476) rotate(45)">
-        <path fill="#f3f1ea" d="M0 -340 C34 -340 46 -300 46 -255 L46 -80 L340 70 L340 135 L46 55 L46 205 L135 275 L135 318 L0 288 L-135 318 L-135 275 L-46 205 L-46 55 L-340 135 L-340 70 L-46 -80 L-46 -255 C-46 -300 -34 -340 0 -340 Z" />
+        <path
+          fill="#f4f7fb"
+          d="M0 -340 C34 -340 46 -300 46 -255 L46 -80 L340 70 L340 135 L46 55 L46 205 L135 275 L135 318 L0 288 L-135 318 L-135 275 L-46 205 L-46 55 L-340 135 L-340 70 L-46 -80 L-46 -255 C-46 -300 -34 -340 0 -340 Z"
+        />
         <circle cx="340" cy="102" r="30" fill="#f0a04a" />
       </g>
     </svg>
@@ -388,9 +391,7 @@ export function App() {
     e.startsWith("Configuration:"),
   );
   return (
-    <div
-      className={`app-shell ${mac ? "mac" : ""} ${w.busy ? "is-busy" : ""}`}
-    >
+    <div className={`app-shell ${mac ? "mac" : ""} ${w.busy ? "is-busy" : ""}`}>
       <aside className="sidebar">
         <div className="brand">
           <BrandMark />
@@ -563,9 +564,14 @@ export function App() {
         {w.error && (
           <div className="error-banner" role="alert">
             <span>{w.error}</span>
-            <button aria-label="Dismiss error" onClick={() => w.setError("")}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Dismiss error"
+              onClick={() => w.setError("")}
+            >
               <X size={16} />
-            </button>
+            </Button>
           </div>
         )}
         {w.snapshot?.errors.map((error, i) => (

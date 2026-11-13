@@ -1,3 +1,14 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
+import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { useEffect, useState } from "react";
 import {
   FolderPlus,
@@ -269,19 +280,16 @@ export function Doctor({ workspace: w }: { workspace: Workspace }) {
             {plural(counts.warning, "warning")} · {plural(counts.info, "note")}
           </p>
         </div>
-        <div
-          className="segmented"
-          role="radiogroup"
+        <ToggleGroup
+          type="single"
           aria-label="Finding severity"
+          value={severity}
+          onValueChange={(value) =>
+            value && setSeverity(value as typeof severity)
+          }
         >
           {(["all", "error", "warning", "info"] as const).map((value) => (
-            <button
-              key={value}
-              role="radio"
-              aria-checked={severity === value}
-              className={severity === value ? "active" : ""}
-              onClick={() => setSeverity(value)}
-            >
+            <ToggleGroupItem key={value} value={value}>
               {value === "all"
                 ? "All"
                 : value === "error"
@@ -289,9 +297,9 @@ export function Doctor({ workspace: w }: { workspace: Workspace }) {
                   : value === "warning"
                     ? `Warnings ${counts.warning}`
                     : `Notes ${counts.info}`}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
       {(["error", "warning", "info"] as const).map((group) => {
         const items = filtered.filter((f) => f.severity === group);
@@ -552,80 +560,82 @@ export function Usage({ workspace: w }: { workspace: Workspace }) {
               : ""}
           </p>
           <div className="table-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Top sessions</th>
-                  <th>Agent</th>
-                  <th>Days</th>
-                  <th>Tokens</th>
-                  <th>Cache hit</th>
-                  <th>Cost</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Top sessions</TableHead>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Days</TableHead>
+                  <TableHead>Tokens</TableHead>
+                  <TableHead>Cache hit</TableHead>
+                  <TableHead>Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {usage.bySession.slice(0, 8).map((s) => (
-                  <tr key={`${s.agent}:${s.session}`}>
-                    <td title={s.session}>
+                  <TableRow key={`${s.agent}:${s.session}`}>
+                    <TableCell title={s.session}>
                       <code>{tildify(s.project, w.snapshot?.home)}</code>
                       <small className="muted"> · {s.model}</small>
-                    </td>
-                    <td>{agentName(s.agent)}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell>{agentName(s.agent)}</TableCell>
+                    <TableCell>
                       {s.first === s.last ? s.first : `${s.first} – ${s.last}`}
-                    </td>
-                    <td>{compact(s.tokens)}</td>
-                    <td>{percent(s.cacheHitRate)}</td>
-                    <td>{s.unpricedTokens ? "—" : usd(s.cost)}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell>{compact(s.tokens)}</TableCell>
+                    <TableCell>{percent(s.cacheHitRate)}</TableCell>
+                    <TableCell>
+                      {s.unpricedTokens ? "—" : usd(s.cost)}
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {usage.bySkill.length ? (
             <div className="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Top skills</th>
-                    <th>Calls</th>
-                    <th>Tokens after the call</th>
-                    <th>Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Top skills</TableHead>
+                    <TableHead>Calls</TableHead>
+                    <TableHead>Tokens after the call</TableHead>
+                    <TableHead>Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {usage.bySkill.slice(0, 8).map((s) => (
-                    <tr key={s.skill}>
-                      <td>
+                    <TableRow key={s.skill}>
+                      <TableCell>
                         <code>{s.skill}</code>
-                      </td>
-                      <td>{s.calls.toLocaleString()}</td>
-                      <td>{compact(s.tokens)}</td>
-                      <td>{usd(s.cost)}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>{s.calls.toLocaleString()}</TableCell>
+                      <TableCell>{compact(s.tokens)}</TableCell>
+                      <TableCell>{usd(s.cost)}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           ) : null}
           {entries.length ? (
             <div className="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Resource / tool</th>
-                    <th>Invocations</th>
-                    <th>Share of activity</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Resource / tool</TableHead>
+                    <TableHead>Invocations</TableHead>
+                    <TableHead>Share of activity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {entries.map(([name, count]) => (
-                    <tr key={name}>
-                      <td>
+                    <TableRow key={name}>
+                      <TableCell>
                         <code>{name}</code>
-                      </td>
-                      <td>{count.toLocaleString()}</td>
-                      <td>
+                      </TableCell>
+                      <TableCell>{count.toLocaleString()}</TableCell>
+                      <TableCell>
                         <div
                           className="bar"
                           role="meter"
@@ -636,11 +646,11 @@ export function Usage({ workspace: w }: { workspace: Workspace }) {
                         >
                           <i style={{ width: `${(count / top) * 100}%` }} />
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <Notice tone="info">
@@ -736,7 +746,7 @@ export function Profiles({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Name
-            <input
+            <Input
               required
               value={name}
               pattern="[A-Za-z0-9_\-]+"
@@ -747,12 +757,15 @@ export function Profiles({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Start from
-            <select value={from} onChange={(e) => setFrom(e.target.value)}>
+            <NativeSelect
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            >
               <option value="">Empty profile</option>
               {profiles.map(([n]) => (
                 <option key={n}>{n}</option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <Button type="submit" disabled={!!w.busy || !config || taken}>
             <Plus size={15} />
@@ -772,7 +785,7 @@ export function Profiles({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Left
-            <select
+            <NativeSelect
               required
               value={left}
               onChange={(e) => setLeft(e.target.value)}
@@ -781,11 +794,11 @@ export function Profiles({ workspace: w }: { workspace: Workspace }) {
               {profiles.map(([n]) => (
                 <option key={n}>{n}</option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label>
             Right
-            <select
+            <NativeSelect
               required
               value={right}
               onChange={(e) => setRight(e.target.value)}
@@ -794,7 +807,7 @@ export function Profiles({ workspace: w }: { workspace: Workspace }) {
               {profiles.map(([n]) => (
                 <option key={n}>{n}</option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <Button
             type="submit"

@@ -1,3 +1,13 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
 import { CloudTeams } from "./cloud-team";
 import { isShareCode } from "../../../src/sharing";
 import { z } from "zod";
@@ -142,7 +152,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
           <div className="form-grid">
             <label>
               Resources
-              <select
+              <NativeSelect
                 value={loadout}
                 onChange={(e) => setLoadout(e.target.value)}
               >
@@ -152,25 +162,28 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
                     Loadout: {n}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label>
               Scope
-              <select value={scope} onChange={(e) => setScope(e.target.value)}>
+              <NativeSelect
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+              >
                 <option value="all">All scopes</option>
                 <option value="project">Project only</option>
                 <option value="global">Global only</option>
-              </select>
+              </NativeSelect>
             </label>
             <label>
               Visibility
-              <select
+              <NativeSelect
                 value={visibility}
                 onChange={(e) => setVisibility(e.target.value)}
               >
                 <option value="unlisted">Unlisted link</option>
                 <option value="public">Public</option>
-              </select>
+              </NativeSelect>
             </label>
           </div>
           <div className="button-row">
@@ -210,7 +223,7 @@ export function Collaboration({ workspace: w }: { workspace: Workspace }) {
           >
             <label>
               Share URL, code or JSON file
-              <input
+              <Input
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -339,7 +352,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
         <div className="form-section account-form">
           <label>
             Backend URL
-            <input
+            <Input
               type="url"
               value={service}
               onChange={(e) => setService(e.target.value)}
@@ -347,8 +360,8 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
             />
           </label>
           <p className="hint">
-            Sign in with GitHub or Google in your browser. Preflight receives
-            an API token on this computer; it never reaches this window.
+            Sign in with GitHub or Google in your browser. Preflight receives an
+            API token on this computer; it never reaches this window.
           </p>
           {loginError && <Notice>{loginError}</Notice>}
           {device ? (
@@ -393,14 +406,16 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
               onSubmit={(e) => {
                 e.preventDefault();
                 void w.task("Checking your credentials…", async () => {
-                  w.setState(await window.preflight.connect({ service, token }));
+                  w.setState(
+                    await window.preflight.connect({ service, token }),
+                  );
                   setToken("");
                 });
               }}
             >
               <label>
                 Service URL
-                <input
+                <Input
                   required
                   type="url"
                   value={service}
@@ -410,7 +425,7 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
               </label>
               <label>
                 API token
-                <input
+                <Input
                   required
                   type="password"
                   autoComplete="off"
@@ -433,8 +448,8 @@ export function Account({ workspace: w }: { workspace: Workspace }) {
         </div>
       )}
       <Notice>
-        Accounts and teams use Clerk; Preflight API tokens expire after 90
-        days without use. Manage them with preflight auth tokens.
+        Accounts and teams use Clerk; Preflight API tokens expire after 90 days
+        without use. Manage them with preflight auth tokens.
       </Notice>
     </div>
   );
@@ -481,7 +496,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Team name
-            <input
+            <Input
               required
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
@@ -491,27 +506,27 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
             Save name
           </Button>
         </form>
-        <table>
-          <thead>
-            <tr>
-              <th>Teammate</th>
-              <th>Email</th>
-              <th>Coordination role</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Teammate</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Coordination role</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {team?.members.map((member, i) => (
-              <tr key={`${member.email}-${i}`}>
-                <td>
+              <TableRow key={`${member.email}-${i}`}>
+                <TableCell>
                   <span className="avatar">{initials(member.name)}</span>
                   {member.name}
-                </td>
-                <td>{member.email}</td>
-                <td>
+                </TableCell>
+                <TableCell>{member.email}</TableCell>
+                <TableCell>
                   <Badge>{member.role}</Badge>
-                </td>
-                <td>
+                </TableCell>
+                <TableCell>
                   <Button
                     variant="ghost"
                     aria-label={`Remove ${member.name}`}
@@ -531,11 +546,11 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
                   >
                     <Trash2 size={15} />
                   </Button>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
         {!team?.members.length && (
           <p className="hint">
             No teammates saved yet. Add someone to your local roster.
@@ -561,7 +576,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
           >
             <label>
               Name
-              <input
+              <Input
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -569,7 +584,7 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
             </label>
             <label>
               Email
-              <input
+              <Input
                 required
                 type="email"
                 value={email}
@@ -578,14 +593,14 @@ export function Team({ workspace: w }: { workspace: Workspace }) {
             </label>
             <label>
               Role
-              <select
+              <NativeSelect
                 value={role}
                 onChange={(e) => setRole(e.target.value as typeof role)}
               >
                 <option value="owner">Owner</option>
                 <option value="member">Member</option>
                 <option value="viewer">Viewer</option>
-              </select>
+              </NativeSelect>
             </label>
             <Button disabled={!!w.busy} type="submit">
               <Plus size={15} />

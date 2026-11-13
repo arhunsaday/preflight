@@ -1,3 +1,4 @@
+import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { useState } from "react";
 import { FileText, WandSparkles, CheckCircle2, XCircle } from "lucide-react";
 import type { Workspace } from "../workspace";
@@ -54,33 +55,31 @@ export function Instructions({ workspace: w }: { workspace: Workspace }) {
         </Button>
       </div>
       <div className="instructions-controls">
-        <div className="segmented" role="radiogroup" aria-label="Agent">
+        <ToggleGroup
+          type="single"
+          aria-label="Agent"
+          value={agent}
+          onValueChange={(value) => value && setAgent(value as typeof agent)}
+        >
           {(["claude-code", "codex"] as const).map((value) => (
-            <button
-              key={value}
-              role="radio"
-              aria-checked={agent === value}
-              className={agent === value ? "active" : ""}
-              onClick={() => setAgent(value)}
-            >
+            <ToggleGroupItem key={value} value={value}>
               {value === "claude-code" ? "Claude Code" : "Codex"}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
         {!global && (
-          <div className="segmented" role="radiogroup" aria-label="Scope">
+          <ToggleGroup
+            type="single"
+            aria-label="Scope"
+            value={scope}
+            onValueChange={(value) => value && setScope(value as typeof scope)}
+          >
             {(["project", "global"] as const).map((value) => (
-              <button
-                key={value}
-                role="radio"
-                aria-checked={scope === value}
-                className={scope === value ? "active" : ""}
-                onClick={() => setScope(value)}
-              >
+              <ToggleGroupItem key={value} value={value}>
                 {value === "project" ? "This project" : "Global"}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         )}
       </div>
       {!files.length && (

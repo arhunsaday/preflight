@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app";
 import "@fontsource-variable/manrope";
 import "@fontsource-variable/jetbrains-mono";
-import "./styles.css";
+import "./globals.css";
 // Apply a pinned theme before the first paint so the window never flashes.
 try {
   const theme = localStorage.getItem("preflight-theme");

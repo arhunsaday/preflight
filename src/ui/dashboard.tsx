@@ -22,12 +22,12 @@ import { severityRank } from "./theme.js";
 import { errorText, fit, truncate, wrapWords } from "./text.js";
 
 /**
- * The palette follows the desktop app in terminal terms: petrol accent,
+ * The palette follows the desktop app in terminal terms: navy accent,
  * beacon orange for warnings. NO_COLOR removes every colour; glyphs and
  * words still carry the meaning.
  */
 const hue = {
-  accent: "#4fb3bd",
+  accent: "#8fb8ff",
   ok: "#5ec58a",
   warn: "#f0a04a",
   bad: "#ff8f85",

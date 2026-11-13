@@ -2,9 +2,9 @@
   <title>Preflight</title>
   <!-- App icon. An airliner seen from above, climbing to the upper right,
        with the beacon light on its right wing tip. -->
-  <rect width="1024" height="1024" rx="232" fill="#13707a"/>
+  <rect width="1024" height="1024" rx="232" fill="#0c2d5e"/>
   <g transform="translate(548 476) rotate(45)">
-    <path d="M0 -340 C34 -340 46 -300 46 -255 L46 -80 L340 70 L340 135 L46 55 L46 205 L135 275 L135 318 L0 288 L-135 318 L-135 275 L-46 205 L-46 55 L-340 135 L-340 70 L-46 -80 L-46 -255 C-46 -300 -34 -340 0 -340 Z" fill="#f3f1ea"/>
+    <path d="M0 -340 C34 -340 46 -300 46 -255 L46 -80 L340 70 L340 135 L46 55 L46 205 L135 275 L135 318 L0 288 L-135 318 L-135 275 L-46 205 L-46 55 L-340 135 L-340 70 L-46 -80 L-46 -255 C-46 -300 -34 -340 0 -340 Z" fill="#f4f7fb"/>
     <circle cx="340" cy="102" r="30" fill="#f0a04a"/>
   </g>
 </svg>

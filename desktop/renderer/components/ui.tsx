@@ -1,45 +1,83 @@
-import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
-  X,
   ArrowUpRight,
-  LoaderCircle,
   FolderOpen,
   TriangleAlert,
   Info,
   CheckCircle2,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type ButtonHTMLAttributes,
-} from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type { Toast } from "../workspace";
+import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Badge as BadgeBase } from "./ui/badge";
+import { Button as ButtonBase } from "./ui/button";
+import {
+  Dialog as DialogRoot,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import {
+  Empty as EmptyBase,
+  EmptyContent,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from "./ui/empty";
+import { Spinner } from "./ui/spinner";
+
+// The app's primitives, built on shadcn/ui (components/ui). Views keep these
+// short names; the look comes from the shadcn components and theme tokens.
+
+const buttonVariant = {
+  primary: "default",
+  secondary: "outline",
+  ghost: "ghost",
+  danger: "destructive",
+} as const;
 export function Button({
-  children,
   variant = "secondary",
-  className = "",
-  type = "button",
+  size,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+}: Omit<ComponentProps<typeof ButtonBase>, "variant"> & {
+  variant?: keyof typeof buttonVariant;
 }) {
-  return (
-    <button type={type} className={`button ${variant} ${className}`} {...props}>
-      {children}
-    </button>
-  );
+  return <ButtonBase variant={buttonVariant[variant]} size={size} {...props} />;
 }
+const badgeTone = {
+  neutral: "outline",
+  info: "info",
+  blue: "blue",
+  green: "green",
+  amber: "amber",
+  orange: "amber",
+  red: "red",
+} as const;
 export function Badge({
   children,
   tone = "neutral",
+  className,
 }: {
   children: ReactNode;
   tone?: string;
+  className?: string;
 }) {
-  return <span className={`badge ${tone}`}>{children}</span>;
+  return (
+    <BadgeBase
+      variant={badgeTone[tone as keyof typeof badgeTone] ?? "outline"}
+      className={cn("badge", className)}
+    >
+      {children}
+    </BadgeBase>
+  );
 }
 export function Empty({
   title,
@@ -53,14 +91,14 @@ export function Empty({
   icon?: LucideIcon;
 }) {
   return (
-    <div className="empty">
-      <div className="empty-icon">
-        <Icon size={26} />
-      </div>
-      <h2>{title}</h2>
-      <p>{description}</p>
-      {action}
-    </div>
+    <EmptyBase className="empty">
+      <EmptyMedia>
+        <Icon />
+      </EmptyMedia>
+      <EmptyTitle>{title}</EmptyTitle>
+      <EmptyDescription>{description}</EmptyDescription>
+      {action && <EmptyContent>{action}</EmptyContent>}
+    </EmptyBase>
   );
 }
 export function Dialog({
@@ -81,35 +119,26 @@ export function Dialog({
   className?: string;
 }) {
   return (
-    <DialogPrimitive.Root
+    <DialogRoot
       open={open}
       onOpenChange={(value) => {
         if (!value) onClose();
       }}
     >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="dialog-overlay" />
-        <DialogPrimitive.Content
-          className={`dialog ${wide ? "wide" : ""} ${className}`}
-        >
-          <div className="dialog-heading">
-            <div>
-              <DialogPrimitive.Title>{title}</DialogPrimitive.Title>
-              <DialogPrimitive.Description>
-                {description}
-              </DialogPrimitive.Description>
-            </div>
-            <DialogPrimitive.Close
-              className="icon-button"
-              aria-label="Close dialog"
-            >
-              <X size={18} />
-            </DialogPrimitive.Close>
-          </div>
-          {children}
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      <DialogContent
+        className={cn(
+          "dialog flex max-h-[calc(100vh-64px)] flex-col gap-0 overflow-hidden p-0",
+          wide ? "sm:max-w-[820px]" : "sm:max-w-[540px]",
+          className,
+        )}
+      >
+        <DialogHeader className="dialog-heading px-[22px] pt-5 pr-14 pb-1.5">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </DialogRoot>
   );
 }
 const token =
@@ -143,8 +172,11 @@ export function Json({ value }: { value: unknown }) {
 }
 export function Busy({ label }: { label: string }) {
   return (
-    <span className="busy" role="status">
-      <LoaderCircle size={15} className="spin" />
+    <span
+      className="busy flex items-center gap-1.5 pr-2 text-xs text-muted-foreground"
+      role="status"
+    >
+      <Spinner aria-hidden="true" />
       {label}
     </span>
   );
@@ -158,22 +190,26 @@ export function Notice({
 }) {
   const Icon = tone === "info" ? Info : TriangleAlert;
   return (
-    <div className={`notice ${tone}`}>
-      <Icon size={16} />
-      <div>{children}</div>
-    </div>
+    <Alert
+      variant={tone === "info" ? "default" : "warning"}
+      role={tone === "info" ? "note" : "alert"}
+      className="notice"
+    >
+      <Icon />
+      <AlertDescription>{children}</AlertDescription>
+    </Alert>
   );
 }
 export function Link({ url, children }: { url: string; children: ReactNode }) {
   return (
-    <button
-      type="button"
+    <ButtonBase
+      variant="link"
       className="text-link"
       onClick={() => void window.preflight.openExternal(url).catch(() => {})}
     >
       {children}
-      <ArrowUpRight size={13} />
-    </button>
+      <ArrowUpRight className="size-[13px]" />
+    </ButtonBase>
   );
 }
 /** Highlight the first case-insensitive occurrence of `query` in `text`. */
@@ -189,10 +225,7 @@ export function Highlight({ text, query }: { text: string; query: string }) {
     </>
   );
 }
-/**
- * A small popover menu: opens from its trigger, closes on outside click,
- * Escape, or after an item runs.
- */
+/** A shadcn/ui dropdown menu behind a secondary button. */
 export function Menu({
   label,
   trigger,
@@ -200,47 +233,15 @@ export function Menu({
 }: {
   label: string;
   trigger: ReactNode;
-  children: (close: () => void) => ReactNode;
+  children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const pointer = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", pointer);
-    document.addEventListener("keydown", key);
-    ref.current
-      ?.querySelector<HTMLButtonElement>(".dropdown button:not(:disabled)")
-      ?.focus();
-    return () => {
-      document.removeEventListener("pointerdown", pointer);
-      document.removeEventListener("keydown", key);
-    };
-  }, [open]);
   return (
-    <div className="action-menu" ref={ref}>
-      <Button
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {trigger}
-      </Button>
-      {open && (
-        <div className="dropdown" role="menu">
-          {children(() => setOpen(false))}
-        </div>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label={label}>{trigger}</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 export function Toasts({
@@ -253,16 +254,21 @@ export function Toasts({
   return (
     <div className="toast-region" role="status" aria-live="polite">
       {toasts.map((toast) => (
-        <div className="toast" key={toast.id}>
-          <CheckCircle2 size={17} />
-          <span>{toast.text}</span>
-          <button
-            type="button"
+        <div
+          className="toast pointer-events-auto flex w-[340px] animate-in fade-in-0 slide-in-from-bottom-1.5 items-center gap-2.5 rounded-lg border bg-popover py-2.5 pr-2.5 pl-3 text-[13px] font-medium shadow-md"
+          key={toast.id}
+        >
+          <CheckCircle2 className="size-[17px] text-success" />
+          <span className="flex-1">{toast.text}</span>
+          <ButtonBase
+            variant="ghost"
+            size="icon-sm"
+            className="size-6"
             aria-label="Dismiss notification"
             onClick={() => dismiss(toast.id)}
           >
-            <X size={14} />
-          </button>
+            <X className="size-3.5" />
+          </ButtonBase>
         </div>
       ))}
     </div>

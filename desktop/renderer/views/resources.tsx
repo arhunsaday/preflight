@@ -1,3 +1,12 @@
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search,
@@ -40,6 +49,10 @@ import {
   HarnessBadge,
   resourceAppearance,
 } from "../components/semantic-icons";
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "../components/ui/dropdown-menu";
 import { ResourceForm } from "../components/resource-form";
 import {
   ResourceSwitch,
@@ -210,48 +223,36 @@ export function Resources({
     setForm("new");
   };
   const header = mode === "catalogue" && (
-        <div className="discovery-header">
-          <div>
-            <h2>Find your next skill or MCP server</h2>
-            <p>
-              Browse your content sources offline, or search an online registry.
-              Inspect and configure every resource before adding it.
-            </p>
-          </div>
-          <div className="segmented">
-            <button
-              className={channel === "bundled" ? "active" : ""}
-              onClick={() => {
-                setChannel("bundled");
-                setOnline(null);
-                setSourceErrors([]);
-              }}
-            >
-              Your sources
-            </button>
-            <button
-              className={channel === "online" ? "active" : ""}
-              onClick={() => {
-                setChannel("online");
-                setOnline([]);
-                setSearched("");
-              }}
-            >
-              Search online
-            </button>
-            <button
-              className={channel === "github" ? "active" : ""}
-              onClick={() => {
-                setChannel("github");
-                setOnline(null);
-                setSourceErrors([]);
-              }}
-            >
-              From GitHub
-            </button>
-          </div>
-        </div>
-      );
+    <div className="discovery-header">
+      <div>
+        <h2>Find your next skill or MCP server</h2>
+        <p>
+          Browse your content sources offline, or search an online registry.
+          Inspect and configure every resource before adding it.
+        </p>
+      </div>
+      <ToggleGroup
+        type="single"
+        aria-label="Where to look"
+        value={channel}
+        onValueChange={(value) => {
+          if (value === "bundled" || value === "github") {
+            setChannel(value);
+            setOnline(null);
+            setSourceErrors([]);
+          } else if (value === "online") {
+            setChannel(value);
+            setOnline([]);
+            setSearched("");
+          }
+        }}
+      >
+        <ToggleGroupItem value="bundled">Your sources</ToggleGroupItem>
+        <ToggleGroupItem value="online">Search online</ToggleGroupItem>
+        <ToggleGroupItem value="github">From GitHub</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  );
   if (mode === "catalogue" && channel === "github")
     return (
       <>
@@ -265,7 +266,8 @@ export function Resources({
       <div className="collection-tools">
         <div className="search-field">
           <Search size={16} />
-          <input
+          <Input
+            className="h-full flex-1 rounded-none border-0 bg-transparent px-0 focus-visible:ring-0"
             ref={searchRef}
             aria-label="Search resources"
             placeholder={
@@ -285,9 +287,10 @@ export function Resources({
             }}
           />
           {query ? (
-            <button
-              type="button"
-              className="icon-button"
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="size-6"
               aria-label="Clear search"
               onClick={() => {
                 setQuery("");
@@ -295,12 +298,12 @@ export function Resources({
               }}
             >
               <X size={14} />
-            </button>
+            </Button>
           ) : (
             <kbd title="Press / to search">/</kbd>
           )}
         </div>
-        <select
+        <NativeSelect
           aria-label="Filter scope"
           value={scope}
           onChange={(e) => setScope(e.target.value)}
@@ -308,8 +311,8 @@ export function Resources({
           <option value="all">All scopes</option>
           <option value="project">Project</option>
           <option value="global">Global</option>
-        </select>
-        <select
+        </NativeSelect>
+        <NativeSelect
           aria-label="Filter harness"
           value={harness}
           onChange={(e) => setHarness(e.target.value)}
@@ -318,7 +321,7 @@ export function Resources({
           <option value="claude-code">Claude Code</option>
           <option value="cursor">Cursor</option>
           <option value="codex">Codex</option>
-        </select>
+        </NativeSelect>
         {mode === "installed" && (
           <Button variant="primary" disabled={!!w.busy} onClick={newResource}>
             <Plus size={15} />
@@ -330,7 +333,7 @@ export function Resources({
         <div className="discovery-sources">
           <label>
             Source
-            <select
+            <NativeSelect
               aria-label="Search source"
               value={source}
               onChange={(e) => {
@@ -343,11 +346,11 @@ export function Resources({
               <option value="github">GitHub repository</option>
               <option value="skills.sh">skills.sh (token required)</option>
               <option value="all">All online sources + library</option>
-            </select>
+            </NativeSelect>
           </label>
           <label>
             Resource type
-            <select
+            <NativeSelect
               aria-label="Search resource type"
               value={kind}
               onChange={(e) => setKind(e.target.value)}
@@ -358,12 +361,12 @@ export function Resources({
                   {t}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           {source === "github" && (
             <label>
               GitHub repository
-              <input
+              <Input
                 aria-label="GitHub repository"
                 value={repository}
                 onChange={(e) => setRepository(e.target.value)}
@@ -394,7 +397,8 @@ export function Resources({
                 ? "Remote + source results"
                 : `${w.snapshot?.catalogue.length ?? 0} resources from ${plural(w.snapshot?.sources.length ?? 0, "source")}, ready to inspect`}
             </span>
-            <select
+            <NativeSelect
+              className="h-[30px] text-[12.5px]"
               aria-label="Library resource type"
               value={kind}
               onChange={(e) => setKind(e.target.value)}
@@ -405,7 +409,7 @@ export function Resources({
                   {t}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         )
       )}
@@ -431,14 +435,15 @@ export function Resources({
               )}
               {items.length !== base.length && ` of ${base.length}`}
             </span>
-            <select
+            <NativeSelect
+              className="h-7 border-0 bg-transparent text-xs text-muted-foreground hover:bg-hover focus-visible:ring-0"
               aria-label="Sort resources"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
             >
               <option value="name">Name A–Z</option>
               <option value="updated">Recently updated</option>
-            </select>
+            </NativeSelect>
           </div>
           <div className="list-scroll" ref={listRef}>
             {items.map((r) => {
@@ -464,7 +469,11 @@ export function Resources({
                       {mode === "detected" && switchState(r) === "manual" ? (
                         <Badge>Manual</Badge>
                       ) : (
-                        !r.enabled && <Badge>{mode === "detected" ? "Off" : "Disabled"}</Badge>
+                        !r.enabled && (
+                          <Badge>
+                            {mode === "detected" ? "Off" : "Disabled"}
+                          </Badge>
+                        )
                       )}
                     </div>
                     <p>
@@ -711,85 +720,65 @@ export function Resources({
                       label="More resource actions"
                       trigger={<MoreHorizontal size={17} />}
                     >
-                      {(close) => {
-                        const act = (args: string[]) => {
-                          close();
-                          perform(args);
-                        };
-                        return (
-                          <>
-                            {!global && (
-                              <button
-                                role="menuitem"
-                                onClick={() =>
-                                  act([
-                                    "move",
-                                    resource.id,
-                                    resource.scope === "project"
-                                      ? "global"
-                                      : "project",
-                                  ])
-                                }
-                              >
-                                <ArrowUpRight size={15} />
-                                Move to{" "}
-                                {resource.scope === "project"
-                                  ? "global"
-                                  : "project"}
-                              </button>
-                            )}
-                            <button
-                              role="menuitem"
-                              onClick={() =>
-                                act([
-                                  "update-json",
-                                  resource.id,
-                                  JSON.stringify({
-                                    enabled: !resource.enabled,
-                                  }),
-                                ])
-                              }
-                            >
-                              <Power size={15} />
-                              {resource.enabled ? "Disable" : "Enable"}
-                            </button>
-                            <button
-                              role="menuitem"
-                              onClick={() =>
-                                act([
-                                  "fork",
-                                  resource.id,
-                                  copyId(
-                                    resource.id,
-                                    new Set(base.map((r) => r.id)),
-                                  ),
-                                ])
-                              }
-                            >
-                              <Copy size={15} />
-                              Duplicate
-                            </button>
-                            <button
-                              role="menuitem"
-                              onClick={() =>
-                                act(["install", resource.id, "--execute"])
-                              }
-                            >
-                              <Download size={15} />
-                              Run installer
-                            </button>
-                            <hr />
-                            <button
-                              role="menuitem"
-                              className="danger-text"
-                              onClick={() => act(["delete", resource.id])}
-                            >
-                              <Trash2 size={15} />
-                              Delete resource
-                            </button>
-                          </>
-                        );
-                      }}
+                      {!global && (
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            perform([
+                              "move",
+                              resource.id,
+                              resource.scope === "project"
+                                ? "global"
+                                : "project",
+                            ])
+                          }
+                        >
+                          <ArrowUpRight size={15} />
+                          Move to{" "}
+                          {resource.scope === "project" ? "global" : "project"}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          perform([
+                            "update-json",
+                            resource.id,
+                            JSON.stringify({
+                              enabled: !resource.enabled,
+                            }),
+                          ])
+                        }
+                      >
+                        <Power size={15} />
+                        {resource.enabled ? "Disable" : "Enable"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          perform([
+                            "fork",
+                            resource.id,
+                            copyId(resource.id, new Set(base.map((r) => r.id))),
+                          ])
+                        }
+                      >
+                        <Copy size={15} />
+                        Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          perform(["install", resource.id, "--execute"])
+                        }
+                      >
+                        <Download size={15} />
+                        Run installer
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => perform(["delete", resource.id])}
+                      >
+                        <Trash2 size={15} />
+                        Delete resource
+                      </DropdownMenuItem>
                     </Menu>
                   </>
                 )}
@@ -801,144 +790,138 @@ export function Resources({
                     : "Initialize this project to add or adopt resources."}
                 </Notice>
               )}
-              <div
-                className="detail-tabs"
-                role="tablist"
-                aria-label="Resource information"
-              >
-                {["overview", "content", "configuration"].map((t) => (
-                  <button
-                    role="tab"
-                    aria-selected={tab === t}
-                    key={t}
-                    onClick={() => setTab(t)}
-                  >
-                    {t === "overview"
-                      ? "Overview"
-                      : t === "content"
-                        ? "Content"
-                        : "Configuration"}
-                  </button>
-                ))}
-              </div>
-              <div className="detail-scroll">
-                {tab === "content" ? (
-                  resource.content ? (
-                    <pre className="content-document">{resource.content}</pre>
+              <Tabs value={tab} onValueChange={setTab} className="contents">
+                <TabsList variant="line" aria-label="Resource information">
+                  {["overview", "content", "configuration"].map((t) => (
+                    <TabsTrigger key={t} value={t}>
+                      {t === "overview"
+                        ? "Overview"
+                        : t === "content"
+                          ? "Content"
+                          : "Configuration"}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <TabsContent value={tab} className="detail-scroll">
+                  {tab === "content" ? (
+                    resource.content ? (
+                      <pre className="content-document">{resource.content}</pre>
+                    ) : (
+                      <Empty
+                        title="Content not loaded"
+                        description="Inspect the source to fetch its instructions, or edit this resource to add content."
+                      />
+                    )
+                  ) : tab === "configuration" ? (
+                    <Json value={resource.config} />
                   ) : (
-                    <Empty
-                      title="Content not loaded"
-                      description="Inspect the source to fetch its instructions, or edit this resource to add content."
-                    />
-                  )
-                ) : tab === "configuration" ? (
-                  <Json value={resource.config} />
-                ) : (
-                  <>
-                    <div className="metadata-grid">
-                      <div>
-                        <span>Available in</span>
-                        <div className="harness-list">
-                          {resource.harnesses.map((h) => (
-                            <HarnessBadge key={h} harness={h} />
-                          ))}
+                    <>
+                      <div className="metadata-grid">
+                        <div>
+                          <span>Available in</span>
+                          <div className="harness-list">
+                            {resource.harnesses.map((h) => (
+                              <HarnessBadge key={h} harness={h} />
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <span>Usage observed</span>
+                          <strong>
+                            {w.snapshot?.usage?.sessions
+                              ? plural(usage, "invocation")
+                              : "Unknown"}
+                          </strong>
+                          <small>
+                            {w.snapshot?.usage?.sessions
+                              ? "From local transcripts"
+                              : "No measured sessions"}
+                          </small>
+                        </div>
+                        <div>
+                          <span>Scope</span>
+                          <strong>
+                            {resource.scope === "project"
+                              ? "This project"
+                              : "All projects"}
+                          </strong>
+                          <small
+                            title={
+                              resource.scope === "project"
+                                ? w.snapshot?.root
+                                : w.snapshot?.home
+                            }
+                          >
+                            {resource.scope === "project"
+                              ? tildify(w.snapshot?.root, w.snapshot?.home)
+                              : "Home folder (~)"}
+                          </small>
+                        </div>
+                        <div>
+                          <span>Status</span>
+                          <strong>
+                            {resource.enabled ? "Enabled" : "Disabled"}
+                          </strong>
+                          <small>
+                            {mode === "catalogue"
+                              ? "Not installed"
+                              : mode === "detected"
+                                ? "Detected, not managed"
+                                : "Managed by Preflight"}
+                          </small>
                         </div>
                       </div>
-                      <div>
-                        <span>Usage observed</span>
-                        <strong>
-                          {w.snapshot?.usage?.sessions
-                            ? plural(usage, "invocation")
-                            : "Unknown"}
-                        </strong>
-                        <small>
-                          {w.snapshot?.usage?.sessions
-                            ? "From local transcripts"
-                            : "No measured sessions"}
-                        </small>
-                      </div>
-                      <div>
-                        <span>Scope</span>
-                        <strong>
-                          {resource.scope === "project"
-                            ? "This project"
-                            : "All projects"}
-                        </strong>
-                        <small
-                          title={
-                            resource.scope === "project"
-                              ? w.snapshot?.root
-                              : w.snapshot?.home
-                          }
-                        >
-                          {resource.scope === "project"
-                            ? tildify(w.snapshot?.root, w.snapshot?.home)
-                            : "Home folder (~)"}
-                        </small>
-                      </div>
-                      <div>
-                        <span>Status</span>
-                        <strong>
-                          {resource.enabled ? "Enabled" : "Disabled"}
-                        </strong>
-                        <small>
-                          {mode === "catalogue"
-                            ? "Not installed"
-                            : mode === "detected"
-                              ? "Detected, not managed"
-                              : "Managed by Preflight"}
-                        </small>
-                      </div>
-                    </div>
-                    <div className="detail-section">
-                      <h3>Source</h3>
-                      <p className="source-value">
-                        {resource.source.startsWith("file://")
-                          ? `file://${tildify(resource.source.slice(7), w.snapshot?.home)}`
-                          : resource.source}
-                      </p>
-                      <small>{resource.id}</small>
-                    </div>
-                    {resource.tags.length > 0 && (
                       <div className="detail-section">
-                        <h3>Tags</h3>
-                        <div className="tag-list">
-                          {resource.tags.map((tag) => (
-                            <Badge key={tag}>{tag}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="detail-section">
-                      <h3>
-                        {resource.type === "mcp"
-                          ? "Server configuration"
-                          : "Instructions"}
-                      </h3>
-                      {resource.content ? (
-                        <pre className="content-document excerpt">
-                          {resource.content.slice(0, 5000)}
-                        </pre>
-                      ) : Object.keys(resource.config).length ? (
-                        <Json value={resource.config} />
-                      ) : (
-                        <p className="muted">
-                          Inspect the source to review this resource before
-                          adding it.
+                        <h3>Source</h3>
+                        <p className="source-value">
+                          {resource.source.startsWith("file://")
+                            ? `file://${tildify(resource.source.slice(7), w.snapshot?.home)}`
+                            : resource.source}
                         </p>
+                        <small>{resource.id}</small>
+                      </div>
+                      {resource.tags.length > 0 && (
+                        <div className="detail-section">
+                          <h3>Tags</h3>
+                          <div className="tag-list">
+                            {resource.tags.map((tag) => (
+                              <Badge key={tag}>{tag}</Badge>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    {w.snapshot?.findings
-                      .filter(
-                        (f) =>
-                          f.resourceId === resource.id && f.severity !== "info",
-                      )
-                      .map((f, i) => (
-                        <Notice key={i}>{f.message}</Notice>
-                      ))}
-                  </>
-                )}
-              </div>
+                      <div className="detail-section">
+                        <h3>
+                          {resource.type === "mcp"
+                            ? "Server configuration"
+                            : "Instructions"}
+                        </h3>
+                        {resource.content ? (
+                          <pre className="content-document excerpt">
+                            {resource.content.slice(0, 5000)}
+                          </pre>
+                        ) : Object.keys(resource.config).length ? (
+                          <Json value={resource.config} />
+                        ) : (
+                          <p className="muted">
+                            Inspect the source to review this resource before
+                            adding it.
+                          </p>
+                        )}
+                      </div>
+                      {w.snapshot?.findings
+                        .filter(
+                          (f) =>
+                            f.resourceId === resource.id &&
+                            f.severity !== "info",
+                        )
+                        .map((f, i) => (
+                          <Notice key={i}>{f.message}</Notice>
+                        ))}
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
             </>
           ) : (
             <Empty

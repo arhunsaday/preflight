@@ -5,7 +5,9 @@
     "moduleResolution": "Bundler",
     "declaration": false,
     "noEmit": true,
-    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["./renderer/*"] }
   },
   "include": ["**/*.ts", "**/*.tsx", "../electron.vite.config.ts"]
 }

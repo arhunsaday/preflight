@@ -1,0 +1,99 @@
+/*
+ * Desktop stylesheet entry. shadcn/ui components (components/ui) draw with
+ * Tailwind utilities; the app's own layout styles (styles.css) sit in the
+ * "app" layer, below the utilities, so a component's classes always win.
+ *
+ * The palette lives in styles.css as the app tokens (checked for contrast
+ * by tests/desktop-contrast.test.ts); the shadcn tokens below are aliases
+ * of them, so both themes follow automatically. The values match the navy
+ * theme of the website (docs/app/global.css).
+ */
+@layer theme, base, app, components, utilities;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./styles.css" layer(app);
+
+/* `dark:` follows a pinned theme, or the system when none is pinned. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
+:root {
+  --background: var(--surface);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: var(--on-primary);
+  --secondary: var(--surface-3);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-2);
+  --accent: var(--surface-3);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --input: var(--border);
+}
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring-border);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-accent-soft: var(--accent-soft);
+  --color-overlay: var(--overlay);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+}

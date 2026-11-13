@@ -1,3 +1,5 @@
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
 import { useState } from "react";
 import { ArrowLeft, List, Map as MapIcon, RotateCcw } from "lucide-react";
 import { buildContextReport, contextResources } from "../../../src/context-map";
@@ -73,34 +75,40 @@ export function ContextMap({ workspace: w }: { workspace: Workspace }) {
       <div className="context-controls">
         <label>
           Scenario
-          <select
+          <NativeSelect
             value={mode}
             onChange={(e) => setMode(e.target.value as typeof mode)}
           >
             <option value="potential">All available bodies if loaded</option>
             <option value="catalogue">Skill catalogue only</option>
-          </select>
+          </NativeSelect>
         </label>
         <label>
           Agent
-          <select value={harness} onChange={(e) => setHarness(e.target.value)}>
+          <NativeSelect
+            value={harness}
+            onChange={(e) => setHarness(e.target.value)}
+          >
             <option value="all">All agents (deduplicated)</option>
             <option value="claude-code">Claude Code</option>
             <option value="cursor">Cursor</option>
             <option value="codex">Codex</option>
-          </select>
+          </NativeSelect>
         </label>
         <label>
           Scope
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
+          <NativeSelect
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+          >
             <option value="all">Global + project</option>
             <option value="global">Global</option>
             <option value="project">Project</option>
-          </select>
+          </NativeSelect>
         </label>
         <label>
           Find a resource
-          <input
+          <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -1,3 +1,4 @@
+import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { initialUpdateState, updateBanner } from "../../updates";
@@ -28,30 +29,28 @@ export function UpdateBanner() {
       <Download size={16} />
       <span>{banner.text}</span>
       {banner.action === "install" && (
-        <button
-          type="button"
-          onClick={() => void window.preflight.installUpdate()}
-        >
+        <Button size="sm" onClick={() => void window.preflight.installUpdate()}>
           Restart to update
-        </button>
+        </Button>
       )}
       {banner.action === "releases" && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => void window.preflight.openExternal(releases)}
         >
           Open releases
-        </button>
+        </Button>
       )}
       {state.status !== "downloading" && state.status !== "checking" && (
-        <button
-          type="button"
-          className="icon"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           aria-label="Dismiss update notice"
           onClick={() => void window.preflight.dismissUpdate()}
         >
           <X size={14} />
-        </button>
+        </Button>
       )}
     </div>
   );

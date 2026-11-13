@@ -1,3 +1,4 @@
+import { Input } from "../components/ui/input";
 import { useState } from "react";
 import {
   Library,
@@ -45,7 +46,7 @@ export function Sources({ workspace: w }: { workspace: Workspace }) {
           add(spec);
         }}
       >
-        <input
+        <Input
           aria-label="Source"
           placeholder={`${EXAMPLE_SOURCE} or /path/to/folder`}
           value={spec}

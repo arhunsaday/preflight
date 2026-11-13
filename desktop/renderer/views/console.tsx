@@ -1,3 +1,5 @@
+import { Button as ButtonBase } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { useRef, useState } from "react";
 import { Play, Trash2 } from "lucide-react";
 import type { Workspace } from "../workspace";
@@ -53,9 +55,9 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
         <div>
           <h2>Every CLI capability, in your workspace</h2>
           <p>
-            Run Preflight commands against the active workspace. Writes always open a
-            preview; read-only output stays below. Use ↑ and ↓ to recall earlier
-            commands.
+            Run Preflight commands against the active workspace. Writes always
+            open a preview; read-only output stays below. Use ↑ and ↓ to recall
+            earlier commands.
           </p>
         </div>
       </div>
@@ -67,7 +69,8 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
         }}
       >
         <span>preflight</span>
-        <input
+        <Input
+          className="h-full flex-1 rounded-none border-0 bg-transparent px-0 focus-visible:ring-0 font-mono"
           ref={input}
           aria-label="Preflight command"
           value={line}
@@ -94,8 +97,8 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
         </Button>
       </form>
       <Notice tone="info">
-        This console runs Preflight commands, not shell scripts. Project and home
-        paths come from the workspace and cannot be overridden here.
+        This console runs Preflight commands, not shell scripts. Project and
+        home paths come from the workspace and cannot be overridden here.
       </Notice>
       {history.length > 0 && (
         <div className="console-history" aria-live="polite">
@@ -109,9 +112,9 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
                 <time dateTime={entry.at.toISOString()}>
                   {entry.at.toLocaleTimeString()}
                 </time>
-                <button
-                  type="button"
-                  className="icon-button"
+                <ButtonBase
+                  variant="ghost"
+                  size="icon-sm"
                   aria-label="Run again"
                   title="Load into the prompt"
                   onClick={() => {
@@ -120,7 +123,7 @@ export function Console({ workspace: w }: { workspace: Workspace }) {
                   }}
                 >
                   <Play size={13} />
-                </button>
+                </ButtonBase>
               </header>
               <Json value={entry.value} />
             </article>

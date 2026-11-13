@@ -1,3 +1,13 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Users, Mail, RefreshCw, Plus, ShieldCheck } from "lucide-react";
@@ -91,14 +101,12 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
     setSelected(details);
     setInvitations(
       admin
-        ? z
-            .array(Invitation)
-            .parse(
-              await window.preflight.cloud({
-                action: "invitations",
-                organizationId,
-              }),
-            )
+        ? z.array(Invitation).parse(
+            await window.preflight.cloud({
+              action: "invitations",
+              organizationId,
+            }),
+          )
         : [],
     );
   };
@@ -259,7 +267,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
             >
               <label>
                 Name
-                <input
+                <Input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -267,7 +275,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
               </label>
               <label>
                 Unique slug
-                <input
+                <Input
                   required
                   pattern="[a-z0-9]+(-[a-z0-9]+)*"
                   value={slug}
@@ -307,18 +315,18 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                 </p>
               </div>
               <h3>Members</h3>
-              <table className="member-table">
-                <thead>
-                  <tr>
-                    <th>Person</th>
-                    <th>Access</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table className="member-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Person</TableHead>
+                    <TableHead>Access</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {selected.members.map((m) => (
-                    <tr key={m.id}>
-                      <td>
+                    <TableRow key={m.id}>
+                      <TableCell>
                         <div className="person-cell">
                           <span className="avatar">
                             {m.user.name.slice(0, 1)}
@@ -333,10 +341,10 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                             <small>{m.user.email}</small>
                           </span>
                         </div>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {manage ? (
-                          <select
+                          <NativeSelect
                             aria-label={`Role for ${m.user.name}`}
                             value={m.role}
                             disabled={!!w.busy}
@@ -371,36 +379,35 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                             >
                               Administrator
                             </option>
-                          </select>
+                          </NativeSelect>
                         ) : (
                           <Badge>{m.role}</Badge>
                         )}
-                      </td>
-                      <td>
-                        {manage &&
-                          m.userId !== w.state?.account.user?.id && (
-                            <Button
-                              variant="ghost"
-                              onClick={() =>
-                                setReview({
-                                  operation: {
-                                    action: "remove-member",
-                                    organizationId: selected.id,
-                                    memberId: m.id,
-                                  },
-                                  title: "Remove this member?",
-                                  description: `${m.user.name} will lose access to ${selected.name}. Existing public share links are unaffected.`,
-                                })
-                              }
-                            >
-                              Remove
-                            </Button>
-                          )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>
+                        {manage && m.userId !== w.state?.account.user?.id && (
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              setReview({
+                                operation: {
+                                  action: "remove-member",
+                                  organizationId: selected.id,
+                                  memberId: m.id,
+                                },
+                                title: "Remove this member?",
+                                description: `${m.user.name} will lose access to ${selected.name}. Existing public share links are unaffected.`,
+                              })
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
               {manage && (
                 <section className="team-invites">
                   <h3>Invite someone</h3>
@@ -422,7 +429,7 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                   >
                     <label>
                       Email
-                      <input
+                      <Input
                         type="email"
                         required
                         value={email}
@@ -432,13 +439,13 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                     </label>
                     <label>
                       Access
-                      <select
+                      <NativeSelect
                         value={role}
                         onChange={(e) => setRole(e.target.value as typeof role)}
                       >
                         <option value="member">Member</option>
                         <option value="admin">Administrator</option>
-                      </select>
+                      </NativeSelect>
                     </label>
                     <Button variant="primary" disabled={!!w.busy} type="submit">
                       Create invitation
@@ -448,35 +455,35 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                     Clerk emails the invitation. The recipient accepts it here
                     or with preflight inbox after signing in with that email.
                   </p>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Invitation</th>
-                        <th>Access</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invitation</TableHead>
+                        <TableHead>Access</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {invitations.map((i) => (
-                        <tr key={i.id}>
-                          <td>
+                        <TableRow key={i.id}>
+                          <TableCell>
                             {i.email}
                             <small>
                               Expires{" "}
                               {new Date(i.expiresAt).toLocaleDateString()}
                             </small>
-                          </td>
-                          <td>{i.role}</td>
-                          <td>
+                          </TableCell>
+                          <TableCell>{i.role}</TableCell>
+                          <TableCell>
                             <Badge>
                               {i.status === "pending" &&
                               Date.parse(i.expiresAt) <= Date.now()
                                 ? "expired"
                                 : i.status}
                             </Badge>
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
                             {i.status === "pending" &&
                               Date.parse(i.expiresAt) > Date.now() && (
                                 <div className="button-row">
@@ -498,11 +505,11 @@ export function CloudTeams({ workspace: w }: { workspace: Workspace }) {
                                   </Button>
                                 </div>
                               )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                   {!invitations.length && (
                     <p className="hint">No invitations yet.</p>
                   )}

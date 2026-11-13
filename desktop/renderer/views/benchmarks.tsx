@@ -1,3 +1,13 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
 import { useState } from "react";
 import {
   FlaskConical,
@@ -22,31 +32,31 @@ const STATUS = {
 export function ChecklistRows({ checklist }: { checklist: Checklist }) {
   return (
     <div className="checklist">
-      <table aria-label="Result checklist">
-        <thead>
-          <tr>
-            <th>Check</th>
-            <th>Status</th>
-            <th>Detail</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table aria-label="Result checklist">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Check</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Detail</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {checklist.checks.map((c) => {
             const { Icon, word, tone } = STATUS[c.status];
             return (
-              <tr key={c.id}>
-                <td>{c.label}</td>
-                <td>
+              <TableRow key={c.id}>
+                <TableCell>{c.label}</TableCell>
+                <TableCell>
                   <Badge tone={tone}>
                     <Icon size={13} aria-hidden /> {word}
                   </Badge>
-                </td>
-                <td>{c.message}</td>
-              </tr>
+                </TableCell>
+                <TableCell>{c.message}</TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       {checklist.note && <Notice>{checklist.note}</Notice>}
     </div>
   );
@@ -85,24 +95,24 @@ export function ArenaResult({ report }: { report: ArenaReport }) {
       <h4>
         <Swords size={15} /> {report.name}
       </h4>
-      <table>
-        <thead>
-          <tr>
-            <th>Measure</th>
-            <th>{report.left.label} (left)</th>
-            <th>{report.right.label} (right)</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Measure</TableHead>
+            <TableHead>{report.left.label} (left)</TableHead>
+            <TableHead>{report.right.label} (right)</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map(([label, f]) => (
-            <tr key={label}>
-              <td>{label}</td>
-              <td>{f(report.left)}</td>
-              <td>{f(report.right)}</td>
-            </tr>
+            <TableRow key={label}>
+              <TableCell>{label}</TableCell>
+              <TableCell>{f(report.left)}</TableCell>
+              <TableCell>{f(report.right)}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <p>
         <Badge tone={report.winner === "none" ? "amber" : "green"}>
           {report.winner === "none"
@@ -158,49 +168,49 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
       </Notice>
       <div className="benchmark-results">
         {runs.length ? (
-          <table>
-            <thead>
-              <tr>
-                <th>Run</th>
-                <th>Passed</th>
-                <th>Duration</th>
-                <th>Tokens</th>
-                <th>Revision</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Run</TableHead>
+                <TableHead>Passed</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Tokens</TableHead>
+                <TableHead>Revision</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {runs.map((run) => (
-                <tr key={run.name}>
-                  <td>
+                <TableRow key={run.name}>
+                  <TableCell>
                     <FlaskConical size={15} /> {run.name}
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Badge tone="green">
                       {run.results.filter((t) => t.passed).length} /{" "}
                       {run.results.length}
                     </Badge>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     {(
                       run.results.reduce((sum, t) => sum + t.durationMs, 0) /
                       1000
                     ).toFixed(1)}
                     s
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     {run.results.every((t) => t.tokens !== null)
                       ? run.results
                           .reduce((sum, t) => sum + (t.tokens ?? 0), 0)
                           .toLocaleString()
                       : "Unknown"}
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <code>{run.revision.slice(0, 8)}</code>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         ) : (
           <Empty
             title="No benchmark runs yet"
@@ -228,7 +238,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Run name
-            <input
+            <Input
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -237,7 +247,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Configuration
-            <input
+            <Input
               required
               value={config}
               onChange={(e) => setConfig(e.target.value)}
@@ -246,13 +256,15 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           <label>
             Task manifest
             <div className="input-with-button">
-              <input
+              <Input
+                className="h-full flex-1 rounded-none border-0 bg-transparent px-0 focus-visible:ring-0 px-2.5"
                 required
                 value={tasks}
                 onChange={(e) => setTasks(e.target.value)}
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                className="h-auto rounded-none border-0 border-l border-border bg-muted"
                 aria-label="Choose task manifest"
                 onClick={async () => {
                   const path = await window.preflight.chooseFile();
@@ -260,7 +272,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
                 }}
               >
                 …
-              </button>
+              </Button>
             </div>
           </label>
           <Button
@@ -288,7 +300,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Baseline
-            <select
+            <NativeSelect
               required
               value={left}
               onChange={(e) => setLeft(e.target.value)}
@@ -297,11 +309,11 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
               {runs.map((r) => (
                 <option key={r.name}>{r.name}</option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label>
             Candidate
-            <select
+            <NativeSelect
               required
               value={right}
               onChange={(e) => setRight(e.target.value)}
@@ -310,7 +322,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
               {runs.map((r) => (
                 <option key={r.name}>{r.name}</option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <Button disabled={!!w.busy || !left || !right} type="submit">
             <ArrowRightLeft size={15} />
@@ -349,7 +361,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Task manifest
-            <input
+            <Input
               required
               value={arenaTask}
               onChange={(e) => setArenaTask(e.target.value)}
@@ -357,7 +369,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Left
-            <input
+            <Input
               required
               list="arena-choices"
               value={arenaLeft}
@@ -366,7 +378,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Right
-            <input
+            <Input
               required
               list="arena-choices"
               value={arenaRight}
@@ -380,7 +392,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </datalist>
           <label>
             Runs per side
-            <input
+            <Input
               required
               type="number"
               min={1}
@@ -391,21 +403,21 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Model (optional)
-            <input
+            <Input
               value={arenaModel}
               onChange={(e) => setArenaModel(e.target.value)}
             />
           </label>
           <label>
             Effort (optional)
-            <input
+            <Input
               value={arenaEffort}
               onChange={(e) => setArenaEffort(e.target.value)}
             />
           </label>
           <label>
             Budget per task, USD (optional)
-            <input
+            <Input
               type="number"
               min={0}
               step="any"
@@ -448,7 +460,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
         >
           <label>
             Repository
-            <input
+            <Input
               required
               value={repo}
               onChange={(e) => setRepo(e.target.value)}
@@ -456,7 +468,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Pinned commit (40 characters)
-            <input
+            <Input
               required
               value={revision}
               pattern="[a-f0-9]{40}"
@@ -465,7 +477,7 @@ export function Benchmarks({ workspace: w }: { workspace: Workspace }) {
           </label>
           <label>
             Agent binary
-            <input
+            <Input
               required
               value={agent}
               onChange={(e) => setAgent(e.target.value)}

@@ -1,5 +1,11 @@
+import { Input } from "./ui/input";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./ui/dialog";
 import { Search, CornerDownLeft, ArrowUp, ArrowDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -67,102 +73,101 @@ export function CommandPalette({
   };
   let group = "";
   return (
-    <DialogPrimitive.Root
+    <Dialog
       open={open}
       onOpenChange={(value) => {
         if (!value) onClose();
       }}
     >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="dialog-overlay" />
-        <DialogPrimitive.Content className="dialog palette">
-          <DialogPrimitive.Title className="sr-only">
-            Go to…
-          </DialogPrimitive.Title>
-          <DialogPrimitive.Description className="sr-only">
-            Search views and actions, then press Enter.
-          </DialogPrimitive.Description>
-          <div className="palette-search">
-            <Search size={18} />
-            <input
-              autoFocus
-              aria-label="Find a view or action"
-              role="combobox"
-              aria-expanded="true"
-              aria-controls="palette-results"
-              aria-activedescendant={
-                results[active] ? `palette-${results[active].id}` : undefined
+      <DialogContent
+        showCloseButton={false}
+        className="dialog palette top-[14vh] flex max-h-[68vh] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[580px]"
+      >
+        <DialogTitle className="sr-only">Go to…</DialogTitle>
+        <DialogDescription className="sr-only">
+          Search views and actions, then press Enter.
+        </DialogDescription>
+        <div className="palette-search">
+          <Search size={18} />
+          <Input
+            className="h-full flex-1 rounded-none border-0 bg-transparent px-0 focus-visible:ring-0 h-[50px] text-sm"
+            autoFocus
+            aria-label="Find a view or action"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-results"
+            aria-activedescendant={
+              results[active] ? `palette-${results[active].id}` : undefined
+            }
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search views and actions…"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActive((i) => Math.min(i + 1, results.length - 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActive((i) => Math.max(i - 1, 0));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                choose(results[active]);
               }
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search views and actions…"
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setActive((i) => Math.min(i + 1, results.length - 1));
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setActive((i) => Math.max(i - 1, 0));
-                } else if (e.key === "Enter") {
-                  e.preventDefault();
-                  choose(results[active]);
-                }
-              }}
-            />
-          </div>
-          <div
-            className="palette-body"
-            id="palette-results"
-            role="listbox"
-            ref={list}
-          >
-            {results.map((entry, index) => {
-              const heading = entry.group !== group;
-              group = entry.group;
-              return (
-                <div key={entry.id}>
-                  {heading && (
-                    <div className="palette-group-label" aria-hidden="true">
-                      {entry.group}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    role="option"
-                    id={`palette-${entry.id}`}
-                    data-index={index}
-                    aria-selected={index === active}
-                    className={`palette-item ${index === active ? "active" : ""}`}
-                    onMouseMove={() => setActive(index)}
-                    onClick={() => choose(entry)}
-                  >
-                    <entry.icon size={17} />
-                    {entry.label}
-                    {entry.hint && <small>{entry.hint}</small>}
-                  </button>
-                </div>
-              );
-            })}
-            {!results.length && (
-              <div className="palette-empty">
-                No view or action matches “{query}”.
+            }}
+          />
+        </div>
+        <div
+          className="palette-body"
+          id="palette-results"
+          role="listbox"
+          ref={list}
+        >
+          {results.map((entry, index) => {
+            const heading = entry.group !== group;
+            group = entry.group;
+            return (
+              <div key={entry.id}>
+                {heading && (
+                  <div className="palette-group-label" aria-hidden="true">
+                    {entry.group}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  role="option"
+                  id={`palette-${entry.id}`}
+                  data-index={index}
+                  aria-selected={index === active}
+                  className={`palette-item ${index === active ? "active" : ""}`}
+                  onMouseMove={() => setActive(index)}
+                  onClick={() => choose(entry)}
+                >
+                  <entry.icon size={17} />
+                  {entry.label}
+                  {entry.hint && <small>{entry.hint}</small>}
+                </button>
               </div>
-            )}
-          </div>
-          <div className="palette-footer" aria-hidden="true">
-            <span>
-              <ArrowUp size={12} />
-              <ArrowDown size={12} /> move
-            </span>
-            <span>
-              <CornerDownLeft size={12} /> open
-            </span>
-            <span>
-              <kbd>esc</kbd> close
-            </span>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+            );
+          })}
+          {!results.length && (
+            <div className="palette-empty">
+              No view or action matches “{query}”.
+            </div>
+          )}
+        </div>
+        <div className="palette-footer" aria-hidden="true">
+          <span>
+            <ArrowUp size={12} />
+            <ArrowDown size={12} /> move
+          </span>
+          <span>
+            <CornerDownLeft size={12} /> open
+          </span>
+          <span>
+            <kbd>esc</kbd> close
+          </span>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
