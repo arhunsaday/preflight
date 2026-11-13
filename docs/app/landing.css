@@ -1,14 +1,21 @@
 .pf {
-  --pf-bg: #f3f1ea;
-  --pf-raise: #fbfaf6;
-  --pf-ink: #14202b;
-  --pf-dim: #4d5a64;
-  --pf-line: #d9d5c8;
-  --pf-primary: #0f5e66;
-  --pf-primary-ink: #fbfaf6;
+  /* Navy palette. On the hero sky the copy takes the --sky-* tokens. */
+  --pf-bg: #f4f7fb;
+  --pf-raise: #ffffff;
+  --pf-ink: #0c2d5e;
+  --pf-dim: #3d5f86;
+  --pf-line: #d6e0ec;
+  --pf-primary: #0c2d5e;
+  --pf-primary-ink: #ffffff;
   --pf-beacon: #b8560c;
-  --ascii-ink: 15, 94, 102;
+  --ascii-ink: 16, 44, 84;
   --ascii-beacon: 201, 98, 14;
+  --sky-title: #0c2d5e;
+  --sky-text: #24507f;
+  --sky-dim: #2f5d8f;
+  --sky-glass: rgba(255, 255, 255, 0.62);
+  --sky-edge: rgba(255, 255, 255, 0.75);
+  --sky-haze: rgba(255, 255, 255, 0.16);
   --pf-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --pf-mono: var(--font-jbmono), ui-monospace, 'SF Mono', Menlo, monospace;
   background: var(--pf-bg);
@@ -18,16 +25,22 @@
   -webkit-font-smoothing: antialiased;
 }
 .dark .pf {
-  --pf-bg: #0c1217;
-  --pf-raise: #111920;
-  --pf-ink: #e4e9ec;
-  --pf-dim: #9aa8b2;
-  --pf-line: #24313b;
-  --pf-primary: #4fb3bd;
-  --pf-primary-ink: #0c1217;
+  --pf-bg: #050a1a;
+  --pf-raise: #0b1428;
+  --pf-ink: #e6edf7;
+  --pf-dim: #9db0c9;
+  --pf-line: #1c2b4d;
+  --pf-primary: #8fb8ff;
+  --pf-primary-ink: #050a1a;
   --pf-beacon: #f0a04a;
-  --ascii-ink: 79, 179, 189;
+  --ascii-ink: 214, 226, 244;
   --ascii-beacon: 240, 160, 74;
+  --sky-title: #e6edf7;
+  --sky-text: #b4c4da;
+  --sky-dim: #9db0c9;
+  --sky-glass: rgba(11, 20, 40, 0.6);
+  --sky-edge: rgba(230, 237, 247, 0.14);
+  --sky-haze: rgba(5, 10, 26, 0.3);
 }
 .pf a { color: inherit; }
 .pf-wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
@@ -47,12 +60,20 @@
 @media (max-width: 520px) { .pf-nav nav { gap: 14px; } .pf-nav nav a:nth-child(3) { display: none; } }
 
 /* hero */
-.pf-hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--pf-line); }
+.pf-hero { position: relative; overflow: hidden; background: var(--pf-bg); }
+.pf-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .pf-ascii { position: absolute; inset: 0; width: 100%; height: 100%; font-family: var(--pf-mono); }
 .pf-hero-fade { position: absolute; inset: 0; pointer-events: none;
+  /* A light haze behind the copy, then a soft eased hand-off to the page instead of a border. */
   background:
-    linear-gradient(90deg, var(--pf-bg) 0%, color-mix(in srgb, var(--pf-bg) 82%, transparent) 38%, transparent 70%),
-    linear-gradient(180deg, transparent 70%, var(--pf-bg) 100%); }
+    linear-gradient(90deg, var(--sky-haze) 0%, transparent 58%),
+    linear-gradient(180deg, transparent 58%, color-mix(in srgb, var(--pf-bg) 30%, transparent) 76%, color-mix(in srgb, var(--pf-bg) 75%, transparent) 90%, var(--pf-bg) 100%); }
+.pf-hero .pf-eyebrow { color: var(--sky-dim); }
+.pf-hero h1 { color: var(--sky-title); }
+.pf-hero .pf-lede { color: var(--sky-text); }
+.pf-hero .pf-fine { color: var(--sky-text); }
+.pf-hero .pf-cmd,
+.pf-hero .pf-btn:not(.pf-btn-primary):not(.pf-btn-ghost) { background: var(--sky-glass); border-color: var(--sky-edge); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .pf-hero-in { position: relative; padding-top: clamp(64px, 11vw, 132px); padding-bottom: clamp(64px, 10vw, 116px); }
 .pf-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; font: 600 12.5px var(--pf-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pf-dim); }
 .pf-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pf-beacon); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pf-beacon) 25%, transparent); }
@@ -125,6 +146,6 @@ a.pf-card:hover { border-color: var(--pf-primary); transform: translateY(-2px); 
 .pf a:focus-visible, .pf button:focus-visible { outline: 2px solid var(--pf-primary); outline-offset: 2px; }
 
 @media (max-width: 760px) {
-  .pf-hero-fade { background: linear-gradient(180deg, color-mix(in srgb, var(--pf-bg) 55%, transparent) 0%, var(--pf-bg) 62%); }
-  .pf-ascii { opacity: 0.8; }
+  .pf-hero-fade { background: linear-gradient(180deg, var(--sky-haze) 0%, transparent 55%, color-mix(in srgb, var(--pf-bg) 75%, transparent) 90%, var(--pf-bg) 100%); }
+  .pf-ascii { opacity: 0.55; }
 }

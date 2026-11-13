@@ -19,6 +19,7 @@ import { AsciiField } from './_landing/ascii-field';
 import { CopyCommand } from './_landing/copy-button';
 import { DownloadButton, RELEASES } from './_landing/download-button';
 import { Shots } from './_landing/shots';
+import { Sky } from './_landing/sky';
 import { ThemeToggle } from './_landing/theme-toggle';
 import './landing.css';
 
@@ -101,6 +102,7 @@ export default function HomePage() {
 
       <main>
         <section className="pf-hero">
+          <Sky className="pf-sky" />
           <AsciiField className="pf-ascii" />
           <div className="pf-hero-fade" aria-hidden="true" />
           <div className="pf-wrap pf-hero-in">
