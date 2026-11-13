@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-export function CopyCommand({ command }: { command: string }) {
+export function CopyCommand({ command, className }: { command: string; className?: string }) {
   const [done, setDone] = useState(false);
   const copy = async () => {
     try {
@@ -15,13 +17,13 @@ export function CopyCommand({ command }: { command: string }) {
     }
   };
   return (
-    <div className="pf-cmd">
+    <div className={cn('pf-cmd rounded-lg border bg-card', className)}>
       <span className="pf-cmd-prompt" aria-hidden="true">$</span>
       <code>{command}</code>
-      <button type="button" onClick={copy} aria-label={done ? 'Copied' : 'Copy command'}>
-        {done ? <Check size={16} /> : <Copy size={16} />}
+      <Button variant="secondary" size="sm" onClick={copy} aria-label={done ? 'Copied' : 'Copy command'}>
+        {done ? <Check /> : <Copy />}
         <span>{done ? 'Copied' : 'Copy'}</span>
-      </button>
+      </Button>
     </div>
   );
 }

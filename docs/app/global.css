@@ -1,45 +1,108 @@
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/shadcn.css';
 @import 'fumadocs-ui/css/preset.css';
 
-/* Navy palette, shared with the landing page (app/landing.css). */
-@theme {
-  --color-fd-background: #f4f7fb;
-  --color-fd-foreground: #0c2d5e;
-  --color-fd-muted: #e9eff7;
-  --color-fd-muted-foreground: #3d5f86;
-  --color-fd-popover: #ffffff;
-  --color-fd-popover-foreground: #0c2d5e;
-  --color-fd-card: #ffffff;
-  --color-fd-card-foreground: #0c2d5e;
-  --color-fd-border: #d6e0ec;
-  --color-fd-primary: #0c2d5e;
-  --color-fd-primary-foreground: #ffffff;
-  --color-fd-secondary: #e9eff7;
-  --color-fd-secondary-foreground: #0c2d5e;
-  --color-fd-accent: rgba(12, 45, 94, 0.08);
-  --color-fd-accent-foreground: #0c2d5e;
-  --color-fd-ring: #3d5f86;
+/*
+ * shadcn/ui theme: the navy palette, light and dark. The landing page
+ * (components/ui) and the Fumadocs pages (through fumadocs-ui/css/shadcn.css)
+ * both read these tokens. The desktop app defines the same values in
+ * desktop/renderer/globals.css; keep the two in step.
+ */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+  --background: #f4f7fb;
+  --foreground: #0c2d5e;
+  --card: #ffffff;
+  --card-foreground: #0c2d5e;
+  --popover: #ffffff;
+  --popover-foreground: #0c2d5e;
+  --primary: #0c2d5e;
+  --primary-foreground: #ffffff;
+  --secondary: #e9eff7;
+  --secondary-foreground: #0c2d5e;
+  --muted: #e9eff7;
+  --muted-foreground: #3d5f86;
+  --accent: rgba(12, 45, 94, 0.08);
+  --accent-foreground: #0c2d5e;
+  --destructive: #a8231b;
+  --border: #d6e0ec;
+  --input: #d6e0ec;
+  --ring: #3d5f86;
+  --beacon: #b8560c;
+  --sidebar: #f4f7fb;
+  --sidebar-foreground: #0c2d5e;
+  --sidebar-primary: #0c2d5e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(12, 45, 94, 0.08);
+  --sidebar-accent-foreground: #0c2d5e;
+  --sidebar-border: #d6e0ec;
+  --sidebar-ring: #3d5f86;
 }
 
-.dark,
-.dark #nd-sidebar {
-  --color-fd-background: #050a1a;
-  --color-fd-foreground: #e6edf7;
-  --color-fd-muted: #0f1a33;
-  --color-fd-muted-foreground: #9db0c9;
-  --color-fd-popover: #0b1428;
-  --color-fd-popover-foreground: #e6edf7;
-  --color-fd-card: #0b1428;
-  --color-fd-card-foreground: #e6edf7;
-  --color-fd-border: #1c2b4d;
-  --color-fd-primary: #8fb8ff;
-  --color-fd-primary-foreground: #050a1a;
-  --color-fd-secondary: #0f1a33;
-  --color-fd-secondary-foreground: #e6edf7;
-  --color-fd-accent: rgba(143, 184, 255, 0.12);
-  --color-fd-accent-foreground: #e6edf7;
-  --color-fd-ring: #8fb8ff;
+.dark {
+  --background: #050a1a;
+  --foreground: #e6edf7;
+  --card: #0b1428;
+  --card-foreground: #e6edf7;
+  --popover: #0b1428;
+  --popover-foreground: #e6edf7;
+  --primary: #8fb8ff;
+  --primary-foreground: #050a1a;
+  --secondary: #0f1a33;
+  --secondary-foreground: #e6edf7;
+  --muted: #0f1a33;
+  --muted-foreground: #9db0c9;
+  --accent: rgba(143, 184, 255, 0.12);
+  --accent-foreground: #e6edf7;
+  --destructive: #ff8f85;
+  --border: #1c2b4d;
+  --input: #1c2b4d;
+  --ring: #8fb8ff;
+  --beacon: #f0a04a;
+  --sidebar: #050a1a;
+  --sidebar-foreground: #e6edf7;
+  --sidebar-primary: #8fb8ff;
+  --sidebar-primary-foreground: #050a1a;
+  --sidebar-accent: rgba(143, 184, 255, 0.12);
+  --sidebar-accent-foreground: #e6edf7;
+  --sidebar-border: #1c2b4d;
+  --sidebar-ring: #8fb8ff;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-beacon: var(--beacon);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 html {

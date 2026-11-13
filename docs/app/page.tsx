@@ -15,6 +15,9 @@ import {
   Monitor,
   Plug,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AsciiField } from './_landing/ascii-field';
 import { CopyCommand } from './_landing/copy-button';
 import { DownloadButton, RELEASES } from './_landing/download-button';
@@ -92,9 +95,15 @@ export default function HomePage() {
             Preflight
           </Link>
           <nav aria-label="Main">
-            <Link href="/docs/preflight/quickstart">Quickstart</Link>
-            <Link href="/docs">Docs</Link>
-            <a href={GITHUB}>GitHub</a>
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Link href="/docs/preflight/quickstart">Quickstart</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Link href="/docs">Docs</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <a href={GITHUB}>GitHub</a>
+            </Button>
             <ThemeToggle />
           </nav>
         </div>
@@ -118,15 +127,17 @@ export default function HomePage() {
               Preflight is the check you run before the session starts: what is installed, what it
               costs in context, and the smallest change that makes it better.
             </p>
-            <CopyCommand command="npx @arhunsaday/preflight doctor" />
+            <CopyCommand command="npx @arhunsaday/preflight doctor" className="pf-glass" />
             <div className="pf-actions">
               <DownloadButton />
-              <a className="pf-btn" href={RELEASES}>
-                All platforms
-              </a>
-              <Link className="pf-btn pf-btn-ghost" href="/docs">
-                Docs <ArrowRight size={16} />
-              </Link>
+              <Button asChild variant="outline" size="lg" className="pf-glass">
+                <a href={RELEASES}>All platforms</a>
+              </Button>
+              <Button asChild variant="ghost" size="lg">
+                <Link href="/docs">
+                  Docs <ArrowRight />
+                </Link>
+              </Button>
             </div>
             <p className="pf-fine">Free. Runs on your machine. macOS, Windows and Linux.</p>
           </div>
@@ -141,7 +152,9 @@ export default function HomePage() {
             </p>
             <div className="pf-chips" aria-label="What Preflight inventories">
               {INVENTORY.map((x) => (
-                <span key={x}>{x}</span>
+                <Badge key={x} variant="outline" className="rounded-full px-2.5 font-mono text-muted-foreground">
+                  {x}
+                </Badge>
               ))}
             </div>
             <Shots />
@@ -153,10 +166,14 @@ export default function HomePage() {
             <h2>What it does</h2>
             <div className="pf-grid">
               {FEATURES.map(({ icon: Icon, title, text, href }) => (
-                <Link key={title} href={href} className="pf-card">
-                  <Icon size={20} aria-hidden="true" />
-                  <h3>{title}</h3>
-                  <p>{text}</p>
+                <Link key={title} href={href} className="pf-card-link">
+                  <Card className="pf-card h-full">
+                    <CardHeader className="gap-3">
+                      <Icon size={20} aria-hidden="true" />
+                      <CardTitle className="text-[17px] font-extrabold tracking-tight">{title}</CardTitle>
+                      <CardDescription className="text-[14.5px] leading-relaxed">{text}</CardDescription>
+                    </CardHeader>
+                  </Card>
                 </Link>
               ))}
             </div>
@@ -173,9 +190,14 @@ export default function HomePage() {
                 computer from your own files and transcripts. Nothing leaves the machine. Sign-in,
                 sharing and teams are optional, and a share is only published when you publish it.
               </p>
-              <p className="pf-small">
-                <Link href="/docs/preflight/usage">How usage is counted</Link> ·{' '}
-                <Link href="/docs/preflight/sharing">What a share contains</Link>
+              <p className="flex flex-wrap items-center gap-1 !text-sm">
+                <Button asChild variant="link" className="h-auto px-0">
+                  <Link href="/docs/preflight/usage">How usage is counted</Link>
+                </Button>
+                <span aria-hidden="true">·</span>
+                <Button asChild variant="link" className="h-auto px-0">
+                  <Link href="/docs/preflight/sharing">What a share contains</Link>
+                </Button>
               </p>
             </div>
           </div>
@@ -185,27 +207,51 @@ export default function HomePage() {
           <div className="pf-wrap">
             <h2>Three ways in</h2>
             <div className="pf-three">
-              <div className="pf-card pf-static">
-                <Terminal size={20} aria-hidden="true" />
-                <h3>Command line</h3>
-                <p>Scriptable, JSON on stdout, a terminal interface with `preflight ui`.</p>
-                <code>npx @arhunsaday/preflight doctor</code>
-                <Link href="/docs/preflight/cli">CLI reference</Link>
-              </div>
-              <div className="pf-card pf-static">
-                <Monitor size={20} aria-hidden="true" />
-                <h3>Desktop app</h3>
-                <p>Electron for macOS, Windows and Linux, with previews, accounts and teams.</p>
-                <code>brew install --cask preflight</code>
-                <Link href="/docs/preflight/install">Install the app</Link>
-              </div>
-              <div className="pf-card pf-static">
-                <Plug size={20} aria-hidden="true" />
-                <h3>Claude Code plugin</h3>
-                <p>Lets Claude run Doctor and the context map for you, and ask before it applies a change.</p>
-                <code>/plugin install preflight@arhun-plugins</code>
-                <a href="https://github.com/arhunsaday/claude-plugins">Plugin marketplace</a>
-              </div>
+              <Card className="pf-card gap-4">
+                <CardHeader className="gap-3">
+                  <Terminal size={20} aria-hidden="true" />
+                  <CardTitle className="text-[17px] font-extrabold tracking-tight">Command line</CardTitle>
+                  <CardDescription className="text-[14.5px] leading-relaxed">Scriptable, JSON on stdout, a terminal interface with `preflight ui`.</CardDescription>
+                </CardHeader>
+                <div className="px-6">
+                  <code className="pf-code">npx @arhunsaday/preflight doctor</code>
+                </div>
+                <CardFooter className="mt-auto">
+                  <Button asChild variant="link" className="h-auto px-0 font-bold">
+                    <Link href="/docs/preflight/cli">CLI reference</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+              <Card className="pf-card gap-4">
+                <CardHeader className="gap-3">
+                  <Monitor size={20} aria-hidden="true" />
+                  <CardTitle className="text-[17px] font-extrabold tracking-tight">Desktop app</CardTitle>
+                  <CardDescription className="text-[14.5px] leading-relaxed">Electron for macOS, Windows and Linux, with previews, accounts and teams.</CardDescription>
+                </CardHeader>
+                <div className="px-6">
+                  <code className="pf-code">brew install --cask preflight</code>
+                </div>
+                <CardFooter className="mt-auto">
+                  <Button asChild variant="link" className="h-auto px-0 font-bold">
+                    <Link href="/docs/preflight/install">Install the app</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+              <Card className="pf-card gap-4">
+                <CardHeader className="gap-3">
+                  <Plug size={20} aria-hidden="true" />
+                  <CardTitle className="text-[17px] font-extrabold tracking-tight">Claude Code plugin</CardTitle>
+                  <CardDescription className="text-[14.5px] leading-relaxed">Lets Claude run Doctor and the context map for you, and ask before it applies a change.</CardDescription>
+                </CardHeader>
+                <div className="px-6">
+                  <code className="pf-code">/plugin install preflight@arhun-plugins</code>
+                </div>
+                <CardFooter className="mt-auto">
+                  <Button asChild variant="link" className="h-auto px-0 font-bold">
+                    <a href="https://github.com/arhunsaday/claude-plugins">Plugin marketplace</a>
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
           </div>
         </section>
@@ -214,12 +260,12 @@ export default function HomePage() {
           <div className="pf-wrap">
             <h2>Check before you fly.</h2>
             <div className="pf-actions pf-center">
-              <Link className="pf-btn pf-btn-primary" href="/docs/preflight/quickstart">
-                Quickstart in five steps
-              </Link>
-              <Link className="pf-btn" href="/docs">
-                Read the docs
-              </Link>
+              <Button asChild size="lg">
+                <Link href="/docs/preflight/quickstart">Quickstart in five steps</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href="/docs">Read the docs</Link>
+              </Button>
             </div>
           </div>
         </section>

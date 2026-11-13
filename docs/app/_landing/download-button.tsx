@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export const RELEASES = 'https://github.com/arhunsaday/preflight/releases/latest';
 
@@ -16,9 +17,11 @@ const detect = () => {
 export function DownloadButton() {
   const os = useSyncExternalStore(noop, detect, () => 'macOS');
   return (
-    <a className="pf-btn pf-btn-primary" href={RELEASES}>
-      <Download size={16} />
-      Download for {os}
-    </a>
+    <Button asChild size="lg">
+      <a href={RELEASES}>
+        <Download />
+        Download for {os}
+      </a>
+    </Button>
   );
 }

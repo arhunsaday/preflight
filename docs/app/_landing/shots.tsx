@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const SHOTS = [
   {
@@ -30,31 +31,22 @@ const SHOTS = [
 ];
 
 export function Shots() {
-  const [i, setI] = useState(0);
-  const s = SHOTS[i];
   return (
-    <div className="pf-shots">
-      <div className="pf-tabs" role="tablist" aria-label="Screens">
-        {SHOTS.map((x, n) => (
-          <button
-            key={x.id}
-            role="tab"
-            type="button"
-            aria-selected={n === i}
-            className={n === i ? 'on' : ''}
-            onClick={() => setI(n)}
-          >
+    <Tabs defaultValue={SHOTS[0].id} className="gap-0">
+      <TabsList aria-label="Screens" className="h-auto flex-wrap">
+        {SHOTS.map((x) => (
+          <TabsTrigger key={x.id} value={x.id} className="px-3 py-1.5">
             {x.label}
-          </button>
+          </TabsTrigger>
         ))}
-      </div>
-      <p className="pf-shot-text">{s.text}</p>
-      <div className="pf-window">
-        <div className="pf-window-bar" aria-hidden="true">
-          <i /><i /><i />
-        </div>
-        {SHOTS.map((x, n) => (
-          <div key={x.id} hidden={n !== i}>
+      </TabsList>
+      {SHOTS.map((x, n) => (
+        <TabsContent key={x.id} value={x.id}>
+          <p className="pf-shot-text">{x.text}</p>
+          <Card className="pf-window gap-0 py-0">
+            <div className="pf-window-bar" aria-hidden="true">
+              <i /><i /><i />
+            </div>
             {/* eslint-disable @next/next/no-img-element */}
             <img
               className="pf-shot pf-light-only"
@@ -73,9 +65,9 @@ export function Shots() {
               loading={n === 0 ? 'eager' : 'lazy'}
             />
             {/* eslint-enable @next/next/no-img-element */}
-          </div>
-        ))}
-      </div>
-    </div>
+          </Card>
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }
